@@ -2,7 +2,7 @@
 %
 % <<cover_pic.png>>
 %
-% *Author: Nico Stephan Gorbach*, Institute of Machine Learning, ETHZ, email: nico.gorbach@gmail.com
+% *Author: Nico Stephan Gorbach and Stefan Bauer*, Institute of Machine Learning, ETHZ, email: nico.gorbach@gmail.com
 %
 % Instructional code for " *Scalable Variational Inference for Dynamical Systems* "
 % by Nico S. Gorbach, Stefan Bauer and Joachim M. Buhmann.
