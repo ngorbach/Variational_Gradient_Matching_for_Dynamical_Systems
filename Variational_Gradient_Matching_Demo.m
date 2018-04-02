@@ -2,7 +2,7 @@
 %
 % <<cover_pic.png>>
 %
-% *Author: Nico Stephan Gorbach*, Institute of Machine Learning, ETHZ, email: nico.gorbach@gmail.com
+% *Author: Nico Stephan Gorbach and Stefan Bauer*, Institute of Machine Learning, ETHZ, email: nico.gorbach@gmail.com
 %
 % Instructional code for " *Scalable Variational Inference for Dynamical Systems* "
 % by Nico S. Gorbach, Stefan Bauer and Joachim M. Buhmann.
@@ -132,7 +132,7 @@
 %
 % <html><h4> Mean-field Variational Inference </h4></html>
 %
-% To infer the parameters $\boldmath\theta$, we want to find the maximum \textit{a posteriori} estimate (MAP): 
+% To infer the parameters $\boldmath\theta$, we want to find the maximum a posteriori estimate (MAP): 
 %
 % $\boldmath\theta^* := arg \max_{\boldmath\theta} ~ \ln p(\boldmath\theta \mid \mathbf{Y},\boldmath\phi,\boldmath\gamma, \boldmath\sigma)$
 %
@@ -266,7 +266,7 @@ for i = 1:coord_ascent_numb_iter
     %%
     % <html><h4> Proxy for ODE parameters </h4></html>
     [param_proxy_mean,param_proxy_inv_cov] = proxy_for_ode_parameters(state.proxy.mean,Lambda,dC_times_invC,ode_param,symbols);
-    if ~mod(i,50); plot_results(h,h2,state,time,simulation,param_proxy_mean,'not_final'); end
+    if i==1 || ~mod(i,20); plot_results(h,h2,state,time,simulation,param_proxy_mean,'not_final'); end
     %%
     % <html><h4> Proxy for individual states </h4></html>
     state.proxy.mean = proxy_for_ind_states(state.lin_comb,state.proxy.mean,param_proxy_mean',...
