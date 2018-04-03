@@ -269,6 +269,19 @@ end
 % <html><h4> Final result </h4></html>
 plot_results(h,h2,state,time,simulation,param_proxy_mean,'final');
 
+%% References
+%
+% * *Gorbach, N.S.* , *Bauer, S.* and Buhmann, J.M., Scalable Variational Inference
+% for Dynamical Systems. Neural Information Processing Systems (NIPS) 2017a. <https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf>, arxiv: <https://arxiv.org/abs/1705.07079>.
+% * *Bauer, S.* , *Gorbach, N.S.* and Buhmann, J.M., Efficient and Flexible Inference for
+% Stochastic Differential Equations. Neural Information Processing Systems (NIPS) 2017b.
+% * Calderhead, B., Girolami, M. and Lawrence. N.D., 2002. Accelerating Bayesian
+% inference over nonlinear differential equation models. _In Advances in
+% Neural Information Processing Systems (NIPS)_ . 22.
+%
+% The authors in bold font have contributed equally to their respective
+% papers.
+
 %% Subroutines
 % <html><h4> Kernel function </h4></html>
 %
