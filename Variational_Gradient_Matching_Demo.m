@@ -32,7 +32,7 @@ clear all; close all;
 
 simulation.state_obs_variance = @(mean)(bsxfun(@times,[0.5^2,0.5^2],...
     ones(size(mean))));                                                    % observation noise
-simulation.ode_param = [2 1 4 1];                                          % true ODE parameters [2 1 4 1] is used as a benchmark in many publications;
+simulation.ode_param = [2,1,4,1];                                          % true ODE parameters [2 1 4 1] is used as a benchmark in many publications;
 simulation.final_time = 2;                                                 % end time for integration
 simulation.int_interval = 0.01;                                            % integration interval
 simulation.time_samp = 0:0.1:simulation.final_time;                        % sample times for observations
@@ -350,8 +350,8 @@ figure(3);
 hold on; plot(time_est,mvnrnd(zeros(1,length(time_est)),C(:,:,1),3),'LineWidth',2);
 h1 = gca; h1.FontSize = 20; h1.XLabel.String = 'time'; h1.YLabel.String = 'state value';
 h1.Title.String = [kernel.name ' kernel'];
-%%
-% determine $\Lambda$:
+
+% determine \Lambda:
 A = ddC - dC_times_invC * Cd;
 inv_Lambda = A + state.derivative_variance(1) .* eye(size(A));
 inv_Lambda = 0.5.*(inv_Lambda+inv_Lambda');

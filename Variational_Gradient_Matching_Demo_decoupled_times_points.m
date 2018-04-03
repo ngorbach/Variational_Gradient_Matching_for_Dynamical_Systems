@@ -377,7 +377,7 @@ dC_times_invC = dC * inv_Cxx;
 % plot GP prior samples
 figure(3); 
 hold on; plot(time_est,mvnrnd(zeros(1,length(time_est)),Cxx(:,:,1),3),'LineWidth',2);
-h1 = gca; h1.FontSize = 20; h1.XLabel.String = 'time (s)'; h1.YLabel.String = 'state value';
+h1 = gca; h1.FontSize = 20; h1.XLabel.String = 'time'; h1.YLabel.String = 'state value';
 h1.Title.String = [kernel.name ' kernel'];
 
 % determine \Lambda:
@@ -829,3 +829,16 @@ f = expand(f);
 f = subs(expand(f),state.^2,state.^2+variance);
 
 end
+
+%% References
+%
+% * *Gorbach, N.S.* , *Bauer, S.* and Buhmann, J.M., Scalable Variational Inference
+% for Dynamical Systems. Neural Information Processing Systems (NIPS) 2017a. <https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf>, arxiv: <https://arxiv.org/abs/1705.07079>.
+% * *Bauer, S.* , *Gorbach, N.S.* and Buhmann, J.M., Efficient and Flexible Inference for
+% Stochastic Differential Equations. Neural Information Processing Systems (NIPS) 2017b.
+% * Calderhead, B., Girolami, M. and Lawrence. N.D., 2002. Accelerating Bayesian
+% inference over nonlinear differential equation models. _In Advances in
+% Neural Information Processing Systems (NIPS)_ . 22.
+%
+% The authors in bold font have contributed equally to their respective
+% papers.
