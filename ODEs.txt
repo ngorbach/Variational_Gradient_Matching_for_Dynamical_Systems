@@ -1,2 +1,0 @@
-[\theta_1].*[prey] - [\theta_2].*[prey].*[predator]
--[\theta_3].*[predator] + [\theta_4].*[prey].*[predator]
