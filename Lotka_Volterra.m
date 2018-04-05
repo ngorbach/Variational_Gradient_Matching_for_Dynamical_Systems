@@ -38,6 +38,7 @@ simulation.final_time = 2;                                                 % end
 simulation.int_interval = 0.01;                                            % integration interval
 simulation.time_samp = 0:0.1:simulation.final_time;                        % sample times for observations
 simulation.init_val = [5 3];                                               % state values at first time point
+simulation.state_obs_idx = [1,1];                                          % indices of states that are directly observed (Boolean)
 
 %% User Input
 %
@@ -49,6 +50,7 @@ state.derivative_variance = [6,6];                                         % gam
 % <html><h4> Estimation </h4></html>
 time.est = 0:0.1:4;                                                        % estimation times
 coord_ascent_numb_iter = 200;                                              % number of coordinate ascent iterations
+clamp_obs_state_to_GP_regression = false;                                  % The observed state trajectories are clamped to the trajectories determined by standard GP regression (Boolean)
 
 %%
 % <html><h4> Symbols </h4></html>
@@ -264,7 +266,7 @@ for i = 1:coord_ascent_numb_iter
     % which, once more, can be normalized analytically due to its exponential quadratic form. In (a) we decompose the full conditional into an ODE-informed distribution and a data-informed distribution and in (b) we substitute the ODE-informed distribution $p(\mathbf{x}_u \mid \boldmath\theta, \mathbf{X}_{-u},\boldmath\phi,\boldmath\gamma)$ with its density given by equation (8).
 
     state.proxy.mean = proxy_for_ind_states(state.lin_comb,state.proxy.mean,param_proxy_mean',...
-        dC_times_invC,coupling_idx.states,symbols,mu,inv_sigma);
+        dC_times_invC,coupling_idx.states,symbols,mu,inv_sigma,state.obs_idx,clamp_obs_state_to_GP_regression);
 end
 
 %%
@@ -272,7 +274,7 @@ end
 plot_results(h,h2,state,time,simulation,param_proxy_mean,'final');
 
 %% Time Taken
-disp(['time taken: ' num2str(toc/60) ' minutes'])
+disp(['time taken: ' num2str(toc) ' seconds'])
 
 %% References
 %
@@ -517,29 +519,36 @@ end
 %
 % $\hat{q}(\mathbf{x}_u) \propto \exp\big( ~ E_Q \ln \mathcal{N}\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ \mathbf{b}_u, ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) + E_Q \ln \mathcal{N}\left(\mathbf{x}_u ; \boldmath\mu_u(\mathbf{Y}), \Sigma_u \right) \big)$,
 
-function [state_mean,state_inv_cov] = proxy_for_ind_states(lin_comb,state,...
-    ode_param,dC_times_invC,coupling_idx,symbols,mu,inv_sigma)
+function [state_mean,state_inv_cov] = proxy_for_ind_states(lin_comb,state_mean,...
+    ode_param,dC_times_invC,coupling_idx,symbols,mu,inv_sigma,state_obs_idx,...
+    clamp_obs_state_to_GP_regression)
 
-for u = 1:length(symbols.state)
+if clamp_obs_state_to_GP_regression
+    state_enumeration = find(~state_obs_idx);
+else
+    state_enumeration = 1:length(symbols.state);
+end
+
+for u = state_enumeration
     
     state_inv_cov(:,:,u) = zeros(size(dC_times_invC));
     local_mean_sum = zeros(size(dC_times_invC,1),1);
     for k = coupling_idx{u}'
         if k~=u
-            B = diag(lin_comb{u,k}.B(state,ode_param));
+            B = diag(lin_comb{u,k}.B(state_mean,ode_param));
             if size(B,1) == 1; B = B.*eye(size(dC_times_invC,1)); end
 
             state_inv_cov(:,:,u) = state_inv_cov(:,:,u) + B' * B;
-            local_mean_sum = local_mean_sum + B' * (dC_times_invC * state(:,k) ...
-                + lin_comb{u,k}.b(state,ode_param));
+            local_mean_sum = local_mean_sum + B' * (dC_times_invC * state_mean(:,k) ...
+                + lin_comb{u,k}.b(state_mean,ode_param));
         else
-            B = diag(lin_comb{u,k}.B(state,ode_param));
+            B = diag(lin_comb{u,k}.B(state_mean,ode_param));
             if size(B,1) == 1; B = B.*eye(size(dC_times_invC,1)); end
             B = B - dC_times_invC;
 
             state_inv_cov(:,:,u) = state_inv_cov(:,:,u) + B' * B;
             
-            l = lin_comb{u,k}.b(state,ode_param); if length(l)==1; l = zeros(length(local_mean_sum),1); end
+            l = lin_comb{u,k}.b(state_mean,ode_param); if length(l)==1; l = zeros(length(local_mean_sum),1); end
             local_mean_sum = local_mean_sum + B' * l;
         end
     end
@@ -585,6 +594,8 @@ ode_system_mat = matlabFunction(ode.system_sym','Vars',{state_sym',param_sym'});
 [~,OutX_solver]=ode45(@(t,x) ode_system_mat(x,simulation.ode_param'), time.true, simulation.init_val);
 state.true_all=OutX_solver;
 state.true=state.true_all(itrue,:);
+
+state.obs_idx = simulation.state_obs_idx;
 
 end
 
