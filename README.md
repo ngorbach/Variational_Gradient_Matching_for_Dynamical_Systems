@@ -6,6 +6,6 @@ Implementation of the NIPS paper "*Scalable Variational Inference for Dynamical 
 Paper available at <https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf>.
 Please cite our paper if you use our program for a further publication.
 
-Run one of the Matlab files "Lotka_Volterra.m", "Lorenz96.m" and Lorenz63.m".
+Run one of the Matlab files "Lotka_Volterra.m", "Lorenz96.m" and "Lorenz63.m".
 
 The symbolic toolbox is required.
