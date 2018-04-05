@@ -2,7 +2,7 @@
 
 Authors: Nico Stephan Gorbach and Stefan Bauer, email: nico.gorbach@gmail.com
 
-Implementation of the NIPS paper " *Scalable Variational Inference for Dynamical Systems* " by Nico S. Gorbach, Stefan Bauer and Joachim M. Buhmann.
+Implementation of the NIPS paper "*Scalable Variational Inference for Dynamical Systems*" by Nico S. Gorbach, Stefan Bauer and Joachim M. Buhmann.
 Paper available at <https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf>.
 Please cite our paper if you use our program for a further publication.
 
