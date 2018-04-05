@@ -2,13 +2,15 @@
 %
 % <<cover_pic.png>>
 %
-% Authors: *Nico Stephan Gorbach* and *Stefan Bauer*, ETHZ, email: nico.gorbach@gmail.com
+% Authors: *Nico Stephan Gorbach* and *Stefan Bauer*, email: nico.gorbach@gmail.com
 %
 % Instructional code for " *Scalable Variational Inference for Dynamical Systems* "
 % by Nico S. Gorbach, Stefan Bauer and Joachim M. Buhmann.
 % Paper available at <https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf>.
 % Please cite our paper if you use our program for a further publication.
 % Part of the derivation below is described in Wenk et al. (2018).
+%
+% Example dynamical system used in this code: Lotka-Volterra system with *half* of the time points *unobserved*. The ODE parameters are also unobserved.
 
 %% Advantages of Variational Gradient Matching
 % The essential idea of gradient matching (Calderhead et al., 2002) is to match the gradient
