@@ -1,0 +1,2147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mscript xmlns:mwsh="http://www.mathworks.com/namespace/mcode/v1/syntaxhighlight.dtd">
+   <version>9.2</version>
+   <release>2017a</release>
+   <date>2018-04-10</date>
+   <cell style="overview">
+      <count>1</count>
+      <steptitle style="document">Variational Gradient Matching for Dynamical Systems: Lotka-Volterra</steptitle>
+      <text>
+         <p>
+            <img src="cover_pic.png"/>
+         </p>
+         <p>Authors: <b>Nico Stephan Gorbach</b> and <b>Stefan Bauer</b>, email: <a href="mailto:nico.gorbach@gmail.com">nico.gorbach@gmail.com</a>
+         </p>
+         <p>Instructional code for the NIPS (2018) paper " <b>Scalable Variational Inference for Dynamical Systems</b> " by Nico S. Gorbach, Stefan Bauer and Joachim M. Buhmann. The paper is available at <a href="https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf">https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf</a>. Please cite our paper if you use our program for a further publication. Part of the derivation below is described in Wenk et al. (2018).</p>
+         <p>Example dynamical system used in this code: Lotka-Volterra system with <b>half</b> of the time points <b>unobserved</b>. The ODE parameters are also unobserved.</p>
+      </text>
+      <cellOutputTarget>1</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>2</count>
+      <steptitle>Advantages of Variational Gradient Matching</steptitle>
+      <text>
+         <p>The essential idea of gradient matching (Calderhead et al., 2002) is to match the gradient governed by the ODEs with that inferred from the observations. In contrast to previous approaches gradient matching introduces a prior over states instead of a prior over ODE parameters. The advantages of gradients matching is two-fold:</p>
+      </text>
+      <cellOutputTarget>2</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>3</count>
+      <text>
+         <ol>
+            <li>A prior over the functional form of state dynamics as opposed to ODE parameters facilitates a more expert-aware estimation of ODE parameters since experts can provide a better <i>a priori</i> description of state dynamics than ODE parameters.</li>
+            <li>Gradient matching yields a global gradient as opposed to a local one which offers significant computational advantages and provides access to a rich source of sophisticated optimization tools.</li>
+         </ol>
+      </text>
+      <cellOutputTarget>3</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>4</count>
+      <text>
+         <p>Clear workspace and close figures</p>
+      </text>
+      <mcode>clear all; close all;</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">clear <mwsh:strings xml:space="preserve">all</mwsh:strings>; close <mwsh:strings xml:space="preserve">all</mwsh:strings>;</mwsh:code></mcode-xmlized>
+      <mcode-count>1</mcode-count>
+      <cellOutputTarget>4</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>5</count>
+      <steptitle>Simulation Settings</steptitle>
+      <mcode>simulation.state_obs_variance = @(mean)(bsxfun(@times,[0.5^2,0.5^2],...
+    ones(size(mean))));                                                    % observation noise
+simulation.ode_param = [2,1,4,1];                                          % true ODE parameters [2 1 4 1] is used as a benchmark in many publications;
+simulation.final_time = 2;                                                 % end time for integration
+simulation.int_interval = 0.01;                                            % integration interval
+simulation.time_samp = 0:0.1:simulation.final_time;                        % sample times for observations
+simulation.init_val = [5 3];                                               % state values at first time point
+simulation.state_obs_idx = [1,1];                                          % indices of states that are directly observed (Boolean)</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">simulation.state_obs_variance = @(mean)(bsxfun(@times,[0.5^2,0.5^2],<mwsh:keywords xml:space="preserve">...</mwsh:keywords>
+    ones(size(mean))));                                                    <mwsh:comments xml:space="preserve">% observation noise</mwsh:comments>
+simulation.ode_param = [2,1,4,1];                                          <mwsh:comments xml:space="preserve">% true ODE parameters [2 1 4 1] is used as a benchmark in many publications;</mwsh:comments>
+simulation.final_time = 2;                                                 <mwsh:comments xml:space="preserve">% end time for integration</mwsh:comments>
+simulation.int_interval = 0.01;                                            <mwsh:comments xml:space="preserve">% integration interval</mwsh:comments>
+simulation.time_samp = 0:0.1:simulation.final_time;                        <mwsh:comments xml:space="preserve">% sample times for observations</mwsh:comments>
+simulation.init_val = [5 3];                                               <mwsh:comments xml:space="preserve">% state values at first time point</mwsh:comments>
+simulation.state_obs_idx = [1,1];                                          <mwsh:comments xml:space="preserve">% indices of states that are directly observed (Boolean)</mwsh:comments></mwsh:code></mcode-xmlized>
+      <mcode-count>2</mcode-count>
+      <cellOutputTarget>5</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>6</count>
+      <steptitle>User Input</steptitle>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Kernel &lt;/h4&gt;">&lt;h4&gt; Kernel &lt;/h4&gt;</html>
+         </p>
+      </text>
+      <mcode>kernel.param = [10,0.2];                                                   % set values of rbf kernel parameters
+state.derivative_variance = [6,6];                                         % gamma for gradient matching model</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">kernel.param = [10,0.2];                                                   <mwsh:comments xml:space="preserve">% set values of rbf kernel parameters</mwsh:comments>
+state.derivative_variance = [6,6];                                         <mwsh:comments xml:space="preserve">% gamma for gradient matching model</mwsh:comments></mwsh:code></mcode-xmlized>
+      <mcode-count>3</mcode-count>
+      <cellOutputTarget>6</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>7</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Estimation &lt;/h4&gt;">&lt;h4&gt; Estimation &lt;/h4&gt;</html>
+         </p>
+      </text>
+      <mcode>time.est = 0:0.1:4;                                                        % estimation times
+coord_ascent_numb_iter = 200;                                              % number of coordinate ascent iterations
+clamp_obs_state_to_GP_regression = false;                                  % The observed state trajectories are clamped to the trajectories determined by standard GP regression (Boolean)</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">time.est = 0:0.1:4;                                                        <mwsh:comments xml:space="preserve">% estimation times</mwsh:comments>
+coord_ascent_numb_iter = 200;                                              <mwsh:comments xml:space="preserve">% number of coordinate ascent iterations</mwsh:comments>
+clamp_obs_state_to_GP_regression = false;                                  <mwsh:comments xml:space="preserve">% The observed state trajectories are clamped to the trajectories determined by standard GP regression (Boolean)</mwsh:comments></mwsh:code></mcode-xmlized>
+      <mcode-count>4</mcode-count>
+      <cellOutputTarget>7</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>8</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Symbols &lt;/h4&gt;">&lt;h4&gt; Symbols &lt;/h4&gt;</html>
+         </p>
+      </text>
+      <mcode>symbols.state = {'[prey]','[predator]'};                                   % symbols of states in 'ODEs.txt' file
+symbols.param = {'[\theta_1]','[\theta_2]','[\theta_3]','[\theta_4]'};     % symbols of parameters in 'ODEs.txt' file</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">symbols.state = {<mwsh:strings xml:space="preserve">'[prey]'</mwsh:strings>,<mwsh:strings xml:space="preserve">'[predator]'</mwsh:strings>};                                   <mwsh:comments xml:space="preserve">% symbols of states in 'ODEs.txt' file</mwsh:comments>
+symbols.param = {<mwsh:strings xml:space="preserve">'[\theta_1]'</mwsh:strings>,<mwsh:strings xml:space="preserve">'[\theta_2]'</mwsh:strings>,<mwsh:strings xml:space="preserve">'[\theta_3]'</mwsh:strings>,<mwsh:strings xml:space="preserve">'[\theta_4]'</mwsh:strings>};     <mwsh:comments xml:space="preserve">% symbols of parameters in 'ODEs.txt' file</mwsh:comments></mwsh:code></mcode-xmlized>
+      <mcode-count>5</mcode-count>
+      <cellOutputTarget>8</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>9</count>
+      <steptitle>Import ODEs</steptitle>
+      <text/>
+      <mcode>ode = import_odes(symbols);</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">ode = import_odes(symbols);</mwsh:code></mcode-xmlized>
+      <mcode-count>6</mcode-count>
+      <cellOutputTarget>9</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>10</count>
+      <mcode>disp('ODEs:'); disp(ode.raw)</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">disp(<mwsh:strings xml:space="preserve">'ODEs:'</mwsh:strings>); disp(ode.raw)</mwsh:code></mcode-xmlized>
+      <mcode-count>7</mcode-count>
+      <cellOutputTarget>10</cellOutputTarget>
+      <mcodeoutput class="codeoutput">ODEs:
+    '[\theta_1].*[prey] - [\theta_2].*[prey].*[predator]'
+    '-[\theta_3].*[predator] + [\theta_4].*[prey].*[predator]'
+
+</mcodeoutput>
+   </cell>
+   <cell>
+      <count>11</count>
+      <steptitle>Mass Action Dynamical Systems</steptitle>
+      <text>
+         <p>A deterministic dynamical system is represented by a set of <equation>
+               <img alt="$K$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq03845174387838694102.png" width="10px"/>
+            </equation> ordinary differential equations (ODEs) with model parameters <equation>
+               <img alt="$\theta \in R^d$" class="equation" height="10px" scale="2" src="Lotka_Volterra_eq06597877416883810229.png" width="32px"/>
+            </equation> that describe the evolution of <equation>
+               <img alt="$K$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq03845174387838694102.png" width="10px"/>
+            </equation> states <equation>
+               <img alt="$\mathbf{x}(t) = [x_1(t),\ldots, x_K(t)]^T$" class="equation" height="13px" scale="2" src="Lotka_Volterra_eq16690292594929342180.png" width="120px"/>
+            </equation> such that:</p>
+         <p>
+            <equation>
+               <img alt="$\dot{\mathbf{x}}(t) = \frac{d \mathbf{x}(t)}{d t} = \mathbf{f}(\mathbf{x}(t),\theta) \qquad (1)$" class="equation" height="16px" scale="2" src="Lotka_Volterra_eq14568623149868123203.png" width="147px"/>
+            </equation>.</p>
+         <p>A sequence of observations, <equation>
+               <img alt="$\mathbf{y}(t)$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq17565748849429239454.png" width="19px"/>
+            </equation>, is usually contaminated by measurement error which we assume to be normally distributed with zero mean and variance for each of the <equation>
+               <img alt="$K$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq03845174387838694102.png" width="10px"/>
+            </equation> states, i.e. <equation>
+               <img alt="$\mathbf{E}\sim \mathcal{N}(\mathbf{E};\mathbf{0},\mathbf{D})$" class="equation" height="12px" scale="2" src="Lotka_Volterra_eq13983079546768783123.png" width="75px"/>
+            </equation>, with <equation>
+               <img alt="$\mathbf{D}_{ik}=\sigma_k ^2 \delta_{ik}$" class="equation" height="13px" scale="2" src="Lotka_Volterra_eq02125912780065424198.png" width="55px"/>
+            </equation>. For <equation>
+               <img alt="$N$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq03672095713503266041.png" width="10px"/>
+            </equation> distinct time points the overall system may therefore be summarized as:</p>
+         <p>
+            <equation>
+               <img alt="$\mathbf{Y} = \mathbf{X} + \mathbf{E}$" class="equation" height="9px" scale="2" src="Lotka_Volterra_eq05988414051423361030.png" width="56px"/>
+            </equation>,</p>
+         <p>where</p>
+         <p>
+            <equation>
+               <img alt="$\mathbf{X} = [\mathbf{x}(t_1),\ldots,\mathbf{x}(t_N)] = [\mathbf{x}_1,\ldots,\mathbf{x}_K]^T$" class="equation" height="13px" scale="2" src="Lotka_Volterra_eq15195809455161680973.png" width="181px"/>
+            </equation>,</p>
+         <p>
+            <equation>
+               <img alt="$\mathbf{Y} = [\mathbf{y}(t_1),\ldots,\mathbf{y}(t_N)] = [\mathbf{y}_1,\ldots,\mathbf{y}_K]^T$" class="equation" height="13px" scale="2" src="Lotka_Volterra_eq07638385370877036024.png" width="182px"/>
+            </equation>,</p>
+         <p>and <equation>
+               <img alt="$\mathbf{x}_k = [x_k(t_1),\ldots,x_k(t_N)]^T$" class="equation" height="13px" scale="2" src="Lotka_Volterra_eq15380491105506292187.png" width="122px"/>
+            </equation> is the <equation>
+               <img alt="$k$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq15636846968047188835.png" width="6px"/>
+            </equation>'th state sequence and <equation>
+               <img alt="$\mathbf{y}_k = [y_k(t_1),$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq10667114650506665719.png" width="59px"/>
+            </equation> 
+            <equation>
+               <img alt="$\ldots,y_k(t_N)]^T$" class="equation" height="13px" scale="2" src="Lotka_Volterra_eq11698417834938640281.png" width="58px"/>
+            </equation> are the observations. Given the observations <equation>
+               <img alt="$\mathbf{Y}$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq00013651220649516337.png" width="10px"/>
+            </equation> and the description of the dynamical system (1), the aim is to estimate both state variables <equation>
+               <img alt="$\mathbf{X}$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq03397130480831257552.png" width="9px"/>
+            </equation> and parameters <equation>
+               <img alt="$\theta$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq08288499342375314727.png" width="5px"/>
+            </equation>.</p>
+         <p>We consider only dynamical systems that are locally linear with respect to ODE parameters <equation>
+               <img alt="$\boldmath\theta$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq07852716426910655037.png" width="5px"/>
+            </equation> and individual states <equation>
+               <img alt="$\mathbf{x}_u$" class="equation" height="7px" scale="2" src="Lotka_Volterra_eq00398522576481313565.png" width="11px"/>
+            </equation>. Such ODEs include mass-action kinetics and are given by:</p>
+         <p>
+            <equation>
+               <img alt="$f_{k}(\mathbf{x}(t),\boldmath\theta) = \sum_{i=1} \theta_{ki} \prod_{j \in \mathcal{M}_{ki}} x_j \qquad (2)$" class="equation" height="13px" scale="2" src="Lotka_Volterra_eq14747913945217368606.png" width="185px"/>
+            </equation>,</p>
+         <p>with <equation>
+               <img alt="$\mathcal{M}_{ki} \subseteq \{ 1, \dots, K\}$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq10975547451157895511.png" width="86px"/>
+            </equation> describing the state variables in each factor of the equation (i.e. the functions are linear in parameters and contain arbitrary large products of monomials of the states).</p>
+      </text>
+      <cellOutputTarget>11</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>12</count>
+      <steptitle>Simulate Data</steptitle>
+      <cellOutputTarget>12</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>13</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Generate ground truth by numerical integration &lt;/h4&gt;">&lt;h4&gt; Generate ground truth by numerical integration &lt;/h4&gt;</html>
+         </p>
+      </text>
+      <mcode>[state,time,ode] = generate_ground_truth(time,state,ode,symbols,simulation);</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">[state,time,ode] = generate_ground_truth(time,state,ode,symbols,simulation);</mwsh:code></mcode-xmlized>
+      <mcode-count>8</mcode-count>
+      <cellOutputTarget>13</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>14</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Generate state observations &lt;/h4&gt;">&lt;h4&gt; Generate state observations &lt;/h4&gt;</html>
+         </p>
+      </text>
+      <mcode>[state,time,obs_to_state_relation] = generate_state_obs(state,time,simulation);</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">[state,time,obs_to_state_relation] = generate_state_obs(state,time,simulation);</mwsh:code></mcode-xmlized>
+      <mcode-count>9</mcode-count>
+      <cellOutputTarget>14</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>15</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Symbols &lt;/h4&gt;">&lt;h4&gt; Symbols &lt;/h4&gt;</html>
+         </p>
+      </text>
+      <mcode>state.sym.mean = sym('x%d%d',[length(time.est),length(ode.system)]);
+state.sym.variance = sym('sigma%d%d',[length(time.est),length(ode.system)]);
+ode_param.sym.mean = sym('param%d',[length(symbols.param),1]); assume(ode_param.sym.mean,'real');</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">state.sym.mean = sym(<mwsh:strings xml:space="preserve">'x%d%d'</mwsh:strings>,[length(time.est),length(ode.system)]);
+state.sym.variance = sym(<mwsh:strings xml:space="preserve">'sigma%d%d'</mwsh:strings>,[length(time.est),length(ode.system)]);
+ode_param.sym.mean = sym(<mwsh:strings xml:space="preserve">'param%d'</mwsh:strings>,[length(symbols.param),1]); assume(ode_param.sym.mean,<mwsh:strings xml:space="preserve">'real'</mwsh:strings>);</mwsh:code></mcode-xmlized>
+      <mcode-count>10</mcode-count>
+      <cellOutputTarget>15</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>16</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Setup plots &lt;/h4&gt;">&lt;h4&gt; Setup plots &lt;/h4&gt;</html>
+         </p>
+         <p>Only the state dynamics are (partially) observed.</p>
+      </text>
+      <mcode>[h,h2] = setup_plots(state,time,simulation,symbols);
+
+tic; %start timer</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">[h,h2] = setup_plots(state,time,simulation,symbols);
+
+tic; <mwsh:comments xml:space="preserve">%start timer</mwsh:comments></mwsh:code></mcode-xmlized>
+      <mcode-count>11</mcode-count>
+      <cellOutputTarget>16</cellOutputTarget>
+      <img height="500px" src="Lotka_Volterra_01.png" width="1200px"/>
+   </cell>
+   <cell>
+      <count>17</count>
+      <steptitle>Prior on States and State Derivatives</steptitle>
+      <text>
+         <p>Gradient matching with Gaussian processes assumes a joint Gaussian process prior on states and their derivatives:</p>
+         <p>
+            <equation>
+               <img alt="$\left(\begin{array}{c} \mathbf{X} \\ \dot{\mathbf{X}} \end{array}\right)  \sim \mathcal{N} \left( \begin{array}{c} \mathbf{X} \\ \dot{\mathbf{X}} \end{array}; \begin{array}{c}  \mathbf{0} \\ \mathbf{0}  \end{array}, \begin{array}{cc}  \mathbf{C}_{\phi} &amp; \mathbf{C}_{\phi}' \\  '\mathbf{C}_{\phi} &amp; \mathbf{C}_{\phi}''  \end{array}  \right) \qquad (3)$" class="equation" height="28px" scale="2" src="Lotka_Volterra_eq01057761807000221839.png" width="216px"/>
+            </equation>,</p>
+         <p>
+            <equation>
+               <img alt="$\mathrm{cov}(x_k(t), x_k(t)) = C_{\phi_k}(t,t')$" class="equation" height="12px" scale="2" src="Lotka_Volterra_eq15132385546029468189.png" width="131px"/>
+            </equation>
+         </p>
+         <p>
+            <equation>
+               <img alt="$\mathrm{cov}(\dot{x}_k(t), x_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t} =: C_{\phi_k}'(t,t')$" class="equation" height="18px" scale="2" src="Lotka_Volterra_eq17058345339069568247.png" width="185px"/>
+            </equation>
+         </p>
+         <p>
+            <equation>
+               <img alt="$\mathrm{cov}(x_k(t), \dot{x}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t'} =: {'C_{\phi_k}(t,t')}$" class="equation" height="17px" scale="2" src="Lotka_Volterra_eq08196297352138716370.png" width="187px"/>
+            </equation>
+         </p>
+         <p>
+            <equation>
+               <img alt="$\mathrm{cov}(\dot{x}_k(t), \dot{x}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t \partial t'} =: C_{\phi_k}''(t,t')$" class="equation" height="18px" scale="2" src="Lotka_Volterra_eq02914213731374756582.png" width="185px"/>
+            </equation>.</p>
+      </text>
+      <mcode>[Lambda,dC_times_invC,inv_Cxx,time.est] = kernel_function(kernel,state,time.est);</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">[Lambda,dC_times_invC,inv_Cxx,time.est] = kernel_function(kernel,state,time.est);</mwsh:code></mcode-xmlized>
+      <mcode-count>12</mcode-count>
+      <cellOutputTarget>17</cellOutputTarget>
+      <img height="420px" src="Lotka_Volterra_02.png" width="560px"/>
+   </cell>
+   <cell>
+      <count>18</count>
+      <steptitle>Matching Gradients</steptitle>
+      <text>
+         <p>Given the joint distribution over states and their derivatives (3) as well as the ODEs (2), we therefore have two expressions for the state derivatives:</p>
+         <p>
+            <equation>
+               <img alt="$\dot{\mathbf{X}} = \mathbf{F} + \epsilon_1, \epsilon_1 \sim \mathcal{N}\left(\epsilon_1;\mathbf{0}, \mathbf{I}\gamma \right)$" class="equation" height="13px" scale="2" src="Lotka_Volterra_eq06786540181160975064.png" width="139px"/>
+            </equation>
+         </p>
+         <p>
+            <equation>
+               <img alt="$\dot{\mathbf{X}} = {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} ~\mathbf{X} + \epsilon_2, \epsilon_2 \sim \mathcal{N}\left(\epsilon_2;\mathbf{0}, \mathbf{A} \right)$" class="equation" height="16px" scale="2" src="Lotka_Volterra_eq00641387202370649337.png" width="179px"/>
+            </equation>
+         </p>
+         <p>where <equation>
+               <img alt="$\mathbf{F} := \mathbf{f}(\mathbf{X},\theta)$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq15438906814634469781.png" width="58px"/>
+            </equation>, <equation>
+               <img alt="$\mathbf{A} := \mathbf{C}_{\phi}'' -  {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} \mathbf{C}_{\phi}'$" class="equation" height="15px" scale="2" src="Lotka_Volterra_eq02616189247499740046.png" width="105px"/>
+            </equation> and <equation>
+               <img alt="$\gamma$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq17096441642737911057.png" width="6px"/>
+            </equation> is the error variance in the ODEs. Note that, in a deterministic system, the output of the ODEs <equation>
+               <img alt="$\mathbf{F}$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq10805855639155619100.png" width="8px"/>
+            </equation> should equal the state derivatives <equation>
+               <img alt="$\dot{\mathbf{X}}$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq07315144976585928416.png" width="9px"/>
+            </equation>. However, in the first equation above we relax this contraint by adding stochasticity to the state derivatives <equation>
+               <img alt="$\dot{\mathbf{X}}$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq07315144976585928416.png" width="9px"/>
+            </equation> in order to compensate for a potential model mismatch. The second equation above is obtained by deriving the conditional distribution for <equation>
+               <img alt="$\dot{\mathbf{X}}$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq07315144976585928416.png" width="9px"/>
+            </equation> from the joint distribution in equation (3). Equating the two expressions in the equations above we can eliminate the unknown state derivatives <equation>
+               <img alt="$\dot{\mathbf{X}}$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq07315144976585928416.png" width="9px"/>
+            </equation>:</p>
+         <p>
+            <equation>
+               <img alt="$\mathbf{F} = {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} ~\mathbf{X} + \epsilon_0 \qquad (4)$" class="equation" height="15px" scale="2" src="Lotka_Volterra_eq16675609090530047740.png" width="130px"/>
+            </equation>,</p>
+         <p>with <equation>
+               <img alt="$\epsilon_0 := \epsilon_2 - \epsilon_1$" class="equation" height="7px" scale="2" src="Lotka_Volterra_eq08944609086354323641.png" width="57px"/>
+            </equation>.</p>
+      </text>
+      <cellOutputTarget>18</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>19</count>
+      <steptitle>State Couplings in ODEs</steptitle>
+      <mcode>coupling_idx = find_couplings_in_odes(ode,symbols);</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">coupling_idx = find_couplings_in_odes(ode,symbols);</mwsh:code></mcode-xmlized>
+      <mcode-count>13</mcode-count>
+      <cellOutputTarget>19</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>20</count>
+      <steptitle>Rewrite ODEs as Linear Combination in Parameters</steptitle>
+      <text>
+         <p>We rewrite the ODEs in equation (2) as a linear combination in the parameters:</p>
+         <p>
+            <equation>
+               <img alt="$\mathbf{B}_{\boldmath\theta} \boldmath\theta + \mathbf{b}_{\boldmath\theta} \stackrel{!}{=} \mathbf{f}(\mathbf{X},\boldmath\theta) \qquad (5)$" class="equation" height="15px" scale="2" src="Lotka_Volterra_eq00386987092348617262.png" width="139px"/>
+            </equation>,</p>
+         <p>where matrices <equation>
+               <img alt="$\mathbf{B}_{\boldmath\theta}$" class="equation" height="10px" scale="2" src="Lotka_Volterra_eq12395521263852684086.png" width="13px"/>
+            </equation> and <equation>
+               <img alt="$\mathbf{b}_{\boldmath\theta}$" class="equation" height="10px" scale="2" src="Lotka_Volterra_eq14370145166438995955.png" width="11px"/>
+            </equation> are defined such that the ODEs <equation>
+               <img alt="$\mathbf{f}(\mathbf{X},\boldmath\theta)$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq12466937249580769582.png" width="33px"/>
+            </equation> are expressed as a linear combination in <equation>
+               <img alt="$\boldmath\theta$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq07852716426910655037.png" width="5px"/>
+            </equation>.</p>
+      </text>
+      <mcode>[ode_param.B,ode_param.b,ode_param.r,ode_param.B_times_Lambda_times_B] = rewrite_odes_as_linear_combination_in_parameters(ode,symbols);</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">[ode_param.B,ode_param.b,ode_param.r,ode_param.B_times_Lambda_times_B] = rewrite_odes_as_linear_combination_in_parameters(ode,symbols);</mwsh:code></mcode-xmlized>
+      <mcode-count>14</mcode-count>
+      <cellOutputTarget>20</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>21</count>
+      <steptitle>Posterior over ODE Parameters</steptitle>
+      <text>
+         <p>Inserting (5) into (4) and solving for <equation>
+               <img alt="$\boldmath\theta$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq07852716426910655037.png" width="5px"/>
+            </equation> yields:</p>
+         <p>
+            <equation>
+               <img alt="$\boldmath\theta = \mathbf{B}_{\boldmath\theta}^+ \left( {'\mathbf{C}_{\boldmath\phi}} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X} - \mathbf{b}_{\boldmath\theta} + \boldmath\epsilon_0 \right)$" class="equation" height="20px" scale="2" src="Lotka_Volterra_eq12167863208124688271.png" width="156px"/>
+            </equation>,</p>
+         <p>where <equation>
+               <img alt="$\mathbf{B}_{\boldmath\theta}^+$" class="equation" height="13px" scale="2" src="Lotka_Volterra_eq03085143088627778722.png" width="15px"/>
+            </equation> denotes the pseudo-inverse of <equation>
+               <img alt="$\mathbf{B}_{\boldmath\theta}$" class="equation" height="10px" scale="2" src="Lotka_Volterra_eq12395521263852684086.png" width="13px"/>
+            </equation>. We can therefore derive the posterior distribution over ODE parameters:</p>
+         <p>
+            <equation>
+               <img alt="$p(\boldmath\theta \mid \mathbf{X}, \boldmath\phi, \gamma) = \mathcal{N}\left(\boldmath\theta ; \mathbf{B}_{\boldmath\theta}^+ ~ \left( {'\mathbf{C}_{\boldmath\phi}} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X} - \mathbf{b}_{\boldmath\theta} \right), ~ \mathbf{B}_{\boldmath\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\boldmath\theta}^{+T} \right) \qquad (6)$" class="equation" height="20px" scale="2" src="Lotka_Volterra_eq05340185771765804682.png" width="382px"/>
+            </equation>.</p>
+      </text>
+      <cellOutputTarget>21</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>22</count>
+      <steptitle>Rewrite ODEs as Linear Combination in Individual States</steptitle>
+      <text>
+         <p>We rewrite the expression <equation>
+               <img alt="$\mathbf{f}(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\boldmath\phi} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X}$" class="equation" height="15px" scale="2" src="Lotka_Volterra_eq08371510633112951161.png" width="101px"/>
+            </equation> in equation (4) as a linear combination in the individual state <equation>
+               <img alt="$\mathbf{x}_u$" class="equation" height="7px" scale="2" src="Lotka_Volterra_eq00398522576481313565.png" width="11px"/>
+            </equation>:</p>
+         <p>
+            <equation>
+               <img alt="$\mathbf{B}_{u} \mathbf{x}_u + \mathbf{b}_{u} \stackrel{!}{=} \mathbf{f}(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\boldmath\phi} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X} \qquad (7)$" class="equation" height="17px" scale="2" src="Lotka_Volterra_eq14929961689828671708.png" width="211px"/>
+            </equation>.</p>
+         <p>where matrices <equation>
+               <img alt="$\mathbf{B}_u$" class="equation" height="10px" scale="2" src="Lotka_Volterra_eq11780124863314593273.png" width="13px"/>
+            </equation> and <equation>
+               <img alt="$\mathbf{b}_u$" class="equation" height="10px" scale="2" src="Lotka_Volterra_eq15590211095018081680.png" width="11px"/>
+            </equation> are defined such that the expression <equation>
+               <img alt="$\mathbf{f}(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\boldmath\phi} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X}$" class="equation" height="15px" scale="2" src="Lotka_Volterra_eq08371510633112951161.png" width="101px"/>
+            </equation> is rewritten as a linear combination in the individual state <equation>
+               <img alt="$\mathbf{x}_u$" class="equation" height="7px" scale="2" src="Lotka_Volterra_eq00398522576481313565.png" width="11px"/>
+            </equation>.</p>
+      </text>
+      <mcode>state = rewrite_odes_as_linear_combination_in_ind_states(state,ode,symbols,coupling_idx.states);</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">state = rewrite_odes_as_linear_combination_in_ind_states(state,ode,symbols,coupling_idx.states);</mwsh:code></mcode-xmlized>
+      <mcode-count>15</mcode-count>
+      <cellOutputTarget>22</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>23</count>
+      <steptitle>Posterior over Individual States</steptitle>
+      <text>
+         <p>Inserting (7) into (4) and solving for <equation>
+               <img alt="$\mathbf{x}_u$" class="equation" height="7px" scale="2" src="Lotka_Volterra_eq00398522576481313565.png" width="11px"/>
+            </equation> yields:</p>
+         <p>
+            <equation>
+               <img alt="$\mathbf{x}_u = \mathbf{B}_{u}^+ \left( \boldmath\epsilon_0 -\mathbf{b}_{u} \right)$" class="equation" height="12px" scale="2" src="Lotka_Volterra_eq03984175207751185199.png" width="86px"/>
+            </equation>,</p>
+         <p>where <equation>
+               <img alt="$\mathbf{B}_{u}^+$" class="equation" height="12px" scale="2" src="Lotka_Volterra_eq03266229480980241917.png" width="15px"/>
+            </equation> denotes the pseudo-inverse of <equation>
+               <img alt="$\mathbf{B}_{u}$" class="equation" height="10px" scale="2" src="Lotka_Volterra_eq11755194738169897586.png" width="13px"/>
+            </equation>. We can therefore derive the posterior distribution over an individual state <equation>
+               <img alt="$\mathbf{x}_u$" class="equation" height="7px" scale="2" src="Lotka_Volterra_eq00398522576481313565.png" width="11px"/>
+            </equation>:</p>
+         <p>
+            <equation>
+               <img alt="$p(\mathbf{x}_u \mid \mathbf{X}_{-u}, \boldmath\phi, \gamma) = \mathcal{N}\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ \mathbf{b}_u, ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) \qquad (8)$" class="equation" height="14px" scale="2" src="Lotka_Volterra_eq00180698902597322227.png" width="300px"/>
+            </equation>,</p>
+         <p>with <equation>
+               <img alt="$\mathbf{X}_{-u}$" class="equation" height="10px" scale="2" src="Lotka_Volterra_eq11492802563980187967.png" width="20px"/>
+            </equation> denoting the set of all states except state <equation>
+               <img alt="$\mathbf{x}_u$" class="equation" height="7px" scale="2" src="Lotka_Volterra_eq00398522576481313565.png" width="11px"/>
+            </equation>.</p>
+      </text>
+      <cellOutputTarget>23</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>24</count>
+      <steptitle>Mean-field Variational Inference</steptitle>
+      <text>
+         <p>To infer the parameters <equation>
+               <img alt="$\boldmath\theta$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq07852716426910655037.png" width="5px"/>
+            </equation>, we want to find the maximum a posteriori estimate (MAP):</p>
+         <p>
+            <equation>
+               <img alt="$\theta^* := arg \max_{\theta} ~ \ln p(\theta \mid \mathbf{Y},\phi,\gamma, \sigma)$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq02662686890869235014.png" width="161px"/>
+            </equation>
+         </p>
+         <p>
+            <equation>
+               <img alt="$= arg\max_{\boldmath\theta} ~ \ln \int  p(\boldmath\theta,\mathbf{X} \mid \mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma) d\mathbf{X}$" class="equation" height="13px" scale="2" src="Lotka_Volterra_eq14040861108369768609.png" width="185px"/>
+            </equation>
+         </p>
+         <p>
+            <equation>
+               <img alt="$= arg\max_{\boldmath\theta} ~ \ln \int p(\boldmath\theta \mid \mathbf{X},\boldmath\phi,\boldmath\gamma) p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\boldmath\sigma) d\mathbf{X} \qquad (9)$" class="equation" height="13px" scale="2" src="Lotka_Volterra_eq11858686225046084718.png" width="259px"/>
+            </equation>.</p>
+         <p>However, the integral above is intractable due to the strong couplings induced by the nonlinear ODEs <equation>
+               <img alt="$\mathbf{f}$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq15427371409597902919.png" width="5px"/>
+            </equation> which appear in the term <equation>
+               <img alt="$p(\boldmath\theta \mid \mathbf{X},\boldmath\phi,\boldmath\gamma)$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq07315403459475000172.png" width="60px"/>
+            </equation>.</p>
+         <p>We use mean-field variational inference to establish variational lower bounds that are analytically tractable by decoupling state variables from the ODE parameters as well as decoupling the state variables from each other. Note that, since the ODEs described by equation (2) are <b>locally linear</b>, both conditional distributions <equation>
+               <img alt="$p(\boldmath\theta \mid \mathbf{X},\mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma)$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq03019155322140654594.png" width="87px"/>
+            </equation> (equation (6)) and <equation>
+               <img alt="$p(\mathbf{x}_u \mid \boldmath\theta, \mathbf{X}_{-u},\mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma)$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq04387901815768360273.png" width="114px"/>
+            </equation> (equation (8)) are analytically tractable and Gaussian distributed as mentioned previously.</p>
+         <p>The decoupling is induced by designing a variational distribution <equation>
+               <img alt="$Q(\boldmath\theta,\mathbf{X})$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq14500435956303858789.png" width="36px"/>
+            </equation> which is restricted to the family of factorial distributions:</p>
+         <p>
+            <equation>
+               <img alt="$\mathcal{Q} := \bigg{\{} Q : Q(\boldmath\theta,\mathbf{X}) = q(\boldmath\theta) \prod_u q(\mathbf{x}_u) \bigg{\}}$" class="equation" height="27px" scale="2" src="Lotka_Volterra_eq17914853368725890151.png" width="195px"/>
+            </equation>.</p>
+         <p>The particular form of <equation>
+               <img alt="$q(\boldmath\theta)$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq00738086801338514421.png" width="19px"/>
+            </equation> and <equation>
+               <img alt="$q(\mathbf{x}_u)$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq03894946144229571455.png" width="25px"/>
+            </equation> are designed to be Gaussian distributed which places them in the same family as the true full conditional distributions. To find the optimal factorial distribution we minimize the Kullback-Leibler divergence between the variational and the true posterior distribution:</p>
+         <p>
+            <equation>
+               <img alt="$\hat{Q} := arg \min_{Q(\boldmath\theta,\mathbf{X}) \in \mathcal{Q}} \mathrm{KL} \left[ Q(\theta,\mathbf{X}) \mid \mid p(\boldmath\theta,\mathbf{X} \mid \mathbf{Y},\boldmath\phi, \boldmath\gamma,\boldmath\sigma) \right] \qquad (10)$" class="equation" height="15px" scale="2" src="Lotka_Volterra_eq07214799316343190862.png" width="304px"/>
+            </equation>,</p>
+         <p>where <equation>
+               <img alt="$\hat{Q}$" class="equation" height="13px" scale="2" src="Lotka_Volterra_eq03753133506936905529.png" width="8px"/>
+            </equation> is the proxy distribution. The proxy distribution that minimizes the KL-divergence (10) depends on the true full conditionals and is given by:</p>
+         <p>
+            <equation>
+               <img alt="$\hat{q}({\boldmath\theta}) \propto \exp \left(~ E_{Q_{-\theta}} \ln p(\boldmath\theta \mid \mathbf{X},\mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma) ~\right) \qquad (11)$" class="equation" height="12px" scale="2" src="Lotka_Volterra_eq08024912143204138115.png" width="234px"/>
+            </equation>
+         </p>
+         <p>
+            <equation>
+               <img alt="$\hat{q}(\mathbf{x}_u) \propto \exp\left( ~ E_{Q_{-u}} \ln p(\mathbf{x}_u \mid \theta, \mathbf{X}_{-u},\mathbf{Y},\phi,\gamma,\sigma) ~ \right) \qquad (12)$" class="equation" height="12px" scale="2" src="Lotka_Volterra_eq09451345083692260152.png" width="268px"/>
+            </equation>.</p>
+      </text>
+      <cellOutputTarget>24</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>25</count>
+      <steptitle>GP Regression for Observations</steptitle>
+      <text>
+         <p>The data-informed distribution <equation>
+               <img alt="$p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\boldmath\sigma)$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq13980762633675004648.png" width="65px"/>
+            </equation> in euqation (9) can be determined analytically using Gaussian process regression with the GP prior <equation>
+               <img alt="$p(\mathbf{X} \mid \boldmath\phi) = \prod_k \mathcal{N}(\mathbf{x}_k ; \mathbf{0},\mathbf{C}_{\boldmath\phi})$" class="equation" height="13px" scale="2" src="Lotka_Volterra_eq14930907090870324432.png" width="145px"/>
+            </equation>:</p>
+         <p>
+            <equation>
+               <img alt="$p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\gamma) = \prod_k \mathcal{N}(\mathbf{x}_k ; \boldmath\mu_k(\mathbf{y}_k),\boldmath\Sigma_k)$" class="equation" height="12px" scale="2" src="Lotka_Volterra_eq04537216543789424217.png" width="181px"/>
+            </equation>,</p>
+         <p>where <equation>
+               <img alt="$\boldmath\mu_k(\mathbf{y}_k) := \sigma_k^{-2} \left(\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1} \right)^{-1} \mathbf{y}_k$" class="equation" height="23px" scale="2" src="Lotka_Volterra_eq06586455063503371300.png" width="177px"/>
+            </equation> and <equation>
+               <img alt="$\boldmath\Sigma_k ^{-1}:=\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1}$" class="equation" height="15px" scale="2" src="Lotka_Volterra_eq05050976928104673176.png" width="101px"/>
+            </equation>.</p>
+      </text>
+      <mcode>[mu,inv_sigma] = GP_regression(state,inv_Cxx,obs_to_state_relation,simulation);</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">[mu,inv_sigma] = GP_regression(state,inv_Cxx,obs_to_state_relation,simulation);</mwsh:code></mcode-xmlized>
+      <mcode-count>16</mcode-count>
+      <cellOutputTarget>25</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>26</count>
+      <steptitle>Coordinate Ascent Variational Gradient Matching</steptitle>
+      <text>
+         <p>We minimize the KL-divergence in equation (10) by coordinate descent (where each step is analytically tractable) by iterating between determining the proxy for the distribution over ODE parameters <equation>
+               <img alt="$\hat{q}(\boldmath\theta)$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq14367149541941707627.png" width="19px"/>
+            </equation> and the proxies for the distribution over individual states <equation>
+               <img alt="$\hat{q}(\mathbf{x}_u)$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq16039342152573661646.png" width="25px"/>
+            </equation>.</p>
+      </text>
+      <mcode>state.proxy.mean = mu;                                                     % Initialize the state estimation by the GP regression posterior
+for i = 1:coord_ascent_numb_iter</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">state.proxy.mean = mu;                                                     <mwsh:comments xml:space="preserve">% Initialize the state estimation by the GP regression posterior</mwsh:comments><mwsh:keywords xml:space="preserve">for</mwsh:keywords> i = 1:coord_ascent_numb_iter</mwsh:code></mcode-xmlized>
+      <mcode-count>17</mcode-count>
+   </cell>
+   <cell>
+      <count>27</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Proxy for ODE parameters &lt;/h4&gt;">&lt;h4&gt; Proxy for ODE parameters &lt;/h4&gt;</html>
+         </p>
+         <p>Expanding the proxy distribution in equation (11) for <equation>
+               <img alt="$\boldmath\theta$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq07852716426910655037.png" width="5px"/>
+            </equation> yields:</p>
+         <p>
+            <equation>
+               <img alt="$\hat{q}(\theta) \stackrel{(a)}{\propto} \exp \left( ~E_{Q_{-\theta}} \ln p(\theta \mid \mathbf{X},\mathbf{Y},\phi,\gamma,\sigma) ~ \right)$" class="equation" height="17px" scale="2" src="Lotka_Volterra_eq10150089782601658287.png" width="192px"/>
+            </equation>
+         </p>
+         <p>
+            <equation>
+               <img alt="$\stackrel{(b)}{\propto} \exp \left( ~E_{Q_{-\theta}}  \ln \mathcal{N} \left( \theta; \mathbf{B}_{\theta}^+ ~ \left( '\mathbf{C}_{\phi} \mathbf{C}_{\phi}^{-1} \mathbf{X} - \mathbf{b}_{\theta} \right), ~ \mathbf{B}_{\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\theta}^{+T} \right) ~\right)$" class="equation" height="21px" scale="2" src="Lotka_Volterra_eq18136870603909550621.png" width="324px"/>
+            </equation>,</p>
+         <p>which can be normalized analytically due to its exponential quadratic form. In (a) we recall that the ODE parameters depend only indirectly on the observations <equation>
+               <img alt="$\mathbf{Y}$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq00013651220649516337.png" width="10px"/>
+            </equation> through the states <equation>
+               <img alt="$\mathbf{X}$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq03397130480831257552.png" width="9px"/>
+            </equation> and in (b) we substitute <equation>
+               <img alt="$p(\boldmath\theta \mid \mathbf{X},\boldmath\phi,\boldmath\gamma)$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq07315403459475000172.png" width="60px"/>
+            </equation> by its density given in equation (6).</p>
+      </text>
+      <mcode>    [param_proxy_mean,param_proxy_inv_cov] = proxy_for_ode_parameters(state.proxy.mean,Lambda,dC_times_invC,ode_param,symbols);
+    if i==1 || ~mod(i,20); plot_results(h,h2,state,time,simulation,param_proxy_mean,'not_final'); end</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">    [param_proxy_mean,param_proxy_inv_cov] = proxy_for_ode_parameters(state.proxy.mean,Lambda,dC_times_invC,ode_param,symbols);
+    <mwsh:keywords xml:space="preserve">if</mwsh:keywords> i==1 || ~mod(i,20); plot_results(h,h2,state,time,simulation,param_proxy_mean,<mwsh:strings xml:space="preserve">'not_final'</mwsh:strings>); <mwsh:keywords xml:space="preserve">end</mwsh:keywords></mwsh:code></mcode-xmlized>
+      <mcode-count>18</mcode-count>
+      <cellOutputTarget>27</cellOutputTarget>
+      <img height="500px" src="Lotka_Volterra_03.png" width="1200px"/>
+      <img height="500px" src="Lotka_Volterra_04.png" width="1200px"/>
+      <img height="500px" src="Lotka_Volterra_05.png" width="1200px"/>
+      <img height="500px" src="Lotka_Volterra_06.png" width="1200px"/>
+      <img height="500px" src="Lotka_Volterra_07.png" width="1200px"/>
+      <img height="500px" src="Lotka_Volterra_08.png" width="1200px"/>
+      <img height="500px" src="Lotka_Volterra_09.png" width="1200px"/>
+      <img height="500px" src="Lotka_Volterra_10.png" width="1200px"/>
+      <img height="500px" src="Lotka_Volterra_11.png" width="1200px"/>
+      <img height="500px" src="Lotka_Volterra_12.png" width="1200px"/>
+      <img height="500px" src="Lotka_Volterra_13.png" width="1200px"/>
+   </cell>
+   <cell>
+      <count>28</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Proxy for individual states &lt;/h4&gt;">&lt;h4&gt; Proxy for individual states &lt;/h4&gt;</html>
+         </p>
+         <p>Expanding the proxy distribution in equation (12) over the individual state <equation>
+               <img alt="$\mathbf{x}_u$" class="equation" height="7px" scale="2" src="Lotka_Volterra_eq00398522576481313565.png" width="11px"/>
+            </equation>:</p>
+         <p>
+            <equation>
+               <img alt="$\hat{q}(\mathbf{x}_u) \stackrel{(a)}{\propto} \exp \left( ~ E_{Q_{-u}}  \ln ( p(\mathbf{x}_u \mid \theta, \mathbf{X}_{-u},\phi,\gamma) p(\mathbf{x}_u \mid\mathbf{Y},\phi,\sigma) ) ~ \right)$" class="equation" height="17px" scale="2" src="Lotka_Volterra_eq01033372200965865608.png" width="274px"/>
+            </equation>
+         </p>
+         <p>
+            <equation>
+               <img alt="$\stackrel{(b)}{\propto} \exp\big( ~ E_{Q_{-u}} \ln \mathcal{N}\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ \mathbf{b}_u, ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) + E_{Q_{-u}} \ln \mathcal{N}\left(\mathbf{x}_u ; \boldmath\mu_u(\mathbf{Y}), \Sigma_u \right) \big)$" class="equation" height="18px" scale="2" src="Lotka_Volterra_eq09094123556733585003.png" width="385px"/>
+            </equation>,</p>
+         <p>which, once more, can be normalized analytically due to its exponential quadratic form. In (a) we decompose the full conditional into an ODE-informed distribution and a data-informed distribution and in (b) we substitute the ODE-informed distribution <equation>
+               <img alt="$p(\mathbf{x}_u \mid \boldmath\theta, \mathbf{X}_{-u},\boldmath\phi,\boldmath\gamma)$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq14012209837832997932.png" width="88px"/>
+            </equation> with its density given by equation (8).</p>
+      </text>
+      <mcode>    state.proxy.mean = proxy_for_ind_states(state.lin_comb,state.proxy.mean,param_proxy_mean',...
+        dC_times_invC,coupling_idx.states,symbols,mu,inv_sigma,state.obs_idx,clamp_obs_state_to_GP_regression);</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">    state.proxy.mean = proxy_for_ind_states(state.lin_comb,state.proxy.mean,param_proxy_mean',<mwsh:keywords xml:space="preserve">...</mwsh:keywords>
+        dC_times_invC,coupling_idx.states,symbols,mu,inv_sigma,state.obs_idx,clamp_obs_state_to_GP_regression);</mwsh:code></mcode-xmlized>
+      <mcode-count>19</mcode-count>
+      <cellOutputTarget>28</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>29</count>
+      <mcode>end</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve"><mwsh:keywords xml:space="preserve">end</mwsh:keywords></mwsh:code></mcode-xmlized>
+      <mcode-count>20</mcode-count>
+      <cellOutputTarget>26</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>30</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Final result &lt;/h4&gt;">&lt;h4&gt; Final result &lt;/h4&gt;</html>
+         </p>
+      </text>
+      <mcode>plot_results(h,h2,state,time,simulation,param_proxy_mean,'final');</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">plot_results(h,h2,state,time,simulation,param_proxy_mean,<mwsh:strings xml:space="preserve">'final'</mwsh:strings>);</mwsh:code></mcode-xmlized>
+      <mcode-count>21</mcode-count>
+      <cellOutputTarget>29</cellOutputTarget>
+      <img height="500px" src="Lotka_Volterra_14.png" width="1200px"/>
+   </cell>
+   <cell>
+      <count>31</count>
+      <steptitle>Time Taken</steptitle>
+      <mcode>disp(['time taken: ' num2str(toc) ' seconds'])</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve">disp([<mwsh:strings xml:space="preserve">'time taken: '</mwsh:strings> num2str(toc) <mwsh:strings xml:space="preserve">' seconds'</mwsh:strings>])</mwsh:code></mcode-xmlized>
+      <mcode-count>22</mcode-count>
+      <cellOutputTarget>30</cellOutputTarget>
+      <mcodeoutput class="codeoutput">time taken: 24.5952 seconds
+</mcodeoutput>
+   </cell>
+   <cell>
+      <count>32</count>
+      <steptitle>References</steptitle>
+      <text>
+         <ul>
+            <li>
+               <b>Gorbach, N.S.</b> , <b>Bauer, S.</b> and Buhmann, J.M., Scalable Variational Inference for Dynamical Systems. 2017a. Neural Information Processing Systems (NIPS). <a href="https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf">https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf</a>, arxiv: <a href="https://arxiv.org/abs/1705.07079">https://arxiv.org/abs/1705.07079</a>.</li>
+            <li>
+               <b>Bauer, S.</b> , <b>Gorbach, N.S.</b> and Buhmann, J.M., Efficient and Flexible Inference for Stochastic Differential Equations. 2017b. Neural Information Processing Systems (NIPS). <a href="https://papers.nips.cc/paper/7274-efficient-and-flexible-inference-for-stochastic-systems.pdf">https://papers.nips.cc/paper/7274-efficient-and-flexible-inference-for-stochastic-systems.pdf</a>
+            </li>
+            <li>Wenk, P., Gotovos, A., Bauer, S., Gorbach, N.S., Krause, A. and Buhmann, J.M., Fast Gaussian Process Based Gradient Matching for Parameters Identification in Systems of Nonlinear ODEs. 2018. In submission to Conference on Uncertainty in Artificial Intelligence (UAI).</li>
+            <li>Calderhead, B., Girolami, M. and Lawrence. N.D., 2002. Accelerating Bayesian inference over nonlinear differential equation models. <i>In Advances in Neural Information Processing Systems (NIPS)</i> . 22.</li>
+         </ul>
+         <p>The authors in bold font have contributed equally to their respective papers.</p>
+      </text>
+      <cellOutputTarget>31</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>33</count>
+      <steptitle>Subroutines</steptitle>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Kernel function &lt;/h4&gt;">&lt;h4&gt; Kernel function &lt;/h4&gt;</html>
+         </p>
+         <p>Gradient matching with Gaussian processes assumes a joint Gaussian process prior on states and their derivatives:</p>
+         <p>
+            <equation>
+               <img alt="$\left(\begin{array}{c} \mathbf{X} \\ \dot{\mathbf{X}} \end{array}\right)  \sim \mathcal{N} \left( \begin{array}{c} \mathbf{X} \\ \dot{\mathbf{X}} \end{array}; \begin{array}{c}  \mathbf{0} \\ \mathbf{0}  \end{array}, \begin{array}{cc}  \mathbf{C}_{\phi} &amp; \mathbf{C}_{\phi}' \\  '\mathbf{C}_{\phi} &amp; \mathbf{C}_{\phi}''  \end{array}  \right)$" class="equation" height="28px" scale="2" src="Lotka_Volterra_eq09462475681373695039.png" width="177px"/>
+            </equation>,</p>
+         <p>
+            <equation>
+               <img alt="$\mathrm{cov}(x_k(t), x_k(t)) = C_{\phi_k}(t,t')$" class="equation" height="12px" scale="2" src="Lotka_Volterra_eq15132385546029468189.png" width="131px"/>
+            </equation>
+         </p>
+         <p>
+            <equation>
+               <img alt="$\mathrm{cov}(\dot{x}_k(t), x_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t} =: C_{\phi_k}'(t,t')$" class="equation" height="18px" scale="2" src="Lotka_Volterra_eq17058345339069568247.png" width="185px"/>
+            </equation>
+         </p>
+         <p>
+            <equation>
+               <img alt="$\mathrm{cov}(x_k(t), \dot{x}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t'} =: {'C_{\phi_k}(t,t')}$" class="equation" height="17px" scale="2" src="Lotka_Volterra_eq08196297352138716370.png" width="187px"/>
+            </equation>
+         </p>
+         <p>
+            <equation>
+               <img alt="$\mathrm{cov}(\dot{x}_k(t), \dot{x}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t \partial t'} =: C_{\phi_k}''(t,t')$" class="equation" height="18px" scale="2" src="Lotka_Volterra_eq02914213731374756582.png" width="185px"/>
+            </equation>.</p>
+      </text>
+      <mcode>function [Lambda,dC_times_invC,inv_Cxx,time_est] = kernel_function(kernel,state,time_est)
+
+kernel.param_sym = sym(['rbf_param%d'],[1,2]); assume(kernel.param_sym,'real');
+kernel.time1 = sym('time1'); assume(kernel.time1,'real'); kernel.time2 = sym('time2'); assume(kernel.time2,'real');
+kernel.func = kernel.param_sym(1).*exp(-(kernel.time1-kernel.time2).^2./(kernel.param_sym(2).^2));                      % RBF kernel
+kernel.name = 'rbf';
+
+% kernel derivatives
+for i = 1:length(kernel)
+    kernel.func_d = diff(kernel.func,kernel.time1);
+    kernel.func_dd = diff(kernel.func_d,kernel.time2);
+    GP.fun = matlabFunction(kernel.func,'Vars',{kernel.time1,kernel.time2,kernel.param_sym});
+    GP.fun_d = matlabFunction(kernel.func_d,'Vars',{kernel.time1,kernel.time2,kernel.param_sym});
+    GP.fun_dd = matlabFunction(kernel.func_dd,'Vars',{kernel.time1,kernel.time2,kernel.param_sym});
+end
+
+% populate GP covariance matrix
+for t=1:length(time_est)
+    C(t,:)=GP.fun(time_est(t),time_est,kernel.param);
+    dC(t,:)=GP.fun_d(time_est(t),time_est,kernel.param);
+    Cd(t,:)=GP.fun_d(time_est,time_est(t),kernel.param);
+    ddC(t,:)=GP.fun_dd(time_est(t),time_est,kernel.param);
+end
+
+% GP covariance scaling
+[~,D] = eig(C); perturb = abs(max(diag(D))-min(diag(D))) / 10000;
+if any(diag(D)&lt;1e-6); C(logical(eye(size(C,1)))) = C(logical(eye(size(C,1)))) + perturb.*rand(size(C,1),1); end
+[~,D] = eig(C);
+if any(diag(D)&lt;0); error('C has negative eigenvalues!'); elseif any(diag(D)&lt;1e-6); warning('C is badly scaled'); end
+inv_Cxx = inv_chol(chol(C,'lower'));
+
+dC_times_invC = dC * inv_Cxx;
+
+% plot GP prior samples
+figure(3);
+hold on; plot(time_est,mvnrnd(zeros(1,length(time_est)),C(:,:,1),3),'LineWidth',2);
+h1 = gca; h1.FontSize = 20; h1.XLabel.String = 'time'; h1.YLabel.String = 'state value';
+h1.Title.String = [kernel.name ' kernel'];
+
+% determine \Lambda:
+A = ddC - dC_times_invC * Cd;
+inv_Lambda = A + state.derivative_variance(1) .* eye(size(A));
+inv_Lambda = 0.5.*(inv_Lambda+inv_Lambda');
+Lambda = inv_chol(chol(inv_Lambda,'lower'));
+
+end</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve"><mwsh:keywords xml:space="preserve">function</mwsh:keywords> [Lambda,dC_times_invC,inv_Cxx,time_est] = kernel_function(kernel,state,time_est)
+
+kernel.param_sym = sym([<mwsh:strings xml:space="preserve">'rbf_param%d'</mwsh:strings>],[1,2]); assume(kernel.param_sym,<mwsh:strings xml:space="preserve">'real'</mwsh:strings>);
+kernel.time1 = sym(<mwsh:strings xml:space="preserve">'time1'</mwsh:strings>); assume(kernel.time1,<mwsh:strings xml:space="preserve">'real'</mwsh:strings>); kernel.time2 = sym(<mwsh:strings xml:space="preserve">'time2'</mwsh:strings>); assume(kernel.time2,<mwsh:strings xml:space="preserve">'real'</mwsh:strings>);
+kernel.func = kernel.param_sym(1).*exp(-(kernel.time1-kernel.time2).^2./(kernel.param_sym(2).^2));                      <mwsh:comments xml:space="preserve">% RBF kernel</mwsh:comments>
+kernel.name = <mwsh:strings xml:space="preserve">'rbf'</mwsh:strings>;
+
+<mwsh:comments xml:space="preserve">% kernel derivatives</mwsh:comments><mwsh:keywords xml:space="preserve">for</mwsh:keywords> i = 1:length(kernel)
+    kernel.func_d = diff(kernel.func,kernel.time1);
+    kernel.func_dd = diff(kernel.func_d,kernel.time2);
+    GP.fun = matlabFunction(kernel.func,<mwsh:strings xml:space="preserve">'Vars'</mwsh:strings>,{kernel.time1,kernel.time2,kernel.param_sym});
+    GP.fun_d = matlabFunction(kernel.func_d,<mwsh:strings xml:space="preserve">'Vars'</mwsh:strings>,{kernel.time1,kernel.time2,kernel.param_sym});
+    GP.fun_dd = matlabFunction(kernel.func_dd,<mwsh:strings xml:space="preserve">'Vars'</mwsh:strings>,{kernel.time1,kernel.time2,kernel.param_sym});
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+<mwsh:comments xml:space="preserve">% populate GP covariance matrix</mwsh:comments><mwsh:keywords xml:space="preserve">for</mwsh:keywords> t=1:length(time_est)
+    C(t,:)=GP.fun(time_est(t),time_est,kernel.param);
+    dC(t,:)=GP.fun_d(time_est(t),time_est,kernel.param);
+    Cd(t,:)=GP.fun_d(time_est,time_est(t),kernel.param);
+    ddC(t,:)=GP.fun_dd(time_est(t),time_est,kernel.param);
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+<mwsh:comments xml:space="preserve">% GP covariance scaling</mwsh:comments>
+[~,D] = eig(C); perturb = abs(max(diag(D))-min(diag(D))) / 10000;
+<mwsh:keywords xml:space="preserve">if</mwsh:keywords> any(diag(D)&lt;1e-6); C(logical(eye(size(C,1)))) = C(logical(eye(size(C,1)))) + perturb.*rand(size(C,1),1); <mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+[~,D] = eig(C);
+<mwsh:keywords xml:space="preserve">if</mwsh:keywords> any(diag(D)&lt;0); error(<mwsh:strings xml:space="preserve">'C has negative eigenvalues!'</mwsh:strings>); <mwsh:keywords xml:space="preserve">elseif</mwsh:keywords> any(diag(D)&lt;1e-6); warning(<mwsh:strings xml:space="preserve">'C is badly scaled'</mwsh:strings>); <mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+inv_Cxx = inv_chol(chol(C,<mwsh:strings xml:space="preserve">'lower'</mwsh:strings>));
+
+dC_times_invC = dC * inv_Cxx;
+
+<mwsh:comments xml:space="preserve">% plot GP prior samples</mwsh:comments>
+figure(3);
+hold <mwsh:strings xml:space="preserve">on</mwsh:strings>; plot(time_est,mvnrnd(zeros(1,length(time_est)),C(:,:,1),3),<mwsh:strings xml:space="preserve">'LineWidth'</mwsh:strings>,2);
+h1 = gca; h1.FontSize = 20; h1.XLabel.String = <mwsh:strings xml:space="preserve">'time'</mwsh:strings>; h1.YLabel.String = <mwsh:strings xml:space="preserve">'state value'</mwsh:strings>;
+h1.Title.String = [kernel.name <mwsh:strings xml:space="preserve">' kernel'</mwsh:strings>];
+
+<mwsh:comments xml:space="preserve">% determine \Lambda:</mwsh:comments>
+A = ddC - dC_times_invC * Cd;
+inv_Lambda = A + state.derivative_variance(1) .* eye(size(A));
+inv_Lambda = 0.5.*(inv_Lambda+inv_Lambda');
+Lambda = inv_chol(chol(inv_Lambda,<mwsh:strings xml:space="preserve">'lower'</mwsh:strings>));
+
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords></mwsh:code></mcode-xmlized>
+      <mcode-count>23</mcode-count>
+      <cellOutputTarget>32</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>34</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; GP regression for observations&lt;/h4&gt;">&lt;h4&gt; GP regression for observations&lt;/h4&gt;</html>
+         </p>
+         <p>
+            <equation>
+               <img alt="$p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\gamma) = \prod_k \mathcal{N}(\mathbf{x}_k ; \boldmath\mu_k(\mathbf{y}_k),\boldmath\Sigma_k)$" class="equation" height="12px" scale="2" src="Lotka_Volterra_eq04537216543789424217.png" width="181px"/>
+            </equation>,</p>
+         <p>where <equation>
+               <img alt="$\boldmath\mu_k(\mathbf{y}_k) := \sigma_k^{-2} \left(\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1} \right)^{-1} \mathbf{y}_k$" class="equation" height="23px" scale="2" src="Lotka_Volterra_eq06586455063503371300.png" width="177px"/>
+            </equation> and <equation>
+               <img alt="$\boldmath\Sigma_k ^{-1}:=\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1}$" class="equation" height="15px" scale="2" src="Lotka_Volterra_eq05050976928104673176.png" width="101px"/>
+            </equation>.</p>
+      </text>
+      <mcode>function [mu_u,inv_sigma_u,state] = GP_regression(state,inv_Cxx,obs_to_state_relation,simulation)
+
+state_obs_variance = simulation.state_obs_variance(state.obs);
+
+numb_states = size(state.sym.mean,2);
+numb_time_points = size(state.sym.mean,1);
+
+inv_Cxx_tmp = num2cell(inv_Cxx(:,:,ones(1,numb_states)),[1,2]);
+inv_Cxx_blkdiag = sparse(blkdiag(inv_Cxx_tmp{:}));
+
+dim = size(state_obs_variance,1)*size(state_obs_variance,2);
+D = spdiags(reshape(state_obs_variance.^(-1),[],1),0,dim,dim) * speye(dim); % covariance matrix of error term (big E)
+A_times_D_times_A = obs_to_state_relation' * D * obs_to_state_relation;
+inv_sigma = A_times_D_times_A + inv_Cxx_blkdiag;
+
+mu = inv_sigma \ obs_to_state_relation' * D * reshape(state.obs,[],1);
+
+mu_u = zeros(numb_time_points,numb_states);
+for u = 1:numb_states
+    idx = (u-1)*numb_time_points+1:(u-1)*numb_time_points+numb_time_points;
+    mu_u(:,u) = mu(idx);
+end
+
+inv_sigma_u = zeros(numb_time_points,numb_time_points,numb_states);
+for i = 1:numb_states
+    idx = [(i-1)*numb_time_points+1:(i-1)*numb_time_points+numb_time_points];
+    inv_sigma_u(:,:,i) = inv_sigma(idx,idx);
+end
+
+end</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve"><mwsh:keywords xml:space="preserve">function</mwsh:keywords> [mu_u,inv_sigma_u,state] = GP_regression(state,inv_Cxx,obs_to_state_relation,simulation)
+
+state_obs_variance = simulation.state_obs_variance(state.obs);
+
+numb_states = size(state.sym.mean,2);
+numb_time_points = size(state.sym.mean,1);
+
+inv_Cxx_tmp = num2cell(inv_Cxx(:,:,ones(1,numb_states)),[1,2]);
+inv_Cxx_blkdiag = sparse(blkdiag(inv_Cxx_tmp{:}));
+
+dim = size(state_obs_variance,1)*size(state_obs_variance,2);
+D = spdiags(reshape(state_obs_variance.^(-1),[],1),0,dim,dim) * speye(dim); <mwsh:comments xml:space="preserve">% covariance matrix of error term (big E)</mwsh:comments>
+A_times_D_times_A = obs_to_state_relation' * D * obs_to_state_relation;
+inv_sigma = A_times_D_times_A + inv_Cxx_blkdiag;
+
+mu = inv_sigma \ obs_to_state_relation' * D * reshape(state.obs,[],1);
+
+mu_u = zeros(numb_time_points,numb_states);
+<mwsh:keywords xml:space="preserve">for</mwsh:keywords> u = 1:numb_states
+    idx = (u-1)*numb_time_points+1:(u-1)*numb_time_points+numb_time_points;
+    mu_u(:,u) = mu(idx);
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+
+inv_sigma_u = zeros(numb_time_points,numb_time_points,numb_states);
+<mwsh:keywords xml:space="preserve">for</mwsh:keywords> i = 1:numb_states
+    idx = [(i-1)*numb_time_points+1:(i-1)*numb_time_points+numb_time_points];
+    inv_sigma_u(:,:,i) = inv_sigma(idx,idx);
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords></mwsh:code></mcode-xmlized>
+      <mcode-count>24</mcode-count>
+      <cellOutputTarget>33</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>35</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Find ODE couplings &lt;/h4&gt;">&lt;h4&gt; Find ODE couplings &lt;/h4&gt;</html>
+         </p>
+      </text>
+      <mcode>function coupling_idx = find_couplings_in_odes(ode,symbols)
+
+% state couplings
+state_sym = sym(['state%d'],[1,length(ode.system)]); assume(state_sym,'real');
+for k = 1:length(ode.system)
+    tmp_idx = ismember(state_sym,symvar(ode.system_sym(k))); tmp_idx(:,k) = 1;
+    ode_couplings_states(k,tmp_idx) = 1;
+end
+
+for u = 1:length(symbols.state)
+    coupling_idx_tmp = find(ode_couplings_states(:,u));
+    coupling_idx.states{u} = coupling_idx_tmp;
+end
+
+end</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve"><mwsh:keywords xml:space="preserve">function</mwsh:keywords> coupling_idx = find_couplings_in_odes(ode,symbols)
+
+<mwsh:comments xml:space="preserve">% state couplings</mwsh:comments>
+state_sym = sym([<mwsh:strings xml:space="preserve">'state%d'</mwsh:strings>],[1,length(ode.system)]); assume(state_sym,<mwsh:strings xml:space="preserve">'real'</mwsh:strings>);
+<mwsh:keywords xml:space="preserve">for</mwsh:keywords> k = 1:length(ode.system)
+    tmp_idx = ismember(state_sym,symvar(ode.system_sym(k))); tmp_idx(:,k) = 1;
+    ode_couplings_states(k,tmp_idx) = 1;
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+<mwsh:keywords xml:space="preserve">for</mwsh:keywords> u = 1:length(symbols.state)
+    coupling_idx_tmp = find(ode_couplings_states(:,u));
+    coupling_idx.states{u} = coupling_idx_tmp;
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords></mwsh:code></mcode-xmlized>
+      <mcode-count>25</mcode-count>
+      <cellOutputTarget>34</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>36</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Rewrite ODEs as linear combination in parameters &lt;/h4&gt;">&lt;h4&gt; Rewrite ODEs as linear combination in parameters &lt;/h4&gt;</html>
+         </p>
+         <p>
+            <equation>
+               <img alt="$\mathbf{B}_{\boldmath\theta} \boldmath\theta + \mathbf{b}_{\boldmath\theta} \stackrel{!}{=} \mathbf{f}(\mathbf{X},\boldmath\theta)$" class="equation" height="15px" scale="2" src="Lotka_Volterra_eq10575569337757673449.png" width="101px"/>
+            </equation>,</p>
+         <p>where matrices <equation>
+               <img alt="$\mathbf{B}_{\boldmath\theta}$" class="equation" height="10px" scale="2" src="Lotka_Volterra_eq12395521263852684086.png" width="13px"/>
+            </equation> and <equation>
+               <img alt="$\mathbf{b}_{\boldmath\theta}$" class="equation" height="10px" scale="2" src="Lotka_Volterra_eq14370145166438995955.png" width="11px"/>
+            </equation> are defined such that the ODEs <equation>
+               <img alt="$\mathbf{f}(\mathbf{X},\boldmath\theta)$" class="equation" height="11px" scale="2" src="Lotka_Volterra_eq12466937249580769582.png" width="33px"/>
+            </equation> are expressed as a linear combination in <equation>
+               <img alt="$\boldmath\theta$" class="equation" height="8px" scale="2" src="Lotka_Volterra_eq07852716426910655037.png" width="5px"/>
+            </equation>.</p>
+      </text>
+      <mcode>function [B,b,r,B_times_Lambda_times_B] = rewrite_odes_as_linear_combination_in_parameters(ode,symbols)
+
+param_sym = sym(['param%d'],[1,length(symbols.param)]); assume(param_sym,'real');
+state_sym = sym(['state%d'],[1,length(symbols.state)]); assume(state_sym,'real');
+state0_sym = sym(['state0']); assume(state0_sym,'real');
+state_const_sym = sym(['state_const']); assume(state_const_sym,'real');
+
+% Rewrite ODEs as linear combinations in parameters
+[B_sym,b_sym] = equationsToMatrix(ode.system_sym,param_sym);
+
+% Product of ODE factors (product of Gaussians)
+for k = 1:length(ode.system)
+    B_sym(k,B_sym(k,:)=='0') = state0_sym;
+    for i = 1:length(B_sym(k,:))
+        sym_var = symvar(B_sym(k,i));
+        if isempty(sym_var)
+            B_sym(k,i) = B_sym(k,i) + state0_sym;
+        end
+    end
+    B{k} = matlabFunction(B_sym(k,:),'Vars',{state_sym,state0_sym,state_const_sym});
+    b{k} = matlabFunction(b_sym(k,:),'Vars',{state_sym,state0_sym,state_const_sym});
+end
+
+B_times_Lambda_times_B = @(B,Lambda)(B' * B);
+r = @(B,Lambda,dC_times_invC,state,b)(B' * (dC_times_invC * state + b));
+
+end</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve"><mwsh:keywords xml:space="preserve">function</mwsh:keywords> [B,b,r,B_times_Lambda_times_B] = rewrite_odes_as_linear_combination_in_parameters(ode,symbols)
+
+param_sym = sym([<mwsh:strings xml:space="preserve">'param%d'</mwsh:strings>],[1,length(symbols.param)]); assume(param_sym,<mwsh:strings xml:space="preserve">'real'</mwsh:strings>);
+state_sym = sym([<mwsh:strings xml:space="preserve">'state%d'</mwsh:strings>],[1,length(symbols.state)]); assume(state_sym,<mwsh:strings xml:space="preserve">'real'</mwsh:strings>);
+state0_sym = sym([<mwsh:strings xml:space="preserve">'state0'</mwsh:strings>]); assume(state0_sym,<mwsh:strings xml:space="preserve">'real'</mwsh:strings>);
+state_const_sym = sym([<mwsh:strings xml:space="preserve">'state_const'</mwsh:strings>]); assume(state_const_sym,<mwsh:strings xml:space="preserve">'real'</mwsh:strings>);
+
+<mwsh:comments xml:space="preserve">% Rewrite ODEs as linear combinations in parameters</mwsh:comments>
+[B_sym,b_sym] = equationsToMatrix(ode.system_sym,param_sym);
+
+<mwsh:comments xml:space="preserve">% Product of ODE factors (product of Gaussians)</mwsh:comments><mwsh:keywords xml:space="preserve">for</mwsh:keywords> k = 1:length(ode.system)
+    B_sym(k,B_sym(k,:)==<mwsh:strings xml:space="preserve">'0'</mwsh:strings>) = state0_sym;
+    <mwsh:keywords xml:space="preserve">for</mwsh:keywords> i = 1:length(B_sym(k,:))
+        sym_var = symvar(B_sym(k,i));
+        <mwsh:keywords xml:space="preserve">if</mwsh:keywords> isempty(sym_var)
+            B_sym(k,i) = B_sym(k,i) + state0_sym;
+        <mwsh:keywords xml:space="preserve">end</mwsh:keywords>    <mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+    B{k} = matlabFunction(B_sym(k,:),<mwsh:strings xml:space="preserve">'Vars'</mwsh:strings>,{state_sym,state0_sym,state_const_sym});
+    b{k} = matlabFunction(b_sym(k,:),<mwsh:strings xml:space="preserve">'Vars'</mwsh:strings>,{state_sym,state0_sym,state_const_sym});
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+
+B_times_Lambda_times_B = @(B,Lambda)(B' * B);
+r = @(B,Lambda,dC_times_invC,state,b)(B' * (dC_times_invC * state + b));
+
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords></mwsh:code></mcode-xmlized>
+      <mcode-count>26</mcode-count>
+      <cellOutputTarget>35</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>37</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Rewrite ODEs as linear combination in individual states &lt;/h4&gt;">&lt;h4&gt; Rewrite ODEs as linear combination in individual states &lt;/h4&gt;</html>
+         </p>
+         <p>
+            <equation>
+               <img alt="$\mathbf{B}_{u} \mathbf{x}_u + \mathbf{b}_{u} \stackrel{!}{=} \mathbf{f}(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\boldmath\phi} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X}$" class="equation" height="17px" scale="2" src="Lotka_Volterra_eq16521733572904471250.png" width="173px"/>
+            </equation>.</p>
+         <p>where matrices <equation>
+               <img alt="$\mathbf{B}_u$" class="equation" height="10px" scale="2" src="Lotka_Volterra_eq11780124863314593273.png" width="13px"/>
+            </equation> and <equation>
+               <img alt="$\mathbf{b}_u$" class="equation" height="10px" scale="2" src="Lotka_Volterra_eq15590211095018081680.png" width="11px"/>
+            </equation> are defined such that the expression <equation>
+               <img alt="$\mathbf{f}(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\boldmath\phi} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X}$" class="equation" height="15px" scale="2" src="Lotka_Volterra_eq08371510633112951161.png" width="101px"/>
+            </equation> is rewritten as a linear combination in the individual state <equation>
+               <img alt="$\mathbf{x}_u$" class="equation" height="7px" scale="2" src="Lotka_Volterra_eq00398522576481313565.png" width="11px"/>
+            </equation>.</p>
+      </text>
+      <mcode>function state = rewrite_odes_as_linear_combination_in_ind_states(state,ode,symbols,coupling_idx)
+
+state_sym = sym('state%d',[1,length(symbols.state)]); assume(state_sym,'real');
+param_sym = sym('param%d',[1,length(symbols.param)]); assume(param_sym,'real');
+
+for u = 1:length(symbols.state)
+    for k = coupling_idx{u}'
+        [B,b] = equationsToMatrix(ode.system{k}(state_sym,param_sym'),state_sym(:,u));
+        state.lin_comb{u,k}.B = matlabFunction(B,'Vars',{state_sym,param_sym});
+        state.lin_comb{u,k}.b = matlabFunction(b,'Vars',{state_sym,param_sym});
+    end
+end
+
+end</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve"><mwsh:keywords xml:space="preserve">function</mwsh:keywords> state = rewrite_odes_as_linear_combination_in_ind_states(state,ode,symbols,coupling_idx)
+
+state_sym = sym(<mwsh:strings xml:space="preserve">'state%d'</mwsh:strings>,[1,length(symbols.state)]); assume(state_sym,<mwsh:strings xml:space="preserve">'real'</mwsh:strings>);
+param_sym = sym(<mwsh:strings xml:space="preserve">'param%d'</mwsh:strings>,[1,length(symbols.param)]); assume(param_sym,<mwsh:strings xml:space="preserve">'real'</mwsh:strings>);
+
+<mwsh:keywords xml:space="preserve">for</mwsh:keywords> u = 1:length(symbols.state)
+    <mwsh:keywords xml:space="preserve">for</mwsh:keywords> k = coupling_idx{u}'
+        [B,b] = equationsToMatrix(ode.system{k}(state_sym,param_sym'),state_sym(:,u));
+        state.lin_comb{u,k}.B = matlabFunction(B,<mwsh:strings xml:space="preserve">'Vars'</mwsh:strings>,{state_sym,param_sym});
+        state.lin_comb{u,k}.b = matlabFunction(b,<mwsh:strings xml:space="preserve">'Vars'</mwsh:strings>,{state_sym,param_sym});
+    <mwsh:keywords xml:space="preserve">end</mwsh:keywords><mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords></mwsh:code></mcode-xmlized>
+      <mcode-count>27</mcode-count>
+      <cellOutputTarget>36</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>38</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Proxy for ODE parameters &lt;/h4&gt;">&lt;h4&gt; Proxy for ODE parameters &lt;/h4&gt;</html>
+         </p>
+         <p>
+            <equation>
+               <img alt="$\hat{q}(\theta) {\propto} \exp \left( ~E_{Q_{-\theta}}  \ln \mathcal{N} \left( \theta; \mathbf{B}_{\theta}^+ ~ \left( '\mathbf{C}_{\phi} \mathbf{C}_{\phi}^{-1} \mathbf{X} - \mathbf{b}_{\theta} \right), ~ \mathbf{B}_{\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\theta}^{+T} \right) ~\right)$" class="equation" height="20px" scale="2" src="Lotka_Volterra_eq09289431292542106091.png" width="342px"/>
+            </equation>,</p>
+      </text>
+      <mcode>function [param_proxy_mean,param_inv_cov] = proxy_for_ode_parameters(state_proxy_mean,Lambda,dC_times_invC,ode_param,symbols)
+
+B_global = []; b_global = [];
+state0 = zeros(size(dC_times_invC,1),1);
+param_inv_cov = zeros(length(symbols.param));
+local_mean_sum = zeros(length(symbols.param),1);
+for k = 1:length(symbols.state)
+    B = ode_param.B{k}(state_proxy_mean,state0,ones(size(state_proxy_mean,1),1));
+    local_inv_cov = ode_param.B_times_Lambda_times_B(B,Lambda);
+    b = ode_param.b{k}(state_proxy_mean,state0,ones(size(state_proxy_mean,1),1));
+    local_mean = ode_param.r(B,Lambda,dC_times_invC,state_proxy_mean(:,k),b);
+    param_inv_cov = param_inv_cov + local_inv_cov;
+    local_mean_sum = local_mean_sum + local_mean;
+
+    B_global = [B_global;B];
+    b_tmp = b; if length(b_tmp)==1; b_tmp=zeros(size(dC_times_invC,1),1);end
+    b_global = [b_global;b_tmp];
+end
+
+[~,D] = eig(param_inv_cov);
+if any(diag(D)&lt;0)
+    warning('param_inv_cov has negative eigenvalues!');
+elseif any(diag(D)&lt;1e-3)
+    warning('param_inv_cov is badly scaled')
+    disp('perturbing diagonal of param_inv_cov')
+    perturb = abs(max(diag(D))-min(diag(D))) / 10000;
+    param_inv_cov(logical(eye(size(param_inv_cov,1)))) = param_inv_cov(logical(eye(size(param_inv_cov,1)))) ...
+        + perturb.*rand(size(param_inv_cov,1),1);
+end
+param_proxy_mean = pinv(param_inv_cov) * local_mean_sum;
+
+end</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve"><mwsh:keywords xml:space="preserve">function</mwsh:keywords> [param_proxy_mean,param_inv_cov] = proxy_for_ode_parameters(state_proxy_mean,Lambda,dC_times_invC,ode_param,symbols)
+
+B_global = []; b_global = [];
+state0 = zeros(size(dC_times_invC,1),1);
+param_inv_cov = zeros(length(symbols.param));
+local_mean_sum = zeros(length(symbols.param),1);
+<mwsh:keywords xml:space="preserve">for</mwsh:keywords> k = 1:length(symbols.state)
+    B = ode_param.B{k}(state_proxy_mean,state0,ones(size(state_proxy_mean,1),1));
+    local_inv_cov = ode_param.B_times_Lambda_times_B(B,Lambda);
+    b = ode_param.b{k}(state_proxy_mean,state0,ones(size(state_proxy_mean,1),1));
+    local_mean = ode_param.r(B,Lambda,dC_times_invC,state_proxy_mean(:,k),b);
+    param_inv_cov = param_inv_cov + local_inv_cov;
+    local_mean_sum = local_mean_sum + local_mean;
+
+    B_global = [B_global;B];
+    b_tmp = b; <mwsh:keywords xml:space="preserve">if</mwsh:keywords> length(b_tmp)==1; b_tmp=zeros(size(dC_times_invC,1),1);<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+    b_global = [b_global;b_tmp];
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+
+[~,D] = eig(param_inv_cov);
+<mwsh:keywords xml:space="preserve">if</mwsh:keywords> any(diag(D)&lt;0)
+    warning(<mwsh:strings xml:space="preserve">'param_inv_cov has negative eigenvalues!'</mwsh:strings>);
+<mwsh:keywords xml:space="preserve">elseif</mwsh:keywords> any(diag(D)&lt;1e-3)
+    warning(<mwsh:strings xml:space="preserve">'param_inv_cov is badly scaled'</mwsh:strings>)
+    disp(<mwsh:strings xml:space="preserve">'perturbing diagonal of param_inv_cov'</mwsh:strings>)
+    perturb = abs(max(diag(D))-min(diag(D))) / 10000;
+    param_inv_cov(logical(eye(size(param_inv_cov,1)))) = param_inv_cov(logical(eye(size(param_inv_cov,1)))) <mwsh:keywords xml:space="preserve">...</mwsh:keywords>
+        + perturb.*rand(size(param_inv_cov,1),1);
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+param_proxy_mean = pinv(param_inv_cov) * local_mean_sum;
+
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords></mwsh:code></mcode-xmlized>
+      <mcode-count>28</mcode-count>
+      <cellOutputTarget>37</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>39</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Proxy for individual states &lt;/h4&gt;">&lt;h4&gt; Proxy for individual states &lt;/h4&gt;</html>
+         </p>
+         <p>
+            <equation>
+               <img alt="$\hat{q}(\mathbf{x}_u) \propto \exp\big( ~ E_{Q_{-u}} \ln \mathcal{N}\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ \mathbf{b}_u, ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) + E_{Q_{-u}} \ln \mathcal{N}\left(\mathbf{x}_u ; \boldmath\mu_u(\mathbf{Y}), \Sigma_u \right) \big)$" class="equation" height="14px" scale="2" src="Lotka_Volterra_eq00255091975289065005.png" width="413px"/>
+            </equation>,</p>
+      </text>
+      <mcode>function [state_mean,state_inv_cov] = proxy_for_ind_states(lin_comb,state_mean,...
+    ode_param,dC_times_invC,coupling_idx,symbols,mu,inv_sigma,state_obs_idx,...
+    clamp_obs_state_to_GP_regression)
+
+if clamp_obs_state_to_GP_regression
+    state_enumeration = find(~state_obs_idx);
+else
+    state_enumeration = 1:length(symbols.state);
+end
+
+for u = state_enumeration
+
+    state_inv_cov(:,:,u) = zeros(size(dC_times_invC));
+    local_mean_sum = zeros(size(dC_times_invC,1),1);
+    for k = coupling_idx{u}'
+        if k~=u
+            B = diag(lin_comb{u,k}.B(state_mean,ode_param));
+            if size(B,1) == 1; B = B.*eye(size(dC_times_invC,1)); end
+
+            state_inv_cov(:,:,u) = state_inv_cov(:,:,u) + B' * B;
+            local_mean_sum = local_mean_sum + B' * (dC_times_invC * state_mean(:,k) ...
+                + lin_comb{u,k}.b(state_mean,ode_param));
+        else
+            B = diag(lin_comb{u,k}.B(state_mean,ode_param));
+            if size(B,1) == 1; B = B.*eye(size(dC_times_invC,1)); end
+            B = B - dC_times_invC;
+
+            state_inv_cov(:,:,u) = state_inv_cov(:,:,u) + B' * B;
+
+            l = lin_comb{u,k}.b(state_mean,ode_param); if length(l)==1; l = zeros(length(local_mean_sum),1); end
+            local_mean_sum = local_mean_sum + B' * l;
+        end
+    end
+
+    state_mean(:,u) = (state_inv_cov(:,:,u) + inv_sigma(:,:,u)) \ (local_mean_sum + (inv_sigma(:,:,u) * mu(:,u)));
+end
+
+end</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve"><mwsh:keywords xml:space="preserve">function</mwsh:keywords> [state_mean,state_inv_cov] = proxy_for_ind_states(lin_comb,state_mean,<mwsh:keywords xml:space="preserve">...</mwsh:keywords>
+    ode_param,dC_times_invC,coupling_idx,symbols,mu,inv_sigma,state_obs_idx,<mwsh:keywords xml:space="preserve">...</mwsh:keywords>
+    clamp_obs_state_to_GP_regression)
+
+<mwsh:keywords xml:space="preserve">if</mwsh:keywords> clamp_obs_state_to_GP_regression
+    state_enumeration = find(~state_obs_idx);
+<mwsh:keywords xml:space="preserve">else</mwsh:keywords>
+    state_enumeration = 1:length(symbols.state);
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+<mwsh:keywords xml:space="preserve">for</mwsh:keywords> u = state_enumeration
+
+    state_inv_cov(:,:,u) = zeros(size(dC_times_invC));
+    local_mean_sum = zeros(size(dC_times_invC,1),1);
+    <mwsh:keywords xml:space="preserve">for</mwsh:keywords> k = coupling_idx{u}'
+        <mwsh:keywords xml:space="preserve">if</mwsh:keywords> k~=u
+            B = diag(lin_comb{u,k}.B(state_mean,ode_param));
+            <mwsh:keywords xml:space="preserve">if</mwsh:keywords> size(B,1) == 1; B = B.*eye(size(dC_times_invC,1)); <mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+
+            state_inv_cov(:,:,u) = state_inv_cov(:,:,u) + B' * B;
+            local_mean_sum = local_mean_sum + B' * (dC_times_invC * state_mean(:,k) <mwsh:keywords xml:space="preserve">...</mwsh:keywords>
+                + lin_comb{u,k}.b(state_mean,ode_param));
+        <mwsh:keywords xml:space="preserve">else</mwsh:keywords>
+            B = diag(lin_comb{u,k}.B(state_mean,ode_param));
+            <mwsh:keywords xml:space="preserve">if</mwsh:keywords> size(B,1) == 1; B = B.*eye(size(dC_times_invC,1)); <mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+            B = B - dC_times_invC;
+
+            state_inv_cov(:,:,u) = state_inv_cov(:,:,u) + B' * B;
+
+            l = lin_comb{u,k}.b(state_mean,ode_param); <mwsh:keywords xml:space="preserve">if</mwsh:keywords> length(l)==1; l = zeros(length(local_mean_sum),1); <mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+            local_mean_sum = local_mean_sum + B' * l;
+        <mwsh:keywords xml:space="preserve">end</mwsh:keywords>    <mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+
+    state_mean(:,u) = (state_inv_cov(:,:,u) + inv_sigma(:,:,u)) \ (local_mean_sum + (inv_sigma(:,:,u) * mu(:,u)));
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords></mwsh:code></mcode-xmlized>
+      <mcode-count>29</mcode-count>
+      <cellOutputTarget>38</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>40</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Import ODEs &lt;/h4&gt;">&lt;h4&gt; Import ODEs &lt;/h4&gt;</html>
+         </p>
+      </text>
+      <mcode>function ode = import_odes(symbols)
+
+path_ode = './Lotka_Volterra_ODEs.txt';                                                   % path to system of ODEs
+
+ode.raw = importdata(path_ode);
+ode.refined = ode.raw;
+
+for k = 1:length(ode.refined)
+for u = 1:length(symbols.state); ode.refined{k} = strrep(ode.refined{k},[symbols.state{u}],['state(:,' num2str(u) ')']); end
+for j = 1:length(symbols.param); ode.refined{k} = strrep(ode.refined{k},symbols.param{j},['param(' num2str(j) ')']); end
+end
+for k = 1:length(ode.refined); ode.system{k} = str2func(['@(state,param)(' ode.refined{k} ')']); end
+
+end</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve"><mwsh:keywords xml:space="preserve">function</mwsh:keywords> ode = import_odes(symbols)
+
+path_ode = <mwsh:strings xml:space="preserve">'./Lotka_Volterra_ODEs.txt'</mwsh:strings>;                                                   <mwsh:comments xml:space="preserve">% path to system of ODEs</mwsh:comments>
+
+ode.raw = importdata(path_ode);
+ode.refined = ode.raw;
+
+<mwsh:keywords xml:space="preserve">for</mwsh:keywords> k = 1:length(ode.refined)
+<mwsh:keywords xml:space="preserve">for</mwsh:keywords> u = 1:length(symbols.state); ode.refined{k} = strrep(ode.refined{k},[symbols.state{u}],[<mwsh:strings xml:space="preserve">'state(:,'</mwsh:strings> num2str(u) <mwsh:strings xml:space="preserve">')'</mwsh:strings>]); <mwsh:keywords xml:space="preserve">end</mwsh:keywords><mwsh:keywords xml:space="preserve">for</mwsh:keywords> j = 1:length(symbols.param); ode.refined{k} = strrep(ode.refined{k},symbols.param{j},[<mwsh:strings xml:space="preserve">'param('</mwsh:strings> num2str(j) <mwsh:strings xml:space="preserve">')'</mwsh:strings>]); <mwsh:keywords xml:space="preserve">end</mwsh:keywords><mwsh:keywords xml:space="preserve">end</mwsh:keywords><mwsh:keywords xml:space="preserve">for</mwsh:keywords> k = 1:length(ode.refined); ode.system{k} = str2func([<mwsh:strings xml:space="preserve">'@(state,param)('</mwsh:strings> ode.refined{k} <mwsh:strings xml:space="preserve">')'</mwsh:strings>]); <mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords></mwsh:code></mcode-xmlized>
+      <mcode-count>30</mcode-count>
+      <cellOutputTarget>39</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>41</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Generate ground truth &lt;/h4&gt;">&lt;h4&gt; Generate ground truth &lt;/h4&gt;</html>
+         </p>
+      </text>
+      <mcode>function [state,time,ode] = generate_ground_truth(time,state,ode,symbols,simulation)
+
+time.true=0:simulation.int_interval:simulation.final_time;                 % true times
+
+Tindex=length(time.true);                                                  % index time
+TTT=length(simulation.time_samp);                                          % number of sampled points
+itrue=round(simulation.time_samp./simulation.int_interval+ones(1,TTT));    % Index of sample time in the true time
+
+param_sym = sym(['param%d'],[1,length(symbols.param)]); assume(param_sym,'real');
+state_sym = sym(['state%d'],[1,length(symbols.state)]); assume(state_sym,'real');
+for i = 1:length(ode.system)
+    ode.system_sym(i) = ode.system{i}(state_sym,param_sym);
+end
+
+ode_system_mat = matlabFunction(ode.system_sym','Vars',{state_sym',param_sym'});
+[~,OutX_solver]=ode45(@(t,x) ode_system_mat(x,simulation.ode_param'), time.true, simulation.init_val);
+state.true_all=OutX_solver;
+state.true=state.true_all(itrue,:);
+
+state.obs_idx = simulation.state_obs_idx;
+
+end</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve"><mwsh:keywords xml:space="preserve">function</mwsh:keywords> [state,time,ode] = generate_ground_truth(time,state,ode,symbols,simulation)
+
+time.true=0:simulation.int_interval:simulation.final_time;                 <mwsh:comments xml:space="preserve">% true times</mwsh:comments>
+
+Tindex=length(time.true);                                                  <mwsh:comments xml:space="preserve">% index time</mwsh:comments>
+TTT=length(simulation.time_samp);                                          <mwsh:comments xml:space="preserve">% number of sampled points</mwsh:comments>
+itrue=round(simulation.time_samp./simulation.int_interval+ones(1,TTT));    <mwsh:comments xml:space="preserve">% Index of sample time in the true time</mwsh:comments>
+
+param_sym = sym([<mwsh:strings xml:space="preserve">'param%d'</mwsh:strings>],[1,length(symbols.param)]); assume(param_sym,<mwsh:strings xml:space="preserve">'real'</mwsh:strings>);
+state_sym = sym([<mwsh:strings xml:space="preserve">'state%d'</mwsh:strings>],[1,length(symbols.state)]); assume(state_sym,<mwsh:strings xml:space="preserve">'real'</mwsh:strings>);
+<mwsh:keywords xml:space="preserve">for</mwsh:keywords> i = 1:length(ode.system)
+    ode.system_sym(i) = ode.system{i}(state_sym,param_sym);
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+
+ode_system_mat = matlabFunction(ode.system_sym',<mwsh:strings xml:space="preserve">'Vars'</mwsh:strings>,{state_sym',param_sym'});
+[~,OutX_solver]=ode45(@(t,x) ode_system_mat(x,simulation.ode_param'), time.true, simulation.init_val);
+state.true_all=OutX_solver;
+state.true=state.true_all(itrue,:);
+
+state.obs_idx = simulation.state_obs_idx;
+
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords></mwsh:code></mcode-xmlized>
+      <mcode-count>31</mcode-count>
+      <cellOutputTarget>40</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>42</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Generate observations of states &lt;/h4&gt;">&lt;h4&gt; Generate observations of states &lt;/h4&gt;</html>
+         </p>
+      </text>
+      <mcode>function [state,time,obs_to_state_relation] = generate_state_obs(state,time,simulation)
+
+% State observations
+state_obs_variance = simulation.state_obs_variance(state.true);
+state.obs = state.true + sqrt(state_obs_variance) .* randn(size(state.true));
+
+% Relationship between states and observations
+if length(simulation.time_samp) &lt; length(time.est)
+    time.idx = munkres(pdist2(simulation.time_samp',time.est'));
+    time.ind = sub2ind([length(simulation.time_samp),length(time.est)],1:length(simulation.time_samp),time.idx);
+else
+    time.idx = munkres(pdist2(time.est',simulation.time_samp'));
+    time.ind = sub2ind([length(time.est),length(simulation.time_samp)],1:length(time.est),time.idx);
+end
+
+time.obs_time_to_state_time_relation = zeros(length(simulation.time_samp),length(time.est)); time.obs_time_to_state_time_relation(time.ind) = 1;
+state_mat = eye(size(state.true,2));
+obs_to_state_relation = sparse(kron(state_mat,time.obs_time_to_state_time_relation));
+time.samp = simulation.time_samp;
+
+end</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve"><mwsh:keywords xml:space="preserve">function</mwsh:keywords> [state,time,obs_to_state_relation] = generate_state_obs(state,time,simulation)
+
+<mwsh:comments xml:space="preserve">% State observations</mwsh:comments>
+state_obs_variance = simulation.state_obs_variance(state.true);
+state.obs = state.true + sqrt(state_obs_variance) .* randn(size(state.true));
+
+<mwsh:comments xml:space="preserve">% Relationship between states and observations</mwsh:comments><mwsh:keywords xml:space="preserve">if</mwsh:keywords> length(simulation.time_samp) &lt; length(time.est)
+    time.idx = munkres(pdist2(simulation.time_samp',time.est'));
+    time.ind = sub2ind([length(simulation.time_samp),length(time.est)],1:length(simulation.time_samp),time.idx);
+<mwsh:keywords xml:space="preserve">else</mwsh:keywords>
+    time.idx = munkres(pdist2(time.est',simulation.time_samp'));
+    time.ind = sub2ind([length(time.est),length(simulation.time_samp)],1:length(time.est),time.idx);
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+
+time.obs_time_to_state_time_relation = zeros(length(simulation.time_samp),length(time.est)); time.obs_time_to_state_time_relation(time.ind) = 1;
+state_mat = eye(size(state.true,2));
+obs_to_state_relation = sparse(kron(state_mat,time.obs_time_to_state_time_relation));
+time.samp = simulation.time_samp;
+
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords></mwsh:code></mcode-xmlized>
+      <mcode-count>32</mcode-count>
+      <cellOutputTarget>41</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>43</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Setup plots &lt;/h4&gt;">&lt;h4&gt; Setup plots &lt;/h4&gt;</html>
+         </p>
+      </text>
+      <mcode>function [h,h2] = setup_plots(state,time,simulation,symbols)
+
+for i = 1:length(symbols.param); symbols.param{i} = symbols.param{i}(2:end-1); end
+
+figure(1); set(1, 'Position', [0, 200, 1200, 500]);
+
+h2 = subplot(1,3,1); h2.FontSize = 20; h2.Title.String = 'ODE parameters';
+set(gca,'XTick',[1:length(symbols.param)]); set(gca,'XTickLabel',symbols.param);
+hold on; drawnow
+
+for u = 1:2
+    h{u} = subplot(1,3,u+1); cla; plot(time.true,state.true_all(:,u),'LineWidth',2,'Color',[217,95,2]./255);
+    hold on; plot(simulation.time_samp,state.obs(:,u),'*','Color',[217,95,2]./255,'MarkerSize',10);
+    h{u}.FontSize = 20; h{u}.Title.String = symbols.state{u}(2:end-1); h{u}.XLim = [min(time.est),max(time.est)];
+    h{u}.XLabel.String = 'time'; hold on;
+end
+
+end</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve"><mwsh:keywords xml:space="preserve">function</mwsh:keywords> [h,h2] = setup_plots(state,time,simulation,symbols)
+
+<mwsh:keywords xml:space="preserve">for</mwsh:keywords> i = 1:length(symbols.param); symbols.param{i} = symbols.param{i}(2:end-1); <mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+
+figure(1); set(1, <mwsh:strings xml:space="preserve">'Position'</mwsh:strings>, [0, 200, 1200, 500]);
+
+h2 = subplot(1,3,1); h2.FontSize = 20; h2.Title.String = <mwsh:strings xml:space="preserve">'ODE parameters'</mwsh:strings>;
+set(gca,<mwsh:strings xml:space="preserve">'XTick'</mwsh:strings>,[1:length(symbols.param)]); set(gca,<mwsh:strings xml:space="preserve">'XTickLabel'</mwsh:strings>,symbols.param);
+hold <mwsh:strings xml:space="preserve">on</mwsh:strings>; drawnow
+
+<mwsh:keywords xml:space="preserve">for</mwsh:keywords> u = 1:2
+    h{u} = subplot(1,3,u+1); cla; plot(time.true,state.true_all(:,u),<mwsh:strings xml:space="preserve">'LineWidth'</mwsh:strings>,2,<mwsh:strings xml:space="preserve">'Color'</mwsh:strings>,[217,95,2]./255);
+    hold <mwsh:strings xml:space="preserve">on</mwsh:strings>; plot(simulation.time_samp,state.obs(:,u),<mwsh:strings xml:space="preserve">'*'</mwsh:strings>,<mwsh:strings xml:space="preserve">'Color'</mwsh:strings>,[217,95,2]./255,<mwsh:strings xml:space="preserve">'MarkerSize'</mwsh:strings>,10);
+    h{u}.FontSize = 20; h{u}.Title.String = symbols.state{u}(2:end-1); h{u}.XLim = [min(time.est),max(time.est)];
+    h{u}.XLabel.String = <mwsh:strings xml:space="preserve">'time'</mwsh:strings>; hold <mwsh:strings xml:space="preserve">on</mwsh:strings>;
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords></mwsh:code></mcode-xmlized>
+      <mcode-count>33</mcode-count>
+      <cellOutputTarget>42</cellOutputTarget>
+   </cell>
+   <cell>
+      <count>44</count>
+      <text>
+         <p>
+            <html text="&lt;h4&gt; Plot results &lt;/h4&gt;">&lt;h4&gt; Plot results &lt;/h4&gt;</html>
+         </p>
+      </text>
+      <mcode>function plot_results(h,h2,state,time,simulation,param_proxy_mean,plot_type)
+
+for u = 1:2
+    if strcmp(plot_type,'final')
+        hold on; plot(h{u},time.est,state.proxy.mean(:,u),'Color',[117,112,179]./255,'LineWidth',2);
+    else
+        hold on; plot(h{u},time.est,state.proxy.mean(:,u),'LineWidth',0.1,'Color',[0.8,0.8,0.8]);
+    end
+    legend(h{u},{'true','observed','estimated'},'Location','southwest');
+end
+cla(h2); b = bar(h2,[1:length(param_proxy_mean)],[simulation.ode_param',param_proxy_mean]);
+b(1).FaceColor = [217,95,2]./255; b(2).FaceColor = [117,112,179]./255;
+h2.XLim = [0.5,length(param_proxy_mean)+0.5]; h2.YLimMode = 'auto';
+legend(h2,{'true','estimated'},'Location','northwest');
+drawnow
+
+end</mcode>
+      <mcode-xmlized>
+         <mwsh:code xml:space="preserve"><mwsh:keywords xml:space="preserve">function</mwsh:keywords> plot_results(h,h2,state,time,simulation,param_proxy_mean,plot_type)
+
+<mwsh:keywords xml:space="preserve">for</mwsh:keywords> u = 1:2
+    <mwsh:keywords xml:space="preserve">if</mwsh:keywords> strcmp(plot_type,<mwsh:strings xml:space="preserve">'final'</mwsh:strings>)
+        hold <mwsh:strings xml:space="preserve">on</mwsh:strings>; plot(h{u},time.est,state.proxy.mean(:,u),<mwsh:strings xml:space="preserve">'Color'</mwsh:strings>,[117,112,179]./255,<mwsh:strings xml:space="preserve">'LineWidth'</mwsh:strings>,2);
+    <mwsh:keywords xml:space="preserve">else</mwsh:keywords>
+        hold <mwsh:strings xml:space="preserve">on</mwsh:strings>; plot(h{u},time.est,state.proxy.mean(:,u),<mwsh:strings xml:space="preserve">'LineWidth'</mwsh:strings>,0.1,<mwsh:strings xml:space="preserve">'Color'</mwsh:strings>,[0.8,0.8,0.8]);
+    <mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+    legend(h{u},{<mwsh:strings xml:space="preserve">'true'</mwsh:strings>,<mwsh:strings xml:space="preserve">'observed'</mwsh:strings>,<mwsh:strings xml:space="preserve">'estimated'</mwsh:strings>},<mwsh:strings xml:space="preserve">'Location'</mwsh:strings>,<mwsh:strings xml:space="preserve">'southwest'</mwsh:strings>);
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords>
+cla(h2); b = bar(h2,[1:length(param_proxy_mean)],[simulation.ode_param',param_proxy_mean]);
+b(1).FaceColor = [217,95,2]./255; b(2).FaceColor = [117,112,179]./255;
+h2.XLim = [0.5,length(param_proxy_mean)+0.5]; h2.YLimMode = <mwsh:strings xml:space="preserve">'auto'</mwsh:strings>;
+legend(h2,{<mwsh:strings xml:space="preserve">'true'</mwsh:strings>,<mwsh:strings xml:space="preserve">'estimated'</mwsh:strings>},<mwsh:strings xml:space="preserve">'Location'</mwsh:strings>,<mwsh:strings xml:space="preserve">'northwest'</mwsh:strings>);
+drawnow
+
+<mwsh:keywords xml:space="preserve">end</mwsh:keywords></mwsh:code></mcode-xmlized>
+      <mcode-count>34</mcode-count>
+      <cellOutputTarget>43</cellOutputTarget>
+   </cell>
+   <originalCode>%% Variational Gradient Matching for Dynamical Systems: Lotka-Volterra
+%
+% &lt;&lt;cover_pic.png&gt;&gt;
+%
+% Authors: *Nico Stephan Gorbach* and *Stefan Bauer*, email: nico.gorbach@gmail.com
+%
+% Instructional code for the NIPS (2018) paper " *Scalable Variational Inference for Dynamical Systems* "
+% by Nico S. Gorbach, Stefan Bauer and Joachim M. Buhmann.
+% The paper is available at &lt;https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf&gt;.
+% Please cite our paper if you use our program for a further publication.
+% Part of the derivation below is described in Wenk et al. (2018).
+%
+% Example dynamical system used in this code: Lotka-Volterra system with *half* of the time points *unobserved*. The ODE parameters are also unobserved.
+
+%% Advantages of Variational Gradient Matching
+% The essential idea of gradient matching (Calderhead et al., 2002) is to match the gradient
+% governed by the ODEs with that inferred from the observations. In contrast
+% to previous approaches gradient matching introduces a prior over states
+% instead of a prior over ODE parameters. The advantages of gradients
+% matching is two-fold:
+%%
+%
+% # A prior over the functional form of state dynamics as opposed to ODE parameters facilitates a
+% more expert-aware estimation of ODE parameters since experts can provide
+% a better _a priori_ description of state dynamics than ODE parameters.
+% # Gradient matching yields a global gradient as opposed to a local one which
+% offers significant computational advantages and provides access to a rich
+% source of sophisticated optimization tools.
+%
+
+%%
+% Clear workspace and close figures
+clear all; close all;
+
+%% Simulation Settings
+
+simulation.state_obs_variance = @(mean)(bsxfun(@times,[0.5^2,0.5^2],...
+    ones(size(mean))));                                                    % observation noise
+simulation.ode_param = [2,1,4,1];                                          % true ODE parameters [2 1 4 1] is used as a benchmark in many publications;
+simulation.final_time = 2;                                                 % end time for integration
+simulation.int_interval = 0.01;                                            % integration interval
+simulation.time_samp = 0:0.1:simulation.final_time;                        % sample times for observations
+simulation.init_val = [5 3];                                               % state values at first time point
+simulation.state_obs_idx = [1,1];                                          % indices of states that are directly observed (Boolean)
+
+%% User Input
+%
+% &lt;html&gt;&lt;h4&gt; Kernel &lt;/h4&gt;&lt;/html&gt;
+
+kernel.param = [10,0.2];                                                   % set values of rbf kernel parameters
+state.derivative_variance = [6,6];                                         % gamma for gradient matching model
+%%
+% &lt;html&gt;&lt;h4&gt; Estimation &lt;/h4&gt;&lt;/html&gt;
+time.est = 0:0.1:4;                                                        % estimation times
+coord_ascent_numb_iter = 200;                                              % number of coordinate ascent iterations
+clamp_obs_state_to_GP_regression = false;                                  % The observed state trajectories are clamped to the trajectories determined by standard GP regression (Boolean)
+
+%%
+% &lt;html&gt;&lt;h4&gt; Symbols &lt;/h4&gt;&lt;/html&gt;
+symbols.state = {'[prey]','[predator]'};                                   % symbols of states in 'ODEs.txt' file
+symbols.param = {'[\theta_1]','[\theta_2]','[\theta_3]','[\theta_4]'};     % symbols of parameters in 'ODEs.txt' file
+
+%% Import ODEs
+%
+ode = import_odes(symbols);
+
+%%
+disp('ODEs:'); disp(ode.raw)
+
+%% Mass Action Dynamical Systems
+%
+% A deterministic dynamical system is represented by a set of $K$ ordinary differential equations (ODEs) with model parameters $\theta \in R^d$ that describe the evolution of $K$ states $\mathbf{x}(t) = [x_1(t),\ldots, x_K(t)]^T$ such that:
+% 
+% $\dot{\mathbf{x}}(t) = \frac{d \mathbf{x}(t)}{d t} = \mathbf{f}(\mathbf{x}(t),\theta) \qquad (1)$.
+% 
+% A sequence of observations, $\mathbf{y}(t)$, is usually contaminated by measurement error which we assume to be normally distributed with zero mean and variance for each of the $K$ states, i.e. $\mathbf{E}\sim \mathcal{N}(\mathbf{E};\mathbf{0},\mathbf{D})$, with $\mathbf{D}_{ik}=\sigma_k ^2 \delta_{ik}$. For $N$ distinct time points the overall system may therefore be summarized as:
+% 
+% $\mathbf{Y} = \mathbf{X} + \mathbf{E}$,
+% 
+% where 
+%
+% $\mathbf{X} = [\mathbf{x}(t_1),\ldots,\mathbf{x}(t_N)] = [\mathbf{x}_1,\ldots,\mathbf{x}_K]^T$,
+%
+% $\mathbf{Y} = [\mathbf{y}(t_1),\ldots,\mathbf{y}(t_N)] = [\mathbf{y}_1,\ldots,\mathbf{y}_K]^T$,
+% 
+% and $\mathbf{x}_k = [x_k(t_1),\ldots,x_k(t_N)]^T$ is the $k$'th state sequence and $\mathbf{y}_k = [y_k(t_1),$ $\ldots,y_k(t_N)]^T$ are the observations. Given the observations $\mathbf{Y}$ and the description of the dynamical system (1), the aim is to estimate both state variables $\mathbf{X}$ and parameters $\theta$.
+% 
+% We consider only dynamical systems that are locally linear with respect to ODE parameters $\boldmath\theta$ and individual states $\mathbf{x}_u$. Such ODEs include mass-action kinetics and are given by: 
+%
+% $f_{k}(\mathbf{x}(t),\boldmath\theta) = \sum_{i=1} \theta_{ki} \prod_{j \in \mathcal{M}_{ki}} x_j \qquad (2)$,
+%
+% with $\mathcal{M}_{ki} \subseteq \{ 1, \dots, K\}$ describing the state variables in each factor of the equation (i.e. the functions are linear in parameters and contain arbitrary large products of monomials of the states).
+
+%% Simulate Data
+%%
+% &lt;html&gt;&lt;h4&gt; Generate ground truth by numerical integration &lt;/h4&gt;&lt;/html&gt;
+[state,time,ode] = generate_ground_truth(time,state,ode,symbols,simulation);
+
+%%
+% &lt;html&gt;&lt;h4&gt; Generate state observations &lt;/h4&gt;&lt;/html&gt;
+[state,time,obs_to_state_relation] = generate_state_obs(state,time,simulation);
+
+%%
+% &lt;html&gt;&lt;h4&gt; Symbols &lt;/h4&gt;&lt;/html&gt;
+state.sym.mean = sym('x%d%d',[length(time.est),length(ode.system)]);
+state.sym.variance = sym('sigma%d%d',[length(time.est),length(ode.system)]);
+ode_param.sym.mean = sym('param%d',[length(symbols.param),1]); assume(ode_param.sym.mean,'real');
+
+%%
+% &lt;html&gt;&lt;h4&gt; Setup plots &lt;/h4&gt;&lt;/html&gt;
+%
+% Only the state dynamics are (partially) observed.
+[h,h2] = setup_plots(state,time,simulation,symbols);
+
+tic; %start timer
+%% Prior on States and State Derivatives
+% Gradient matching with Gaussian processes assumes a joint Gaussian process prior on states and their derivatives:
+%
+% $\left(\begin{array}{c}
+% \mathbf{X} \\ \dot{\mathbf{X}}
+% \end{array}\right)
+%  \sim \mathcal{N} \left(
+% \begin{array}{c}
+% \mathbf{X} \\ \dot{\mathbf{X}}
+% \end{array}; 
+% \begin{array}{c}
+%  \mathbf{0} \\ 
+% \mathbf{0}
+%  \end{array},
+% \begin{array}{cc}
+%  \mathbf{C}_{\phi} &amp; \mathbf{C}_{\phi}' \\
+%  '\mathbf{C}_{\phi} &amp; \mathbf{C}_{\phi}'' 
+%  \end{array}
+%  \right) \qquad (3)$,
+%
+% $\mathrm{cov}(x_k(t), x_k(t)) = C_{\phi_k}(t,t')$
+%
+% $\mathrm{cov}(\dot{x}_k(t), x_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t} =: C_{\phi_k}'(t,t')$
+%
+% $\mathrm{cov}(x_k(t), \dot{x}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t'} =: {'C_{\phi_k}(t,t')}$
+%
+% $\mathrm{cov}(\dot{x}_k(t), \dot{x}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t \partial t'} =: C_{\phi_k}''(t,t')$.
+
+[Lambda,dC_times_invC,inv_Cxx,time.est] = kernel_function(kernel,state,time.est);
+
+%% Matching Gradients
+%
+% Given the joint distribution over states and their derivatives (3) as well as the ODEs (2), we therefore have two expressions for the state derivatives:
+%
+% $\dot{\mathbf{X}} = \mathbf{F} + \epsilon_1, \epsilon_1 \sim \mathcal{N}\left(\epsilon_1;\mathbf{0}, \mathbf{I}\gamma \right)$
+%
+% $\dot{\mathbf{X}} = {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} ~\mathbf{X} + \epsilon_2, \epsilon_2 \sim \mathcal{N}\left(\epsilon_2;\mathbf{0}, \mathbf{A} \right)$
+%
+% where $\mathbf{F} := \mathbf{f}(\mathbf{X},\theta)$, $\mathbf{A} := \mathbf{C}_{\phi}'' -  {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} \mathbf{C}_{\phi}'$ and $\gamma$ is the error variance in the ODEs. Note that, in a deterministic system, the output of the ODEs $\mathbf{F}$ should equal the state derivatives $\dot{\mathbf{X}}$. However, in the first equation above we relax this contraint by adding stochasticity to the state derivatives $\dot{\mathbf{X}}$ in order to compensate for a potential model mismatch. The second equation above is obtained by deriving the conditional distribution for $\dot{\mathbf{X}}$ from the joint distribution in equation (3). Equating the two expressions in the equations above we can eliminate the unknown state derivatives $\dot{\mathbf{X}}$:
+%
+% $\mathbf{F} = {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} ~\mathbf{X} + \epsilon_0 \qquad (4)$,
+%
+% with $\epsilon_0 := \epsilon_2 - \epsilon_1$.
+
+%% State Couplings in ODEs
+coupling_idx = find_couplings_in_odes(ode,symbols);
+
+%% Rewrite ODEs as Linear Combination in Parameters
+%
+% We rewrite the ODEs in equation (2) as a linear combination in the parameters:
+%
+% $\mathbf{B}_{\boldmath\theta} \boldmath\theta + \mathbf{b}_{\boldmath\theta} \stackrel{!}{=} \mathbf{f}(\mathbf{X},\boldmath\theta) \qquad (5)$,
+%
+% where matrices $\mathbf{B}_{\boldmath\theta}$ and $\mathbf{b}_{\boldmath\theta}$ are defined such that the ODEs $\mathbf{f}(\mathbf{X},\boldmath\theta)$ are expressed as a linear combination in $\boldmath\theta$.
+
+[ode_param.B,ode_param.b,ode_param.r,ode_param.B_times_Lambda_times_B] = rewrite_odes_as_linear_combination_in_parameters(ode,symbols);
+
+%% Posterior over ODE Parameters
+%
+% Inserting (5) into (4) and solving for $\boldmath\theta$ yields:
+%
+% $\boldmath\theta = \mathbf{B}_{\boldmath\theta}^+ \left( {'\mathbf{C}_{\boldmath\phi}} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X} - \mathbf{b}_{\boldmath\theta} + \boldmath\epsilon_0 \right)$,
+% 
+% where $\mathbf{B}_{\boldmath\theta}^+$ denotes the pseudo-inverse of $\mathbf{B}_{\boldmath\theta}$. We can therefore derive the posterior distribution over ODE parameters:
+%
+% $p(\boldmath\theta \mid \mathbf{X}, \boldmath\phi, \gamma) = \mathcal{N}\left(\boldmath\theta ; \mathbf{B}_{\boldmath\theta}^+ ~ \left( {'\mathbf{C}_{\boldmath\phi}} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X} - \mathbf{b}_{\boldmath\theta} \right), ~ \mathbf{B}_{\boldmath\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\boldmath\theta}^{+T} \right) \qquad (6)$.
+% 
+%% Rewrite ODEs as Linear Combination in Individual States
+%
+% We rewrite the expression $\mathbf{f}(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\boldmath\phi} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X}$ in equation (4) as a linear combination in the individual state $\mathbf{x}_u$:
+%
+% $\mathbf{B}_{u} \mathbf{x}_u + \mathbf{b}_{u} \stackrel{!}{=} \mathbf{f}(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\boldmath\phi} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X} \qquad (7)$.
+%
+% where matrices $\mathbf{B}_u$ and $\mathbf{b}_u$ are defined such that the expression $\mathbf{f}(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\boldmath\phi} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X}$ is rewritten as a linear combination in the individual state $\mathbf{x}_u$.
+
+state = rewrite_odes_as_linear_combination_in_ind_states(state,ode,symbols,coupling_idx.states);
+
+%% Posterior over Individual States
+%
+% Inserting (7) into (4) and solving for $\mathbf{x}_u$ yields:
+%
+% $\mathbf{x}_u = \mathbf{B}_{u}^+ \left( \boldmath\epsilon_0 -\mathbf{b}_{u} \right)$,
+%
+% where $\mathbf{B}_{u}^+$ denotes the pseudo-inverse of $\mathbf{B}_{u}$. We can therefore derive the posterior distribution over an individual state $\mathbf{x}_u$:
+%
+% $p(\mathbf{x}_u \mid \mathbf{X}_{-u}, \boldmath\phi, \gamma) = \mathcal{N}\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ \mathbf{b}_u, ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) \qquad (8)$,
+%
+% with $\mathbf{X}_{-u}$ denoting the set of all states except state $\mathbf{x}_u$.
+
+%% Mean-field Variational Inference
+%
+% To infer the parameters $\boldmath\theta$, we want to find the maximum a posteriori estimate (MAP): 
+%
+% $\theta^* := arg \max_{\theta} ~ \ln p(\theta \mid \mathbf{Y},\phi,\gamma, \sigma)$
+%
+% $= arg\max_{\boldmath\theta} ~ \ln \int  p(\boldmath\theta,\mathbf{X} \mid \mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma) d\mathbf{X}$
+%
+% $= arg\max_{\boldmath\theta} ~ \ln \int p(\boldmath\theta \mid \mathbf{X},\boldmath\phi,\boldmath\gamma) p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\boldmath\sigma) d\mathbf{X} \qquad (9)$.
+% 
+% However, the integral above is intractable due to the strong couplings induced by the nonlinear ODEs $\mathbf{f}$ which appear in the term $p(\boldmath\theta \mid \mathbf{X},\boldmath\phi,\boldmath\gamma)$. 
+% 
+% We use mean-field variational inference to establish variational lower bounds that are analytically tractable by decoupling state variables from the ODE parameters as well as decoupling the state variables from each other. Note that, since the ODEs described by equation (2) are *locally linear*, both conditional distributions $p(\boldmath\theta \mid \mathbf{X},\mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma)$ (equation (6)) and $p(\mathbf{x}_u \mid \boldmath\theta, \mathbf{X}_{-u},\mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma)$ (equation (8)) are analytically tractable and Gaussian distributed as mentioned previously. 
+% 
+% The decoupling is induced by designing a variational distribution $Q(\boldmath\theta,\mathbf{X})$ which is restricted to the family of factorial distributions:
+%
+% $\mathcal{Q} := \bigg{\{} Q : Q(\boldmath\theta,\mathbf{X}) = q(\boldmath\theta) \prod_u q(\mathbf{x}_u) \bigg{\}}$.
+% 
+% The particular form of $q(\boldmath\theta)$ and $q(\mathbf{x}_u)$ are designed to be Gaussian distributed which places them in the same family as the true full conditional distributions. To find the optimal factorial distribution we minimize the Kullback-Leibler divergence between the variational and the true posterior distribution:
+%
+% $\hat{Q} := arg \min_{Q(\boldmath\theta,\mathbf{X}) \in \mathcal{Q}} \mathrm{KL} \left[ Q(\theta,\mathbf{X}) \mid \mid p(\boldmath\theta,\mathbf{X} \mid \mathbf{Y},\boldmath\phi, \boldmath\gamma,\boldmath\sigma) \right] \qquad (10)$,
+%
+% where $\hat{Q}$ is the proxy distribution. The proxy distribution that minimizes the KL-divergence (10) depends on the true full conditionals and is given by:
+%
+% $\hat{q}({\boldmath\theta}) \propto \exp \left(~ E_{Q_{-\theta}} \ln p(\boldmath\theta \mid \mathbf{X},\mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma) ~\right) \qquad (11)$
+% 
+% $\hat{q}(\mathbf{x}_u) \propto \exp\left( ~ E_{Q_{-u}} \ln p(\mathbf{x}_u \mid \theta, \mathbf{X}_{-u},\mathbf{Y},\phi,\gamma,\sigma) ~ \right) \qquad (12)$.
+
+%% GP Regression for Observations
+%
+% The data-informed distribution $p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\boldmath\sigma)$ in euqation (9) can be determined analytically using Gaussian process regression with the GP prior $p(\mathbf{X} \mid \boldmath\phi) = \prod_k \mathcal{N}(\mathbf{x}_k ; \mathbf{0},\mathbf{C}_{\boldmath\phi})$:
+%
+% $p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\gamma) = \prod_k \mathcal{N}(\mathbf{x}_k ; \boldmath\mu_k(\mathbf{y}_k),\boldmath\Sigma_k)$,
+%
+% where $\boldmath\mu_k(\mathbf{y}_k) := \sigma_k^{-2} \left(\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1} \right)^{-1} \mathbf{y}_k$ and $\boldmath\Sigma_k ^{-1}:=\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1}$.
+
+[mu,inv_sigma] = GP_regression(state,inv_Cxx,obs_to_state_relation,simulation);
+
+%% Coordinate Ascent Variational Gradient Matching
+% 
+% We minimize the KL-divergence in equation (10) by coordinate descent (where each step is analytically tractable) by iterating between determining the proxy for the distribution over ODE parameters $\hat{q}(\boldmath\theta)$ and the proxies for the distribution over individual states $\hat{q}(\mathbf{x}_u)$. 
+
+state.proxy.mean = mu;                                                     % Initialize the state estimation by the GP regression posterior
+for i = 1:coord_ascent_numb_iter
+    %%
+    % &lt;html&gt;&lt;h4&gt; Proxy for ODE parameters &lt;/h4&gt;&lt;/html&gt;
+    %
+    % Expanding the proxy distribution in equation (11) for $\boldmath\theta$ yields:
+    %
+    % $\hat{q}(\theta) \stackrel{(a)}{\propto} \exp \left( ~E_{Q_{-\theta}} \ln p(\theta \mid \mathbf{X},\mathbf{Y},\phi,\gamma,\sigma) ~ \right)$
+    %
+    % $\stackrel{(b)}{\propto} \exp \left( ~E_{Q_{-\theta}}  \ln \mathcal{N} \left( \theta; \mathbf{B}_{\theta}^+ ~ \left( '\mathbf{C}_{\phi} \mathbf{C}_{\phi}^{-1} \mathbf{X} - \mathbf{b}_{\theta} \right), ~ \mathbf{B}_{\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\theta}^{+T} \right) ~\right)$,
+    %
+    % which can be normalized analytically due to its exponential quadratic form. In (a) we recall that the ODE parameters depend only indirectly on the observations $\mathbf{Y}$ through the states $\mathbf{X}$ and in (b) we substitute $p(\boldmath\theta \mid \mathbf{X},\boldmath\phi,\boldmath\gamma)$ by its density given in equation (6).
+
+    [param_proxy_mean,param_proxy_inv_cov] = proxy_for_ode_parameters(state.proxy.mean,Lambda,dC_times_invC,ode_param,symbols);
+    if i==1 || ~mod(i,20); plot_results(h,h2,state,time,simulation,param_proxy_mean,'not_final'); end
+    %%
+    % &lt;html&gt;&lt;h4&gt; Proxy for individual states &lt;/h4&gt;&lt;/html&gt;
+    %
+    % Expanding the proxy distribution in equation (12) over the individual state $\mathbf{x}_u$:
+    %
+    % $\hat{q}(\mathbf{x}_u) \stackrel{(a)}{\propto} \exp \left( ~ E_{Q_{-u}}  \ln ( p(\mathbf{x}_u \mid \theta, \mathbf{X}_{-u},\phi,\gamma) p(\mathbf{x}_u \mid\mathbf{Y},\phi,\sigma) ) ~ \right)$
+    %
+    % $\stackrel{(b)}{\propto} \exp\big( ~ E_{Q_{-u}} \ln \mathcal{N}\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ \mathbf{b}_u, ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) + E_{Q_{-u}} \ln \mathcal{N}\left(\mathbf{x}_u ; \boldmath\mu_u(\mathbf{Y}), \Sigma_u \right) \big)$,
+    %
+    % which, once more, can be normalized analytically due to its exponential quadratic form. In (a) we decompose the full conditional into an ODE-informed distribution and a data-informed distribution and in (b) we substitute the ODE-informed distribution $p(\mathbf{x}_u \mid \boldmath\theta, \mathbf{X}_{-u},\boldmath\phi,\boldmath\gamma)$ with its density given by equation (8).
+
+    state.proxy.mean = proxy_for_ind_states(state.lin_comb,state.proxy.mean,param_proxy_mean',...
+        dC_times_invC,coupling_idx.states,symbols,mu,inv_sigma,state.obs_idx,clamp_obs_state_to_GP_regression);
+end
+
+%%
+% &lt;html&gt;&lt;h4&gt; Final result &lt;/h4&gt;&lt;/html&gt;
+plot_results(h,h2,state,time,simulation,param_proxy_mean,'final');
+
+%% Time Taken
+disp(['time taken: ' num2str(toc) ' seconds'])
+
+%% References
+%
+% * *Gorbach, N.S.* , *Bauer, S.* and Buhmann, J.M., Scalable Variational Inference for Dynamical Systems. 2017a. Neural Information Processing Systems (NIPS). &lt;https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf&gt;, arxiv: &lt;https://arxiv.org/abs/1705.07079&gt;.
+% * *Bauer, S.* , *Gorbach, N.S.* and Buhmann, J.M., Efficient and Flexible Inference for Stochastic Differential Equations. 2017b. Neural Information Processing Systems (NIPS). &lt;https://papers.nips.cc/paper/7274-efficient-and-flexible-inference-for-stochastic-systems.pdf&gt;
+% * Wenk, P., Gotovos, A., Bauer, S., Gorbach, N.S., Krause, A. and Buhmann, J.M., Fast Gaussian Process Based Gradient Matching for Parameters Identification in Systems of Nonlinear ODEs. 2018. In submission to Conference on Uncertainty in Artificial Intelligence (UAI).
+% * Calderhead, B., Girolami, M. and Lawrence. N.D., 2002. Accelerating Bayesian inference over nonlinear differential equation models. _In Advances in Neural Information Processing Systems (NIPS)_ . 22.
+%
+% The authors in bold font have contributed equally to their respective
+% papers.
+
+%% Subroutines
+% &lt;html&gt;&lt;h4&gt; Kernel function &lt;/h4&gt;&lt;/html&gt;
+%
+% Gradient matching with Gaussian processes assumes a joint Gaussian process prior on states and their derivatives:
+%
+% $\left(\begin{array}{c}
+% \mathbf{X} \\ \dot{\mathbf{X}}
+% \end{array}\right)
+%  \sim \mathcal{N} \left(
+% \begin{array}{c}
+% \mathbf{X} \\ \dot{\mathbf{X}}
+% \end{array}; 
+% \begin{array}{c}
+%  \mathbf{0} \\ 
+% \mathbf{0}
+%  \end{array},
+% \begin{array}{cc}
+%  \mathbf{C}_{\phi} &amp; \mathbf{C}_{\phi}' \\
+%  '\mathbf{C}_{\phi} &amp; \mathbf{C}_{\phi}'' 
+%  \end{array}
+%  \right)$,
+%
+% $\mathrm{cov}(x_k(t), x_k(t)) = C_{\phi_k}(t,t')$
+%
+% $\mathrm{cov}(\dot{x}_k(t), x_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t} =: C_{\phi_k}'(t,t')$
+%
+% $\mathrm{cov}(x_k(t), \dot{x}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t'} =: {'C_{\phi_k}(t,t')}$
+%
+% $\mathrm{cov}(\dot{x}_k(t), \dot{x}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t \partial t'} =: C_{\phi_k}''(t,t')$.
+
+function [Lambda,dC_times_invC,inv_Cxx,time_est] = kernel_function(kernel,state,time_est)
+
+kernel.param_sym = sym(['rbf_param%d'],[1,2]); assume(kernel.param_sym,'real');
+kernel.time1 = sym('time1'); assume(kernel.time1,'real'); kernel.time2 = sym('time2'); assume(kernel.time2,'real');
+kernel.func = kernel.param_sym(1).*exp(-(kernel.time1-kernel.time2).^2./(kernel.param_sym(2).^2));                      % RBF kernel
+kernel.name = 'rbf';   
+
+% kernel derivatives
+for i = 1:length(kernel)
+    kernel.func_d = diff(kernel.func,kernel.time1);
+    kernel.func_dd = diff(kernel.func_d,kernel.time2);
+    GP.fun = matlabFunction(kernel.func,'Vars',{kernel.time1,kernel.time2,kernel.param_sym});
+    GP.fun_d = matlabFunction(kernel.func_d,'Vars',{kernel.time1,kernel.time2,kernel.param_sym});
+    GP.fun_dd = matlabFunction(kernel.func_dd,'Vars',{kernel.time1,kernel.time2,kernel.param_sym});
+end
+
+% populate GP covariance matrix
+for t=1:length(time_est)
+    C(t,:)=GP.fun(time_est(t),time_est,kernel.param);
+    dC(t,:)=GP.fun_d(time_est(t),time_est,kernel.param);
+    Cd(t,:)=GP.fun_d(time_est,time_est(t),kernel.param);
+    ddC(t,:)=GP.fun_dd(time_est(t),time_est,kernel.param);
+end
+
+% GP covariance scaling
+[~,D] = eig(C); perturb = abs(max(diag(D))-min(diag(D))) / 10000;
+if any(diag(D)&lt;1e-6); C(logical(eye(size(C,1)))) = C(logical(eye(size(C,1)))) + perturb.*rand(size(C,1),1); end
+[~,D] = eig(C);
+if any(diag(D)&lt;0); error('C has negative eigenvalues!'); elseif any(diag(D)&lt;1e-6); warning('C is badly scaled'); end
+inv_Cxx = inv_chol(chol(C,'lower'));
+
+dC_times_invC = dC * inv_Cxx;
+
+% plot GP prior samples
+figure(3); 
+hold on; plot(time_est,mvnrnd(zeros(1,length(time_est)),C(:,:,1),3),'LineWidth',2);
+h1 = gca; h1.FontSize = 20; h1.XLabel.String = 'time'; h1.YLabel.String = 'state value';
+h1.Title.String = [kernel.name ' kernel'];
+
+% determine \Lambda:
+A = ddC - dC_times_invC * Cd;
+inv_Lambda = A + state.derivative_variance(1) .* eye(size(A));
+inv_Lambda = 0.5.*(inv_Lambda+inv_Lambda');
+Lambda = inv_chol(chol(inv_Lambda,'lower'));
+
+end
+
+%%
+% &lt;html&gt;&lt;h4&gt; GP regression for observations&lt;/h4&gt;&lt;/html&gt;
+%
+% $p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\gamma) = \prod_k \mathcal{N}(\mathbf{x}_k ; \boldmath\mu_k(\mathbf{y}_k),\boldmath\Sigma_k)$,
+%
+% where $\boldmath\mu_k(\mathbf{y}_k) := \sigma_k^{-2} \left(\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1} \right)^{-1} \mathbf{y}_k$ and $\boldmath\Sigma_k ^{-1}:=\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1}$.
+
+function [mu_u,inv_sigma_u,state] = GP_regression(state,inv_Cxx,obs_to_state_relation,simulation)
+
+state_obs_variance = simulation.state_obs_variance(state.obs); 
+
+numb_states = size(state.sym.mean,2);
+numb_time_points = size(state.sym.mean,1);
+
+inv_Cxx_tmp = num2cell(inv_Cxx(:,:,ones(1,numb_states)),[1,2]);
+inv_Cxx_blkdiag = sparse(blkdiag(inv_Cxx_tmp{:})); 
+
+dim = size(state_obs_variance,1)*size(state_obs_variance,2);
+D = spdiags(reshape(state_obs_variance.^(-1),[],1),0,dim,dim) * speye(dim); % covariance matrix of error term (big E)
+A_times_D_times_A = obs_to_state_relation' * D * obs_to_state_relation;
+inv_sigma = A_times_D_times_A + inv_Cxx_blkdiag;
+
+mu = inv_sigma \ obs_to_state_relation' * D * reshape(state.obs,[],1);
+
+mu_u = zeros(numb_time_points,numb_states);
+for u = 1:numb_states
+    idx = (u-1)*numb_time_points+1:(u-1)*numb_time_points+numb_time_points;
+    mu_u(:,u) = mu(idx);
+end
+
+inv_sigma_u = zeros(numb_time_points,numb_time_points,numb_states);
+for i = 1:numb_states
+    idx = [(i-1)*numb_time_points+1:(i-1)*numb_time_points+numb_time_points];
+    inv_sigma_u(:,:,i) = inv_sigma(idx,idx);
+end
+
+end
+
+%%
+% &lt;html&gt;&lt;h4&gt; Find ODE couplings &lt;/h4&gt;&lt;/html&gt;
+function coupling_idx = find_couplings_in_odes(ode,symbols)
+
+% state couplings
+state_sym = sym(['state%d'],[1,length(ode.system)]); assume(state_sym,'real');
+for k = 1:length(ode.system)
+    tmp_idx = ismember(state_sym,symvar(ode.system_sym(k))); tmp_idx(:,k) = 1;
+    ode_couplings_states(k,tmp_idx) = 1; 
+end
+
+for u = 1:length(symbols.state)
+    coupling_idx_tmp = find(ode_couplings_states(:,u));
+    coupling_idx.states{u} = coupling_idx_tmp;    
+end
+
+end
+
+%%
+% &lt;html&gt;&lt;h4&gt; Rewrite ODEs as linear combination in parameters &lt;/h4&gt;&lt;/html&gt;
+%
+% $\mathbf{B}_{\boldmath\theta} \boldmath\theta + \mathbf{b}_{\boldmath\theta} \stackrel{!}{=} \mathbf{f}(\mathbf{X},\boldmath\theta)$,
+%
+% where matrices $\mathbf{B}_{\boldmath\theta}$ and $\mathbf{b}_{\boldmath\theta}$ are defined such that the ODEs $\mathbf{f}(\mathbf{X},\boldmath\theta)$ are expressed as a linear combination in $\boldmath\theta$.
+
+function [B,b,r,B_times_Lambda_times_B] = rewrite_odes_as_linear_combination_in_parameters(ode,symbols)
+
+param_sym = sym(['param%d'],[1,length(symbols.param)]); assume(param_sym,'real');
+state_sym = sym(['state%d'],[1,length(symbols.state)]); assume(state_sym,'real');
+state0_sym = sym(['state0']); assume(state0_sym,'real');
+state_const_sym = sym(['state_const']); assume(state_const_sym,'real');
+
+% Rewrite ODEs as linear combinations in parameters
+[B_sym,b_sym] = equationsToMatrix(ode.system_sym,param_sym);
+
+% Product of ODE factors (product of Gaussians)
+for k = 1:length(ode.system)
+    B_sym(k,B_sym(k,:)=='0') = state0_sym;
+    for i = 1:length(B_sym(k,:))
+        sym_var = symvar(B_sym(k,i));
+        if isempty(sym_var)
+            B_sym(k,i) = B_sym(k,i) + state0_sym;
+        end
+    end
+    B{k} = matlabFunction(B_sym(k,:),'Vars',{state_sym,state0_sym,state_const_sym});
+    b{k} = matlabFunction(b_sym(k,:),'Vars',{state_sym,state0_sym,state_const_sym});
+end
+
+B_times_Lambda_times_B = @(B,Lambda)(B' * B);
+r = @(B,Lambda,dC_times_invC,state,b)(B' * (dC_times_invC * state + b));
+
+end
+
+%%
+% &lt;html&gt;&lt;h4&gt; Rewrite ODEs as linear combination in individual states &lt;/h4&gt;&lt;/html&gt;
+%
+% $\mathbf{B}_{u} \mathbf{x}_u + \mathbf{b}_{u} \stackrel{!}{=} \mathbf{f}(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\boldmath\phi} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X}$.
+%
+% where matrices $\mathbf{B}_u$ and $\mathbf{b}_u$ are defined such that the expression $\mathbf{f}(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\boldmath\phi} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X}$ is rewritten as a linear combination in the individual state $\mathbf{x}_u$.
+
+function state = rewrite_odes_as_linear_combination_in_ind_states(state,ode,symbols,coupling_idx)
+
+state_sym = sym('state%d',[1,length(symbols.state)]); assume(state_sym,'real');
+param_sym = sym('param%d',[1,length(symbols.param)]); assume(param_sym,'real');
+
+for u = 1:length(symbols.state)
+    for k = coupling_idx{u}'
+        [B,b] = equationsToMatrix(ode.system{k}(state_sym,param_sym'),state_sym(:,u));
+        state.lin_comb{u,k}.B = matlabFunction(B,'Vars',{state_sym,param_sym});
+        state.lin_comb{u,k}.b = matlabFunction(b,'Vars',{state_sym,param_sym});
+    end
+end
+
+end
+
+%%
+% &lt;html&gt;&lt;h4&gt; Proxy for ODE parameters &lt;/h4&gt;&lt;/html&gt;
+%
+% $\hat{q}(\theta) {\propto} \exp \left( ~E_{Q_{-\theta}}  \ln \mathcal{N} \left( \theta; \mathbf{B}_{\theta}^+ ~ \left( '\mathbf{C}_{\phi} \mathbf{C}_{\phi}^{-1} \mathbf{X} - \mathbf{b}_{\theta} \right), ~ \mathbf{B}_{\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\theta}^{+T} \right) ~\right)$,
+
+function [param_proxy_mean,param_inv_cov] = proxy_for_ode_parameters(state_proxy_mean,Lambda,dC_times_invC,ode_param,symbols)
+
+B_global = []; b_global = [];
+state0 = zeros(size(dC_times_invC,1),1);
+param_inv_cov = zeros(length(symbols.param));
+local_mean_sum = zeros(length(symbols.param),1);
+for k = 1:length(symbols.state)
+    B = ode_param.B{k}(state_proxy_mean,state0,ones(size(state_proxy_mean,1),1));
+    local_inv_cov = ode_param.B_times_Lambda_times_B(B,Lambda);
+    b = ode_param.b{k}(state_proxy_mean,state0,ones(size(state_proxy_mean,1),1));
+    local_mean = ode_param.r(B,Lambda,dC_times_invC,state_proxy_mean(:,k),b);
+    param_inv_cov = param_inv_cov + local_inv_cov;
+    local_mean_sum = local_mean_sum + local_mean;
+    
+    B_global = [B_global;B];
+    b_tmp = b; if length(b_tmp)==1; b_tmp=zeros(size(dC_times_invC,1),1);end
+    b_global = [b_global;b_tmp];
+end
+
+[~,D] = eig(param_inv_cov);
+if any(diag(D)&lt;0)
+    warning('param_inv_cov has negative eigenvalues!');
+elseif any(diag(D)&lt;1e-3)
+    warning('param_inv_cov is badly scaled')
+    disp('perturbing diagonal of param_inv_cov')
+    perturb = abs(max(diag(D))-min(diag(D))) / 10000;
+    param_inv_cov(logical(eye(size(param_inv_cov,1)))) = param_inv_cov(logical(eye(size(param_inv_cov,1)))) ...
+        + perturb.*rand(size(param_inv_cov,1),1);
+end
+param_proxy_mean = pinv(param_inv_cov) * local_mean_sum;
+
+end
+
+%%
+% &lt;html&gt;&lt;h4&gt; Proxy for individual states &lt;/h4&gt;&lt;/html&gt;
+%
+% $\hat{q}(\mathbf{x}_u) \propto \exp\big( ~ E_{Q_{-u}} \ln \mathcal{N}\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ \mathbf{b}_u, ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) + E_{Q_{-u}} \ln \mathcal{N}\left(\mathbf{x}_u ; \boldmath\mu_u(\mathbf{Y}), \Sigma_u \right) \big)$,
+
+function [state_mean,state_inv_cov] = proxy_for_ind_states(lin_comb,state_mean,...
+    ode_param,dC_times_invC,coupling_idx,symbols,mu,inv_sigma,state_obs_idx,...
+    clamp_obs_state_to_GP_regression)
+
+if clamp_obs_state_to_GP_regression
+    state_enumeration = find(~state_obs_idx);
+else
+    state_enumeration = 1:length(symbols.state);
+end
+
+for u = state_enumeration
+    
+    state_inv_cov(:,:,u) = zeros(size(dC_times_invC));
+    local_mean_sum = zeros(size(dC_times_invC,1),1);
+    for k = coupling_idx{u}'
+        if k~=u
+            B = diag(lin_comb{u,k}.B(state_mean,ode_param));
+            if size(B,1) == 1; B = B.*eye(size(dC_times_invC,1)); end
+
+            state_inv_cov(:,:,u) = state_inv_cov(:,:,u) + B' * B;
+            local_mean_sum = local_mean_sum + B' * (dC_times_invC * state_mean(:,k) ...
+                + lin_comb{u,k}.b(state_mean,ode_param));
+        else
+            B = diag(lin_comb{u,k}.B(state_mean,ode_param));
+            if size(B,1) == 1; B = B.*eye(size(dC_times_invC,1)); end
+            B = B - dC_times_invC;
+
+            state_inv_cov(:,:,u) = state_inv_cov(:,:,u) + B' * B;
+            
+            l = lin_comb{u,k}.b(state_mean,ode_param); if length(l)==1; l = zeros(length(local_mean_sum),1); end
+            local_mean_sum = local_mean_sum + B' * l;
+        end
+    end
+    
+    state_mean(:,u) = (state_inv_cov(:,:,u) + inv_sigma(:,:,u)) \ (local_mean_sum + (inv_sigma(:,:,u) * mu(:,u)));
+end
+
+end
+
+%%
+% &lt;html&gt;&lt;h4&gt; Import ODEs &lt;/h4&gt;&lt;/html&gt;
+function ode = import_odes(symbols)
+
+path_ode = './Lotka_Volterra_ODEs.txt';                                                   % path to system of ODEs
+
+ode.raw = importdata(path_ode);
+ode.refined = ode.raw;
+
+for k = 1:length(ode.refined)
+for u = 1:length(symbols.state); ode.refined{k} = strrep(ode.refined{k},[symbols.state{u}],['state(:,' num2str(u) ')']); end 
+for j = 1:length(symbols.param); ode.refined{k} = strrep(ode.refined{k},symbols.param{j},['param(' num2str(j) ')']); end
+end
+for k = 1:length(ode.refined); ode.system{k} = str2func(['@(state,param)(' ode.refined{k} ')']); end
+
+end
+
+%%
+% &lt;html&gt;&lt;h4&gt; Generate ground truth &lt;/h4&gt;&lt;/html&gt;
+function [state,time,ode] = generate_ground_truth(time,state,ode,symbols,simulation)
+
+time.true=0:simulation.int_interval:simulation.final_time;                 % true times
+
+Tindex=length(time.true);                                                  % index time
+TTT=length(simulation.time_samp);                                          % number of sampled points
+itrue=round(simulation.time_samp./simulation.int_interval+ones(1,TTT));    % Index of sample time in the true time
+
+param_sym = sym(['param%d'],[1,length(symbols.param)]); assume(param_sym,'real');
+state_sym = sym(['state%d'],[1,length(symbols.state)]); assume(state_sym,'real');
+for i = 1:length(ode.system)
+    ode.system_sym(i) = ode.system{i}(state_sym,param_sym);
+end
+
+ode_system_mat = matlabFunction(ode.system_sym','Vars',{state_sym',param_sym'});
+[~,OutX_solver]=ode45(@(t,x) ode_system_mat(x,simulation.ode_param'), time.true, simulation.init_val);
+state.true_all=OutX_solver;
+state.true=state.true_all(itrue,:);
+
+state.obs_idx = simulation.state_obs_idx;
+
+end
+
+%%
+% &lt;html&gt;&lt;h4&gt; Generate observations of states &lt;/h4&gt;&lt;/html&gt;
+function [state,time,obs_to_state_relation] = generate_state_obs(state,time,simulation)
+
+% State observations
+state_obs_variance = simulation.state_obs_variance(state.true);
+state.obs = state.true + sqrt(state_obs_variance) .* randn(size(state.true));
+
+% Relationship between states and observations
+if length(simulation.time_samp) &lt; length(time.est)
+    time.idx = munkres(pdist2(simulation.time_samp',time.est'));
+    time.ind = sub2ind([length(simulation.time_samp),length(time.est)],1:length(simulation.time_samp),time.idx);
+else
+    time.idx = munkres(pdist2(time.est',simulation.time_samp'));
+    time.ind = sub2ind([length(time.est),length(simulation.time_samp)],1:length(time.est),time.idx);
+end
+
+time.obs_time_to_state_time_relation = zeros(length(simulation.time_samp),length(time.est)); time.obs_time_to_state_time_relation(time.ind) = 1;
+state_mat = eye(size(state.true,2));
+obs_to_state_relation = sparse(kron(state_mat,time.obs_time_to_state_time_relation));
+time.samp = simulation.time_samp;
+
+end
+
+%%
+% &lt;html&gt;&lt;h4&gt; Setup plots &lt;/h4&gt;&lt;/html&gt;
+function [h,h2] = setup_plots(state,time,simulation,symbols)
+
+for i = 1:length(symbols.param); symbols.param{i} = symbols.param{i}(2:end-1); end
+
+figure(1); set(1, 'Position', [0, 200, 1200, 500]);
+
+h2 = subplot(1,3,1); h2.FontSize = 20; h2.Title.String = 'ODE parameters';
+set(gca,'XTick',[1:length(symbols.param)]); set(gca,'XTickLabel',symbols.param);
+hold on; drawnow
+
+for u = 1:2
+    h{u} = subplot(1,3,u+1); cla; plot(time.true,state.true_all(:,u),'LineWidth',2,'Color',[217,95,2]./255); 
+    hold on; plot(simulation.time_samp,state.obs(:,u),'*','Color',[217,95,2]./255,'MarkerSize',10);
+    h{u}.FontSize = 20; h{u}.Title.String = symbols.state{u}(2:end-1); h{u}.XLim = [min(time.est),max(time.est)];
+    h{u}.XLabel.String = 'time'; hold on;
+end
+
+end
+
+%%
+% &lt;html&gt;&lt;h4&gt; Plot results &lt;/h4&gt;&lt;/html&gt;
+function plot_results(h,h2,state,time,simulation,param_proxy_mean,plot_type)
+
+for u = 1:2
+    if strcmp(plot_type,'final')
+        hold on; plot(h{u},time.est,state.proxy.mean(:,u),'Color',[117,112,179]./255,'LineWidth',2);
+    else
+        hold on; plot(h{u},time.est,state.proxy.mean(:,u),'LineWidth',0.1,'Color',[0.8,0.8,0.8]); 
+    end
+    legend(h{u},{'true','observed','estimated'},'Location','southwest'); 
+end
+cla(h2); b = bar(h2,[1:length(param_proxy_mean)],[simulation.ode_param',param_proxy_mean]);
+b(1).FaceColor = [217,95,2]./255; b(2).FaceColor = [117,112,179]./255;
+h2.XLim = [0.5,length(param_proxy_mean)+0.5]; h2.YLimMode = 'auto';   
+legend(h2,{'true','estimated'},'Location','northwest');
+drawnow
+
+end
+</originalCode>
+   <m-file>Lotka_Volterra</m-file>
+   <filename>/Users/nico/Documents/Thesis/Thesis_compact/scalable_dynamics/code_publish/Lotka_Volterra.m</filename>
+   <outputdir>/Users/nico/Documents/Thesis/Thesis_compact/scalable_dynamics/code_publish/html</outputdir>
+</mscript>
