@@ -36,7 +36,7 @@ clear all; close all;
 
 simulation.numb_odes = 100;                                                % number of ODEs
 simulation.state_obs_variance = @(mean)(bsxfun(@times,0.1,ones(size(mean))));% observation noise
-simulation.ode_param = 8;                                                  % true ODE parameters
+simulation.ode_param = 8;                                                  % true ODE parameter
 simulation.final_time = 4;                                                 % end time for integration
 simulation.int_interval = 0.01;                                            % integration interval
 simulation.time_samp = 0:0.125:4;                                          % sample times for observations
