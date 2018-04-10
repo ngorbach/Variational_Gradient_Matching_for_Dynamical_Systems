@@ -1,16 +1,16 @@
-%% Variational Gradient Matching for Dynamical Systems
+%% Variational Gradient Matching for Dynamical Systems: Lorenz 96
 %
 % <<cover_pic.png>>
 %
 % Authors: *Nico Stephan Gorbach* and *Stefan Bauer*, email: nico.gorbach@gmail.com
 %
-% Instructional code for " *Scalable Variational Inference for Dynamical Systems* "
+% Instructional code for the NIPS (2018) paper " *Scalable Variational Inference for Dynamical Systems* "
 % by Nico S. Gorbach, Stefan Bauer and Joachim M. Buhmann.
-% Paper available at <https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf>.
+% The paper is available at <https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf>.
 % Please cite our paper if you use our program for a further publication.
 % Part of the derivation below is described in Wenk et al. (2018).
 %
-% Example dynamical system used in this code: Lorenz 63 System with the *y-dimension unobserved*. The ODE parameters are also unobserved.
+% Example dynamical system used in this code: Lorenz 96 system with a *100 ODEs*, *half* of which are *unobserved*. The ODE parameter is also unobserved.
 
 %% Advantages of Variational Gradient Matching
 % The essential idea of gradient matching (Calderhead et al., 2002) is to match the gradient
@@ -28,39 +28,44 @@
 % source of sophisticated optimization tools.
 %
 
+%%
 % Clear workspace and close figures
 clear all; close all;
 
 %% Simulation Settings
 
-simulation.state_obs_variance = @(mean)(bsxfun(@times,[2,2],ones(size(mean))));% observation noise
-simulation.ode_param = [10,28,2.66667];                                    % true ODE parameters
-simulation.final_time = 20;                                                % end time for integration
+simulation.numb_odes = 100;                                                % number of ODEs
+simulation.state_obs_variance = @(mean)(bsxfun(@times,0.1,ones(size(mean))));% observation noise
+simulation.ode_param = 8;                                                  % true ODE parameters
+simulation.final_time = 4;                                                 % end time for integration
 simulation.int_interval = 0.01;                                            % integration interval
-simulation.time_samp = 0:0.1:simulation.final_time;                        % sample times for observations
-simulation.init_val = -7.*ones(1,3);                                       % state values at first time point
-simulation.state_obs_idx = [1,0,1];                                        % indices of states that are directly observed (Boolean)
+simulation.time_samp = 0:0.125:4;                                          % sample times for observations
+simulation.init_val = zeros(1,simulation.numb_odes);                       % state values at first time point
+simulation.ratio_observed = 0.5;                                            % ratio of observed states
 
 %% User Input
 %
 % <html><h4> Kernel </h4></html>
 
 kernel.param = [10,0.2];                                                   % set values of rbf kernel parameters
-state.derivative_variance = [6,6,6];                                       % gamma for gradient matching model
+state.derivative_variance = 6*ones(1,simulation.numb_odes);                % gamma for gradient matching model
 %%
 % <html><h4> Estimation </h4></html>
-time.est = 0:0.1:20;                                                       % estimation times
+time.est = 0:0.125:4;                                                      % estimation times
 coord_ascent_numb_iter = 10;                                               % number of coordinate ascent iterations
 clamp_obs_state_to_GP_regression = true;                                   % The observed state trajectories are clamped to the trajectories determined by standard GP regression (Boolean)
 
 %%
 % <html><h4> Symbols </h4></html>
-symbols.state = {'[x]','[y]','[z]'};                                       % symbols of states in 'ODEs.txt' file
-symbols.param = {'[\sigma]','[\rho]','[\beta]'};                           % symbols of parameters in 'ODEs.txt' file
+for u = 1:simulation.numb_odes; symbols.state(u) = {['[x_' num2str(u) ']']};end   % symbols of states in 'ODEs.txt' file
+symbols.param = {'[\theta]'};                                              % symbols of parameters in 'ODEs.txt' file
 
 %% Import ODEs
 %
+generate_Lorenz96_ODEs(simulation.numb_odes)
 ode = import_odes(symbols);
+
+%%
 disp('ODEs:'); disp(ode.raw)
 
 %% Mass Action Dynamical Systems
@@ -222,9 +227,9 @@ state = rewrite_odes_as_linear_combination_in_ind_states(state,ode,symbols,coupl
 %
 % where $\hat{Q}$ is the proxy distribution. The proxy distribution that minimizes the KL-divergence (10) depends on the true full conditionals and is given by:
 %
-% $\hat{q}({\boldmath\theta}) \propto \exp \left(~ E_Q \ln p(\boldmath\theta \mid \mathbf{X},\mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma) ~\right) \qquad (11)$
+% $\hat{q}({\boldmath\theta}) \propto \exp \left(~ E_{Q_{-\theta}} \ln p(\boldmath\theta \mid \mathbf{X},\mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma) ~\right) \qquad (11)$
 % 
-% $\hat{q}(\mathbf{x}_u) \propto \exp\left( ~ E_Q \ln p(\mathbf{x}_u \mid \theta, \mathbf{X}_{-u},\mathbf{Y},\phi,\gamma,\sigma) ~ \right) \qquad (12)$.
+% $\hat{q}(\mathbf{x}_u) \propto \exp\left( ~ E_{Q_{-u}} \ln p(\mathbf{x}_u \mid \theta, \mathbf{X}_{-u},\mathbf{Y},\phi,\gamma,\sigma) ~ \right) \qquad (12)$.
 
 %% GP Regression for Observations
 %
@@ -247,9 +252,9 @@ for i = 1:coord_ascent_numb_iter
     %
     % Expanding the proxy distribution in equation (11) for $\boldmath\theta$ yields:
     %
-    % $\hat{q}(\theta) \stackrel{(a)}{\propto} \exp \left( ~E_Q \ln p(\theta \mid \mathbf{X},\mathbf{Y},\phi,\gamma,\sigma) ~ \right)$
+    % $\hat{q}(\theta) \stackrel{(a)}{\propto} \exp \left( ~E_{Q_{-\theta}} \ln p(\theta \mid \mathbf{X},\mathbf{Y},\phi,\gamma,\sigma) ~ \right)$
     %
-    % $\stackrel{(b)}{\propto} \exp \left( ~E_Q  \ln \mathcal{N} \left( \theta; \mathbf{B}_{\theta}^+ ~ \left( '\mathbf{C}_{\phi} \mathbf{C}_{\phi}^{-1} \mathbf{X} - \mathbf{b}_{\theta} \right), ~ \mathbf{B}_{\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\theta}^{+T} \right) ~\right)$,
+    % $\stackrel{(b)}{\propto} \exp \left( ~E_{Q_{-\theta}}  \ln \mathcal{N} \left( \theta; \mathbf{B}_{\theta}^+ ~ \left( '\mathbf{C}_{\phi} \mathbf{C}_{\phi}^{-1} \mathbf{X} - \mathbf{b}_{\theta} \right), ~ \mathbf{B}_{\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\theta}^{+T} \right) ~\right)$,
     %
     % which can be normalized analytically due to its exponential quadratic form. In (a) we recall that the ODE parameters depend only indirectly on the observations $\mathbf{Y}$ through the states $\mathbf{X}$ and in (b) we substitute $p(\boldmath\theta \mid \mathbf{X},\boldmath\phi,\boldmath\gamma)$ by its density given in equation (6).
 
@@ -260,9 +265,9 @@ for i = 1:coord_ascent_numb_iter
     %
     % Expanding the proxy distribution in equation (12) over the individual state $\mathbf{x}_u$:
     %
-    % $\hat{q}(\mathbf{x}_u) \stackrel{(a)}{\propto} \exp\left( ~ E_Q  \ln p(\mathbf{x}_u \mid \theta, \mathbf{X}_{-u},\phi,\gamma) p(\mathbf{x}_u \mid\mathbf{Y},\phi,\sigma) ~ \right)$
+    % $\hat{q}(\mathbf{x}_u) \stackrel{(a)}{\propto} \exp\left( ~ E_{Q_{-u}}  \ln p(\mathbf{x}_u \mid \theta, \mathbf{X}_{-u},\phi,\gamma) p(\mathbf{x}_u \mid\mathbf{Y},\phi,\sigma) ~ \right)$
     %
-    % $\stackrel{(b)}{\propto} \exp\big( ~ E_Q \ln \mathcal{N}\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ \mathbf{b}_u, ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) + E_Q \ln \mathcal{N}\left(\mathbf{x}_u ; \boldmath\mu_u(\mathbf{Y}), \Sigma_u \right) \big)$,
+    % $\stackrel{(b)}{\propto} \exp\big( ~ E_{Q_{-u}} \ln \mathcal{N}\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ \mathbf{b}_u, ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) + E_{Q_{-u}} \ln \mathcal{N}\left(\mathbf{x}_u ; \boldmath\mu_u(\mathbf{Y}), \Sigma_u \right) \big)$,
     %
     % which, once more, can be normalized analytically due to its exponential quadratic form. In (a) we decompose the full conditional into an ODE-informed distribution and a data-informed distribution and in (b) we substitute the ODE-informed distribution $p(\mathbf{x}_u \mid \boldmath\theta, \mathbf{X}_{-u},\boldmath\phi,\boldmath\gamma)$ with its density given by equation (8).
 
@@ -480,7 +485,7 @@ end
 %%
 % <html><h4> Proxy for ODE parameters </h4></html>
 %
-% $\hat{q}(\theta) {\propto} \exp \left( ~E_Q  \ln \mathcal{N} \left( \theta; \mathbf{B}_{\theta}^+ ~ \left( '\mathbf{C}_{\phi} \mathbf{C}_{\phi}^{-1} \mathbf{X} - \mathbf{b}_{\theta} \right), ~ \mathbf{B}_{\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\theta}^{+T} \right) ~\right)$,
+% $\hat{q}(\theta) {\propto} \exp \left( ~E_{Q_{-\theta}}  \ln \mathcal{N} \left( \theta; \mathbf{B}_{\theta}^+ ~ \left( '\mathbf{C}_{\phi} \mathbf{C}_{\phi}^{-1} \mathbf{X} - \mathbf{b}_{\theta} \right), ~ \mathbf{B}_{\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\theta}^{+T} \right) ~\right)$,
 
 function [param_proxy_mean,param_inv_cov] = proxy_for_ode_parameters(state_proxy_mean,Lambda,dC_times_invC,ode_param,symbols)
 
@@ -518,7 +523,7 @@ end
 %%
 % <html><h4> Proxy for individual states </h4></html>
 %
-% $\hat{q}(\mathbf{x}_u) \propto \exp\big( ~ E_Q \ln \mathcal{N}\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ \mathbf{b}_u, ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) + E_Q \ln \mathcal{N}\left(\mathbf{x}_u ; \boldmath\mu_u(\mathbf{Y}), \Sigma_u \right) \big)$,
+% $\hat{q}(\mathbf{x}_u) \propto \exp\big( ~ E_{Q_{-u}} \ln \mathcal{N}\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ \mathbf{b}_u, ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) + E_Q \ln \mathcal{N}\left(\mathbf{x}_u ; \boldmath\mu_u(\mathbf{Y}), \Sigma_u \right) \big)$,
 
 function [state_mean,state_inv_cov] = proxy_for_ind_states(lin_comb,state_mean,...
     ode_param,dC_times_invC,coupling_idx,mu,inv_sigma,state_obs_idx,clamp_obs_state_to_GP_regression)
@@ -563,24 +568,53 @@ end
 end
 
 %%
+% <html><h4> Generate Lorenz 96 ODEs </h4></html>
+function generate_Lorenz96_ODEs(numb_odes)
+
+for i = 1:numb_odes
+    state{i} = ['[x_' num2str(i) ']'];
+end
+param = '[\theta]';
+
+ode{1} = ['(' state{2} ' - ' state{end-1} ') .* ' state{end} ' - ' state{1} ' + ' param];
+ode{2} = ['(' state{3} ' - ' state{end} ') .* ' state{1} ' - ' state{2} ' + ' param];
+for i = 3:numb_odes-1
+    ode{i} = [ '(' state{i+1} ' - ' state{i-2} ') .* ' state{i-1} ' - ' state{i} ' + ' param];
+end
+ode{numb_odes} = ['(' state{1} ' - ' state{end-2} ') .* ' state{end-1} ' - ' state{end} ' + ' param];
+
+dlmwrite('Lorenz96_ODEs.txt',[])
+
+for i = 1:numb_odes
+    dlmwrite('Lorenz96_ODEs.txt',char(ode{i}),'delimiter','','-append')
+end
+
+end
+
+%%
 % <html><h4> Import ODEs </h4></html>
 function ode = import_odes(symbols)
 
-path_ode = './Lorenz63_ODEs.txt';                                                   % path to system of ODEs
+path_ode = './Lorenz96_ODEs.txt';                                                   % path to system of ODEs
 
 ode.raw = importdata(path_ode);
+ode.refined = ode.raw;
 
-for k = 1:length(ode.raw)
-for u = 1:length(symbols.state); ode.raw{k} = strrep(ode.raw{k},[symbols.state{u}],['state(:,' num2str(u) ')']); end 
-for j = 1:length(symbols.param); ode.raw{k} = strrep(ode.raw{k},symbols.param{j},['param(' num2str(j) ')']); end
+for k = 1:length(ode.refined)
+for u = 1:length(symbols.state); ode.refined{k} = strrep(ode.refined{k},[symbols.state{u}],['state(:,' num2str(u) ')']); end 
+for j = 1:length(symbols.param); ode.refined{k} = strrep(ode.refined{k},symbols.param{j},['param(' num2str(j) ')']); end
 end
-for k = 1:length(ode.raw); ode.system{k} = str2func(['@(state,param)(' ode.raw{k} ')']); end
+for k = 1:length(ode.refined); ode.system{k} = str2func(['@(state,param)(' ode.refined{k} ')']); end
 
 end
 
 %%
 % <html><h4> Generate ground truth </h4></html>
 function [state,time,ode,simulation] = generate_ground_truth(time,state,ode,symbols,simulation)
+
+simulation.state_obs_idx = ones(1,simulation.numb_odes); 
+idx = randperm(simulation.numb_odes); idx = idx(1:floor(simulation.numb_odes * simulation.ratio_observed));
+simulation.state_obs_idx(idx) = 0;
 
 time.true=0:simulation.int_interval:simulation.final_time;                 % true times
 
@@ -594,8 +628,7 @@ for i = 1:length(ode.system)
     ode.system_sym(i) = ode.system{i}(state_sym,param_sym);
 end
 
-ode_system_mat = matlabFunction(ode.system_sym','Vars',{state_sym',param_sym'});
-[ToutX,OutX_solver]=ode45(@(t,x) ode_system_mat(x,simulation.ode_param'), time.true, simulation.init_val);
+OutX_solver = create_Lorenz96(min(time.true),max(time.true),time.true(2)-time.true(1),state.derivative_variance',[simulation.ode_param, length(state_sym)])';ToutX = time.true';
 state.true_all=OutX_solver;
 try state.true=state.true_all(itrue,:); catch; state.true = state.true_all(end,:); end
 
@@ -635,16 +668,16 @@ for i = 1:length(symbols.param); symbols.param{i} = symbols.param{i}(2:end-1); e
 
 figure(1); set(1, 'Position', [0, 200, 1600, 800]);
 
-h2 = subplot(2,2,1); h2.FontSize = 20; h2.Title.String = 'ODE parameters';
+h2 = subplot(3,3,1); h2.FontSize = 20; h2.Title.String = 'ODE parameters';
 set(gca,'XTick',[1:length(symbols.param)]); set(gca,'XTickLabel',symbols.param);
 hold on; drawnow
 
 obs_ind = find(simulation.state_obs_idx); u2=0;
-for u = 1:3
-    h{u} = subplot(2,2,u+1); cla; plot(time.true,state.true_all(:,u),'LineWidth',2,'Color',[217,95,2]./255); 
+for u = 1:8
+    h{u} = subplot(3,3,u+1); cla; plot(time.true,state.true_all(:,u),'LineWidth',2,'Color',[217,95,2]./255); 
     hold on; if any(obs_ind==u); u2=u2+1; plot(simulation.time_samp,state.obs(:,u2),'*','Color',[217,95,2]./255,'MarkerSize',10); end
     h{u}.FontSize = 20; h{u}.Title.String = symbols.state{u}(2:end-1); h{u}.XLim = [min(time.est),max(time.est)];
-    hold on;
+    h{u}.XLabel.String = 'time'; hold on;
 end
 
 end
@@ -653,22 +686,22 @@ end
 % <html><h4> Plot results </h4></html>
 function plot_results(h,h2,state,time,simulation,param_proxy_mean,plot_type)
 
-for u = 1:3
+for u = 1:8
     if strcmp(plot_type,'final')
         hold on; plot(h{u},time.est,state.proxy.mean(:,u),'Color',[117,112,179]./255,'LineWidth',2);
     else
         hold on; plot(h{u},time.est,state.proxy.mean(:,u),'LineWidth',0.1,'Color',[0.8,0.8,0.8]); 
     end
     if state.obs_idx(u)
-        legend(h{u},{'true','observed','estimated'},'Location','southwest'); 
+        legend(h{u},{'sample path','observed','estimated'},'Location','northwest','FontSize',10); 
     else
-        legend(h{u},{'true','estimated'},'Location','southwest'); 
+        legend(h{u},{'sample path','estimated'},'Location','northwest','FontSize',10); 
     end
 end
 cla(h2); b = bar(h2,[1:length(param_proxy_mean)+1],[[simulation.ode_param';0],[param_proxy_mean;0]]);
 b(1).FaceColor = [217,95,2]./255; b(2).FaceColor = [117,112,179]./255;
 h2.XLim = [0.5,length(param_proxy_mean)+0.5]; h2.YLimMode = 'auto';   
-legend(h2,{'true','estimated'},'Location','northwest');
+legend(h2,{'true','estimated'},'Location','northwest','FontSize',10);
 drawnow
 
 end
