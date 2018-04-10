@@ -46,8 +46,11 @@ simulation.ratio_observed = 0.5;                                            % ra
 %% User Input
 %
 % <html><h4> Kernel </h4></html>
-
+%
+% Kernel parameters $\phi$:
 kernel.param = [10,0.2];                                                   % set values of rbf kernel parameters
+%%
+% Error variance on state derivatives (i.e. $\gamma$):
 state.derivative_variance = 6*ones(1,simulation.numb_odes);                % gamma for gradient matching model
 %%
 % <html><h4> Estimation </h4></html>
@@ -57,7 +60,11 @@ clamp_obs_state_to_GP_regression = true;                                   % The
 
 %%
 % <html><h4> Symbols </h4></html>
+%
+% States $\mathbf{x}$:
 for u = 1:simulation.numb_odes; symbols.state(u) = {['[x_' num2str(u) ']']};end   % symbols of states in 'ODEs.txt' file
+%%
+% ODE parameters $\theta$:
 symbols.param = {'[\theta]'};                                              % symbols of parameters in 'ODEs.txt' file
 
 %% Import ODEs
@@ -92,7 +99,7 @@ disp('ODEs:'); disp(ode.raw)
 %
 % with $\mathcal{M}_{ki} \subseteq \{ 1, \dots, K\}$ describing the state variables in each factor of the equation (i.e. the functions are linear in parameters and contain arbitrary large products of monomials of the states).
 
-%% Simulate Data
+%% Simulate Trajectory Observations
 %%
 % <html><h4> Generate ground truth by numerical integration </h4></html>
 [state,time,ode,simulation] = generate_ground_truth(time,state,ode,symbols,simulation);
@@ -111,7 +118,7 @@ ode_param.sym.mean = sym('param%d',[length(symbols.param),1]); assume(ode_param.
 % <html><h4> Setup plots </h4></html>
 %
 % Only the state dynamics are (partially) observed.
-[h,h2] = setup_plots(state,time,simulation,symbols);
+[h_states,h_param] = setup_plots(state,time,simulation,symbols);
 
 tic; %start timer
 %% Prior on States and State Derivatives
@@ -142,8 +149,6 @@ tic; %start timer
 %
 % $\mathrm{cov}(\dot{x}_k(t), \dot{x}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t \partial t'} =: C_{\phi_k}''(t,t')$.
 
-[Lambda,dC_times_invC,inv_Cxx,time.est] = kernel_function(kernel,state,time.est);
-
 %% Matching Gradients
 %
 % Given the joint distribution over states and their derivatives (3) as well as the ODEs (2), we therefore have two expressions for the state derivatives:
@@ -158,7 +163,10 @@ tic; %start timer
 %
 % with $\epsilon_0 := \epsilon_2 - \epsilon_1$.
 
+[dC_times_invC,inv_C] = kernel_function(kernel,state,time.est);
+
 %% State Couplings in ODEs
+
 coupling_idx = find_couplings_in_odes(ode,symbols);
 
 %% Rewrite ODEs as Linear Combination in Parameters
@@ -169,7 +177,7 @@ coupling_idx = find_couplings_in_odes(ode,symbols);
 %
 % where matrices $\mathbf{B}_{\boldmath\theta}$ and $\mathbf{b}_{\boldmath\theta}$ are defined such that the ODEs $\mathbf{f}(\mathbf{X},\boldmath\theta)$ are expressed as a linear combination in $\boldmath\theta$.
 
-[ode_param.B,ode_param.b,ode_param.r,ode_param.B_times_Lambda_times_B] = rewrite_odes_as_linear_combination_in_parameters(ode,symbols);
+[ode_param.lin_comb.B,ode_param.lin_comb.b] = rewrite_odes_as_linear_combination_in_parameters(ode,symbols);
 
 %% Posterior over ODE Parameters
 %
@@ -189,7 +197,7 @@ coupling_idx = find_couplings_in_odes(ode,symbols);
 %
 % where matrices $\mathbf{B}_u$ and $\mathbf{b}_u$ are defined such that the expression $\mathbf{f}(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\boldmath\phi} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X}$ is rewritten as a linear combination in the individual state $\mathbf{x}_u$.
 
-state = rewrite_odes_as_linear_combination_in_ind_states(state,ode,symbols,coupling_idx.states);
+[state.lin_comb.B,state.lin_comb.b] = rewrite_odes_as_linear_combination_in_ind_states(ode,symbols,coupling_idx.states);
 
 %% Posterior over Individual States
 %
@@ -239,7 +247,7 @@ state = rewrite_odes_as_linear_combination_in_ind_states(state,ode,symbols,coupl
 %
 % where $\boldmath\mu_k(\mathbf{y}_k) := \sigma_k^{-2} \left(\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1} \right)^{-1} \mathbf{y}_k$ and $\boldmath\Sigma_k ^{-1}:=\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1}$.
 
-[mu,inv_sigma] = GP_regression(state,inv_Cxx,obs_to_state_relation,simulation);
+[mu,inv_sigma] = GP_regression(state,inv_C,obs_to_state_relation,simulation);
 
 %% Coordinate Ascent Variational Gradient Matching
 % 
@@ -258,8 +266,10 @@ for i = 1:coord_ascent_numb_iter
     %
     % which can be normalized analytically due to its exponential quadratic form. In (a) we recall that the ODE parameters depend only indirectly on the observations $\mathbf{Y}$ through the states $\mathbf{X}$ and in (b) we substitute $p(\boldmath\theta \mid \mathbf{X},\boldmath\phi,\boldmath\gamma)$ by its density given in equation (6).
 
-    [param_proxy_mean,param_proxy_inv_cov] = proxy_for_ode_parameters(state.proxy.mean,Lambda,dC_times_invC,ode_param,symbols);
-    if i==1 || ~mod(i,1); plot_results(h,h2,state,time,simulation,param_proxy_mean,'not_final'); end
+    [param_proxy_mean,param_proxy_inv_cov] = proxy_for_ode_parameters(state.proxy.mean,dC_times_invC,ode_param.lin_comb,symbols);
+    
+    if i==1 || ~mod(i,1); plot_results(h_states,h_param,state,time,simulation,param_proxy_mean,'not_final'); end
+    
     %%
     % <html><h4> Proxy for individual states </h4></html>
     %
@@ -277,9 +287,10 @@ end
 
 %%
 % <html><h4> Final result </h4></html>
-plot_results(h,h2,state,time,simulation,param_proxy_mean,'final');
+plot_results(h_states,h_param,state,time,simulation,param_proxy_mean,'final');
 
 %% Time Taken
+
 disp(['time taken: ' num2str(toc/60) ' minutes'])
 
 %% References
@@ -322,7 +333,7 @@ disp(['time taken: ' num2str(toc/60) ' minutes'])
 %
 % $\mathrm{cov}(\dot{x}_k(t), \dot{x}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t \partial t'} =: C_{\phi_k}''(t,t')$.
 
-function [Lambda,dC_times_invC,inv_Cxx,time_est] = kernel_function(kernel,state,time_est)
+function [dC_times_invC,inv_C,A_plus_gamma] = kernel_function(kernel,state,time_est)
 
 kernel.param_sym = sym(['rbf_param%d'],[1,2]); assume(kernel.param_sym,'real');
 kernel.time1 = sym('time1'); assume(kernel.time1,'real'); kernel.time2 = sym('time2'); assume(kernel.time2,'real');
@@ -351,9 +362,9 @@ end
 if any(diag(D)<1e-6); C(logical(eye(size(C,1)))) = C(logical(eye(size(C,1)))) + perturb.*rand(size(C,1),1); end
 [~,D] = eig(C);
 if any(diag(D)<0); error('C has negative eigenvalues!'); elseif any(diag(D)<1e-6); warning('C is badly scaled'); end
-inv_Cxx = inv_chol(chol(C,'lower'));
+inv_C = inv_chol(chol(C,'lower'));
 
-dC_times_invC = dC * inv_Cxx;
+dC_times_invC = dC * inv_C;
 
 % plot GP prior samples
 figure(3); 
@@ -361,11 +372,11 @@ hold on; plot(time_est,mvnrnd(zeros(1,length(time_est)),C(:,:,1),3),'LineWidth',
 h1 = gca; h1.FontSize = 20; h1.XLabel.String = 'time'; h1.YLabel.String = 'state value';
 h1.Title.String = [kernel.name ' kernel'];
 
-% determine \Lambda:
+% determine A_plus_gamma:
 A = ddC - dC_times_invC * Cd;
 inv_Lambda = A + state.derivative_variance(1) .* eye(size(A));
 inv_Lambda = 0.5.*(inv_Lambda+inv_Lambda');
-Lambda = inv_chol(chol(inv_Lambda,'lower'));
+A_plus_gamma = inv_chol(chol(inv_Lambda,'lower'));
 
 end
 
@@ -376,14 +387,14 @@ end
 %
 % where $\boldmath\mu_k(\mathbf{y}_k) := \sigma_k^{-2} \left(\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1} \right)^{-1} \mathbf{y}_k$ and $\boldmath\Sigma_k ^{-1}:=\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1}$.
 
-function [mu_u,inv_sigma_u,state] = GP_regression(state,inv_Cxx,obs_to_state_relation,simulation)
+function [mu_u,inv_sigma_u,state] = GP_regression(state,inv_C,obs_to_state_relation,simulation)
 
 state_obs_variance = simulation.state_obs_variance(state.obs); 
 
 numb_states = size(state.sym.mean,2);
 numb_time_points = size(state.sym.mean,1);
 
-inv_Cxx_tmp = num2cell(inv_Cxx(:,:,ones(1,numb_states)),[1,2]);
+inv_Cxx_tmp = num2cell(inv_C(:,:,ones(1,numb_states)),[1,2]);
 inv_Cxx_blkdiag = sparse(blkdiag(inv_Cxx_tmp{:})); 
 
 dim = size(state_obs_variance,1)*size(state_obs_variance,2);
@@ -432,7 +443,7 @@ end
 %
 % where matrices $\mathbf{B}_{\boldmath\theta}$ and $\mathbf{b}_{\boldmath\theta}$ are defined such that the ODEs $\mathbf{f}(\mathbf{X},\boldmath\theta)$ are expressed as a linear combination in $\boldmath\theta$.
 
-function [B,b,r,B_times_Lambda_times_B] = rewrite_odes_as_linear_combination_in_parameters(ode,symbols)
+function [B,b] = rewrite_odes_as_linear_combination_in_parameters(ode,symbols)
 
 param_sym = sym(['param%d'],[1,length(symbols.param)]); assume(param_sym,'real');
 state_sym = sym(['state%d'],[1,length(symbols.state)]); assume(state_sym,'real');
@@ -455,9 +466,6 @@ for k = 1:length(ode.system)
     b{k} = matlabFunction(b_sym(k,:),'Vars',{state_sym,state0_sym,state_const_sym});
 end
 
-B_times_Lambda_times_B = @(B,Lambda)(B' * B);
-r = @(B,Lambda,dC_times_invC,state,b)(B' * (dC_times_invC * state + b));
-
 end
 
 %%
@@ -467,16 +475,16 @@ end
 %
 % where matrices $\mathbf{B}_u$ and $\mathbf{b}_u$ are defined such that the expression $\mathbf{f}(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\boldmath\phi} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X}$ is rewritten as a linear combination in the individual state $\mathbf{x}_u$.
 
-function state = rewrite_odes_as_linear_combination_in_ind_states(state,ode,symbols,coupling_idx)
+function [B,b] = rewrite_odes_as_linear_combination_in_ind_states(ode,symbols,coupling_idx)
 
 state_sym = sym('state%d',[1,length(symbols.state)]); assume(state_sym,'real');
 param_sym = sym('param%d',[1,length(symbols.param)]); assume(param_sym,'real');
 
 for u = 1:length(symbols.state)
     for k = coupling_idx{u}'
-        [B,b] = equationsToMatrix(ode.system{k}(state_sym,param_sym'),state_sym(:,u));
-        state.lin_comb{u,k}.B = matlabFunction(B,'Vars',{state_sym,param_sym});
-        state.lin_comb{u,k}.b = matlabFunction(b,'Vars',{state_sym,param_sym});
+        [B_local,b_local] = equationsToMatrix(ode.system{k}(state_sym,param_sym'),state_sym(:,u));
+        B{u,k} = matlabFunction(B_local,'Vars',{state_sym,param_sym});
+        b{u,k} = matlabFunction(b_local,'Vars',{state_sym,param_sym});
     end
 end
 
@@ -487,25 +495,23 @@ end
 %
 % $\hat{q}(\theta) {\propto} \exp \left( ~E_{Q_{-\theta}}  \ln \mathcal{N} \left( \theta; \mathbf{B}_{\theta}^+ ~ \left( '\mathbf{C}_{\phi} \mathbf{C}_{\phi}^{-1} \mathbf{X} - \mathbf{b}_{\theta} \right), ~ \mathbf{B}_{\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\theta}^{+T} \right) ~\right)$,
 
-function [param_proxy_mean,param_inv_cov] = proxy_for_ode_parameters(state_proxy_mean,Lambda,dC_times_invC,ode_param,symbols)
+function [param_proxy_mean,param_inv_cov] = proxy_for_ode_parameters(state_proxy_mean,dC_times_invC,lin_com,symbols)
 
-B_global = []; b_global = [];
 state0 = zeros(size(dC_times_invC,1),1);
 param_inv_cov = zeros(length(symbols.param));
 local_mean_sum = zeros(length(symbols.param),1);
 for k = 1:length(symbols.state)
-    B = ode_param.B{k}(state_proxy_mean,state0,ones(size(state_proxy_mean,1),1));
-    local_inv_cov = ode_param.B_times_Lambda_times_B(B,Lambda);
-    b = ode_param.b{k}(state_proxy_mean,state0,ones(size(state_proxy_mean,1),1));
-    local_mean = ode_param.r(B,Lambda,dC_times_invC,state_proxy_mean(:,k),b);
-    param_inv_cov = param_inv_cov + local_inv_cov;
-    local_mean_sum = local_mean_sum + local_mean;
+    B = lin_com.B{k}(state_proxy_mean,state0,ones(size(state_proxy_mean,1),1));
+    b = lin_com.b{k}(state_proxy_mean,state0,ones(size(state_proxy_mean,1),1));
     
-    B_global = [B_global;B];
-    b_tmp = b; if length(b_tmp)==1; b_tmp=zeros(size(dC_times_invC,1),1);end
-    b_global = [b_global;b_tmp];
+    local_inv_cov = B' * B;
+    param_inv_cov = param_inv_cov + local_inv_cov;
+    
+    local_mean = B' * (dC_times_invC * state_proxy_mean(:,k) + b);
+    local_mean_sum = local_mean_sum + local_mean;
 end
 
+% Check consistency of covariance matrix
 [~,D] = eig(param_inv_cov);
 if any(diag(D)<0)
     warning('param_inv_cov has negative eigenvalues!');
@@ -516,6 +522,7 @@ elseif any(diag(D)<1e-3)
     param_inv_cov(logical(eye(size(param_inv_cov,1)))) = param_inv_cov(logical(eye(size(param_inv_cov,1)))) ...
         + perturb.*rand(size(param_inv_cov,1),1);
 end
+
 param_proxy_mean = pinv(param_inv_cov) * local_mean_sum;
 
 end
@@ -540,20 +547,20 @@ for u = state_enumeration
     local_mean_sum = zeros(size(dC_times_invC,1),1);
     for k = coupling_idx{u}'
         if k~=u
-            B = diag(lin_comb{u,k}.B(state_mean,ode_param));
+            B = diag(lin_comb.B{u,k}(state_mean,ode_param));
             if size(B,1) == 1; B = B.*eye(size(dC_times_invC,1)); end
 
             state_inv_cov(:,:,u) = state_inv_cov(:,:,u) + B' * B;
             local_mean_sum = local_mean_sum + B' * (dC_times_invC * state_mean(:,k) ...
-                + lin_comb{u,k}.b(state_mean,ode_param));
+                + lin_comb.b{u,k}(state_mean,ode_param));
         else
-            B = diag(lin_comb{u,k}.B(state_mean,ode_param));
+            B = diag(lin_comb.B{u,k}(state_mean,ode_param));
             if size(B,1) == 1; B = B.*eye(size(dC_times_invC,1)); end
             B = B - dC_times_invC;
 
             state_inv_cov(:,:,u) = state_inv_cov(:,:,u) + B' * B;
             
-            l = lin_comb{u,k}.b(state_mean,ode_param); if length(l)==1; l = zeros(length(local_mean_sum),1); end
+            l = lin_comb.b{u,k}(state_mean,ode_param); if length(l)==1; l = zeros(length(local_mean_sum),1); end
             local_mean_sum = local_mean_sum + B' * l;
         end
     end
@@ -662,46 +669,46 @@ end
 
 %%
 % <html><h4> Setup plots </h4></html>
-function [h,h2] = setup_plots(state,time,simulation,symbols)
+function [h_states,h_param] = setup_plots(state,time,simulation,symbols)
 
 for i = 1:length(symbols.param); symbols.param{i} = symbols.param{i}(2:end-1); end
 
 figure(1); set(1, 'Position', [0, 200, 1600, 800]);
 
-h2 = subplot(3,3,1); h2.FontSize = 20; h2.Title.String = 'ODE parameters';
+h_param = subplot(3,3,1); h_param.FontSize = 20; h_param.Title.String = 'ODE parameters';
 set(gca,'XTick',[1:length(symbols.param)]); set(gca,'XTickLabel',symbols.param);
 hold on; drawnow
 
 obs_ind = find(simulation.state_obs_idx); u2=0;
 for u = 1:8
-    h{u} = subplot(3,3,u+1); cla; plot(time.true,state.true_all(:,u),'LineWidth',2,'Color',[217,95,2]./255); 
+    h_states{u} = subplot(3,3,u+1); cla; plot(time.true,state.true_all(:,u),'LineWidth',2,'Color',[217,95,2]./255); 
     hold on; if any(obs_ind==u); u2=u2+1; plot(simulation.time_samp,state.obs(:,u2),'*','Color',[217,95,2]./255,'MarkerSize',10); end
-    h{u}.FontSize = 20; h{u}.Title.String = symbols.state{u}(2:end-1); h{u}.XLim = [min(time.est),max(time.est)];
-    h{u}.XLabel.String = 'time'; hold on;
+    h_states{u}.FontSize = 20; h_states{u}.Title.String = symbols.state{u}(2:end-1); h_states{u}.XLim = [min(time.est),max(time.est)];
+    h_states{u}.XLabel.String = 'time'; hold on;
 end
 
 end
 
 %%
 % <html><h4> Plot results </h4></html>
-function plot_results(h,h2,state,time,simulation,param_proxy_mean,plot_type)
+function plot_results(h_states,h_param,state,time,simulation,param_proxy_mean,plot_type)
 
 for u = 1:8
     if strcmp(plot_type,'final')
-        hold on; plot(h{u},time.est,state.proxy.mean(:,u),'Color',[117,112,179]./255,'LineWidth',2);
+        hold on; plot(h_states{u},time.est,state.proxy.mean(:,u),'Color',[117,112,179]./255,'LineWidth',2);
     else
-        hold on; plot(h{u},time.est,state.proxy.mean(:,u),'LineWidth',0.1,'Color',[0.8,0.8,0.8]); 
+        hold on; plot(h_states{u},time.est,state.proxy.mean(:,u),'LineWidth',0.1,'Color',[0.8,0.8,0.8]); 
     end
     if state.obs_idx(u)
-        legend(h{u},{'sample path','observed','estimated'},'Location','northwest','FontSize',10); 
+        legend(h_states{u},{'sample path','observed','estimated'},'Location','northwest','FontSize',10); 
     else
-        legend(h{u},{'sample path','estimated'},'Location','northwest','FontSize',10); 
+        legend(h_states{u},{'sample path','estimated'},'Location','northwest','FontSize',10); 
     end
 end
-cla(h2); b = bar(h2,[1:length(param_proxy_mean)+1],[[simulation.ode_param';0],[param_proxy_mean;0]]);
+cla(h_param); b = bar(h_param,[1:length(param_proxy_mean)+1],[[simulation.ode_param';0],[param_proxy_mean;0]]);
 b(1).FaceColor = [217,95,2]./255; b(2).FaceColor = [117,112,179]./255;
-h2.XLim = [0.5,length(param_proxy_mean)+0.5]; h2.YLimMode = 'auto';   
-legend(h2,{'true','estimated'},'Location','northwest','FontSize',10);
+h_param.XLim = [0.5,length(param_proxy_mean)+0.5]; h_param.YLimMode = 'auto';   
+legend(h_param,{'true','estimated'},'Location','northwest','FontSize',10);
 drawnow
 
 end
