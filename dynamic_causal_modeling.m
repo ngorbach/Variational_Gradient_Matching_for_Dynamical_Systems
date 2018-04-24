@@ -1,5 +1,5 @@
-%% Variational Gradient Matching for Dynamical Systems: Lotka-Volterra
-%% .
+%% Variational Gradient Matching for Dynamical Systems: Dynamic Causal Modeling
+%% ,
 %% *Authors*: 
 % *Nico Stephan Gorbach* and *Stefan Bauer*, email: nico.gorbach@gmail.com
 % 
@@ -11,8 +11,10 @@
 % a further publication. Part of the derivation below is described in Wenk et 
 % al. (2018). 
 % 
-% Example dynamical system used in this code: *Lotka-Volterra* system with 
-% *half of the time points* *unobserved*. The ODE parameters are also unobserved.
+% Example dynamical system used in this code:* Dynamic Causal Modeling (*visual 
+% attention system) with *three hidden neuronal- and 12 hidden hemodynamic states*. 
+% The system is affected by *given external inputs* and the states are only *indirectly 
+% observed* through the BOLD signal change equation.
 % 
 % 
 % 
@@ -20,37 +22,53 @@
 %% User Input: Simulation Settings
 % 
 % 
-% * *true ODE parameter*
+% * *Simulation ODEs*
 % 
-%                 Input a row vector of real numbers of size 1 x 4:
+%                 Input the ODEs "type" used to generate the data as a string. 
+% Options: 'nonlinear_forward_modulation_by_attention', 'forward_modulation_and_driven_by_attention'', 
+% 'forward_modulation_by_attention', 'backward_modulation_by_attention', 'backward_modulation_and_driven_by_attention', 
+% 'absent_modulation', 'absent_attention_input', 'absent_photic_input', 'driven_by_attention', 
+% 'photic_input'.
 % 
 % 
 %%
-        simulation.ode_param = [2,1,4,1];    
+        simulation.odes = 'nonlinear_forward_modulation_by_attention';
 %% 
 % **
 % 
-% * *final time for simulation*
+% * *Observed States*
 % 
-%                 Input a positive real number:
+%                 Input a cell vector containing the symbols (characters) 
+% in the '_ODEs.txt' file. Eg: to observe deoxyhemoglobin content, blood volume 
+% and blood flow set simulation.observed_states =   {'q_1','q_3','q_2','v_1','v_3','v_2','f_1','f_3','f_2'}).
 % 
 % 
 
-        simulation.final_time = 2;
+        simulation.observed_states = {};
 %% 
 % **
 % 
-% * *observation noise*
+% * *Final time for simulation*
+% 
+%                 Input a positve real number:
+% 
+% 
+
+        simulation.final_time = 359*3.22;
+%% 
+% **
+% 
+% * *Observation noise*
 % 
 %                 Input a function handle:
 % 
 % 
 
-        simulation.state_obs_variance = @(mean)(bsxfun(@times,[0.5^2,0.5^2],ones(size(mean))));
+        simulation.state_obs_variance = @(x)(repmat(bsxfun(@rdivide,var(x),5),size(x,1),1));
 %% 
 % **
 % 
-% * *time interval between observations*
+% * *Time interval between observations*
 % 
 %                 Input a positive real number:
 % 
@@ -62,25 +80,39 @@
 %% User Input: Estimation
 % 
 % 
-% * *Kernel Parameters *$\mathbf\phi$
+% * *Candidate ODEs*
+% 
+% *            *    Input the ODEs "type" used for estimation as a string. 
+% Options: 'nonlinear_forward_modulation_by_attention', 'forward_modulation_and_driven_by_attention'', 
+% 'forward_modulation_by_attention', 'backward_modulation_by_attention', 'backward_modulation_and_driven_by_attention', 
+% 'absent_modulation', 'absent_attention_input', 'absent_photic_input', 'driven_by_attention', 
+% 'photic_input'.
+% 
+% 
+
+        candidate_odes = 'nonlinear_forward_modulation_by_attention'; 
+%% 
+% **
+% 
+% * *Kernel parameters *$\mathbf\phi$
 % 
 %                 Input a row vector of positive real numbers of size 1 x 
 % 2:
 % 
 % 
 
-        kernel.param = [10,0.2];  
+        kernel.param = [10,0.2];
 %% 
 % **
 % 
 % * *Error variance on state derivatives (i.e.* $\gamma$*)*
 % 
 %                 Input a row vector of positive real numbers of size 1 x 
-% 2:
+% number of ODEs:
 % 
 % 
 
-        state.derivative_variance = [6,6];
+        state.derivative_variance = 6.*ones(11-3,1);
 %% 
 % **
 % 
@@ -91,13 +123,82 @@
 % 
 % 
 
-        time.est = 0:0.1:4;        
+        time.est = 0:3.22:359*3.22;
+%% 
 %% 
 % 
-%% Preprocessing
+% 
+% Preliminary operations
+%%
+close all; clc; addpath('VGM_functions')
+%% 
+% 
+% 
+% 
+% 
+% 
+%% Preprocessing for candidate ODEs
 % 
 %%
-[symbols,simulation,ode,odes_path,coupling_idx,opt_settings,plot_settings] = preprocessing_Lotka_Volterra (simulation);
+[symbols,ode,plot_settings,state,simulation,odes_path,coupling_idx,opt_settings] = ...
+    preprocessing_dynamic_causal_modeling (simulation,candidate_odes,state);
+%% 
+% 
+% 
+% 
+% 
+% 
+%% Simulate Trajectories
+% 
+% 
+% * *Preprocessing for true ODEs*
+% 
+% **
+%%
+    [symbols_true,ode_true] = preprocessing_dynamic_causal_modeling (simulation,simulation.odes,state);
+%% 
+% 
+% 
+% Sample ODE parameters that lead to non-diverging trajectories:
+% 
+% 
+
+non_diverging_trajectories = false; i = 0;
+while ~non_diverging_trajectories 
+%% 
+% **
+% 
+% * *Sample ODE parameters*
+% 
+%             non-selfinhibitory neuronal couplings (sampled uniformily in 
+% the interval $[-0.8,0.8]$):
+% 
+% 
+
+    simulation.ode_param = -0.8 + (0.8-(-0.8)) * rand(1,length(symbols_true.param));
+    % simulation.ode_param = [0.46,0.13,0.39,0.26,0.5,0.26,0.1,1.25,-1,-1,-1];       % published ODE parameters (slightly modified from Stephan et al., 2008)
+%% 
+%             
+% 
+%             self-inhibitory neuronal couplings set to -1:
+% 
+% 
+
+    simulation.ode_param(end-2:end) = -1;
+%% 
+% **
+% 
+% * *Numerical integration*
+% 
+% **
+
+    try
+        simulation_old = simulation;
+        [simulation,obs_to_state_relation,fig_handle,plot_handle] = simulate_state_dynamics_dcm(...
+            simulation,symbols_true,ode_true,time,plot_settings,state.ext_input,'plot');
+        non_diverging_trajectories = 1;
+    end
+end
 %% 
 % 
 %% Mass Action Dynamical Systems
@@ -142,12 +243,6 @@
 % and contain arbitrary large products of monomials of the states).
 %% 
 % 
-%% Simulate Trajectories
-% 
-%%
-[simulation,obs_to_state_relation,fig_handle,plot_handle] = simulate_state_dynamics(simulation,state,symbols,ode,odes_path,time,plot_settings);
-%% 
-% 
 % 
 % start timer
 %%
@@ -160,12 +255,10 @@ tic;
 % Gradient matching with Gaussian processes assumes a joint Gaussian process 
 % prior on states and their derivatives:
 % 
-% 
-% 
 % $\left(\begin{array}{c} \mathbf{X} \\ \dot{\mathbf{X}} \end{array}\right) 
 % \sim \mathcal{N} \left(\begin{array}{c} \mathbf{X} \\ \dot{\mathbf{X}} \end{array}~;~\begin{array}{c} 
 % \mathbf{0} \\\mathbf{0} \end{array}~,~\begin{array}{cc} \mathbf{C}_{\mathbf\phi} 
-% & \mathbf{C}_{\mathbf\phi}' \\ '\mathbf{C}_\mathbf{\phi} & \mathbf{C}_{\mathbf\phi}'' 
+% & \mathbf{C}_{\mathbf\phi}' \\ '\mathbf{C}_{\mathbf\phi} & \mathbf{C}_{\mathbf\phi}'' 
 % \end{array} \right) \qquad (3)$,
 % 
 % with         
@@ -269,25 +362,86 @@ tic;
 % \left( \sum_k \mathbf{B}_{\mathbf{\theta} k}^T ~\left( {'\mathbf{C}_{\mathbf{\phi} 
 % k}} \mathbf{C}_{\mathbf{\phi} k}^{-1} \mathbf{X}_k -\mathbf{b}_{\mathbf{\theta} 
 % k} \right) \right), ~ \mathbf{B}_{\mathbf{\theta}}^+ ~(\mathbf{A} + \mathbf{I}\gamma) 
-% ~ \mathbf{B}_{\mathbf{\theta}}^{+T}\right) \qquad (6)$.
+% ~ \mathbf{B}_{\mathbf{\theta}}^{+T} \qquad (6)$.
 %% 
 % 
-%% Rewrite ODEs as Linear Combination in Individual States
+%% Rewrite Hemodynamic ODEs as Linear Combination in (monotonic functions of) Individual Hemodynamic States
 % 
 % 
-% Since, according to the mass action dynamics (equation 2), the ODEs are 
-% _*linear in the individual state_* $\mathbf{x}_u$ we can rewrite the ODE $\mathbf{f}_k(\mathbf{X},\mathbf\theta)$ 
-% as a linear combination in the individual state $\mathbf{x}_u$:
+% * *Deoxyhemoglobin content *
 % 
-% $\mathbf{R}_{uk} \mathbf{x}_u + \mathbf{r}_{uk} \stackrel{!}{=}\mathbf{f}_k(\mathbf{X},\mathbf{\theta})$,
+%                 Rewrite the BOLD signal change equation as a linear combination 
+% in a monotonic function of the deoxyhemoglobin content $$\exp(\mathbf{q})$$:
 % 
-% where matrices $ \mathbf{R}_{uk}$ and  $\mathbf{r}_{uk}$ are defined such 
-% that the ODE $\mathbf{f}_k(\mathbf{X},\mathbf{\theta})$ is expressed as a linear 
-% combination in the individual state $\mathbf{x}_u$.
+%                 $$\mathbf{R}_{q~\mathbf\lambda} ~ \exp(\mathbf{q}) ~+ ~ 
+% \mathbf{r}_{v~\mathbf\lambda} \stackrel{!}{=} ~\mathbf\lambda(\mathbf{q},\mathbf{v})$$.
 % 
 % 
 %%
-[state.lin_comb.R,state.lin_comb.r] = rewrite_odes_as_linear_combination_in_ind_states(ode,symbols,coupling_idx.states);
+         [state.deoxyhemo.R,state.deoxyhemo.r] = rewrite_bold_signal_eqn_as_linear_combination_in_deoxyhemo(symbols);
+%% 
+% **
+% 
+% * *Blood volume*
+% 
+%                 Rewrite the deoxyhemoglobin content ODE as a linear combination 
+% in a monotonic function of the blood volume $\exp\left( 17 / 8 ~\mathbf{v}\right)$:
+% 
+%                  $\mathbf{R}_{v\dot{q}} ~\exp\left( 17 / 8 ~\mathbf{v}\right) 
+% ~+~ \mathbf{r}_{v\dot{q}} \stackrel{!}{=} \mathbf{f}_{\dot{q}}(\mathbf{X},\mathbf\theta)$.
+% 
+% 
+
+         [state.vol.R,state.vol.r] = rewrite_deoxyhemo_ODE_as_linear_combination_in_vol(ode,symbols);
+%% 
+% **
+% 
+% * *Blood flow*
+% 
+%                 Rewrite the blood volume ODE as a linear combination in 
+% a monotonic function of the blood flow $\exp(\mathbf{f})$:
+% 
+%                    $$\mathbf{R}_{f~\dot{v}} ~ \exp(\mathbf{f}) + \mathbf{r}_{f~\dot{v}} 
+% \stackrel{!}{=} \mathbf{f}_{\dot{v}}(\mathbf{X},\mathbf\theta)$$.    
+% 
+% 
+
+         [state.flow.R,state.flow.r] = rewrite_vol_ODE_as_linear_combination_in_flow(ode,symbols);
+%% 
+% * *Vasosignalling*
+% 
+%                 Rewrite the blood flow and vasoginalling ODEs as a linear 
+% combination in vasosignalling $\mathbf{s}$:
+% 
+%                     $$\mathbf{R}_{s\dot{f}} ~\mathbf{s} + \mathbf{r}_{s\dot{f}} 
+% \stackrel{!}{=} \mathbf{f}_{\dot{f}}(\mathbf{X},\mathbf\theta)$$.
+% 
+%                     $$\mathbf{R}_{s\dot{s}}~ \mathbf{s} + \mathbf{r}_{s\dot{s}} 
+% \stackrel{!}{=} \mathbf{f}_{\dot{s}}(\mathbf{X},\mathbf\theta)$$.
+% 
+% 
+
+        [state.vaso.R,state.vaso.r] = rewrite_vaso_and_flow_odes_as_linear_combination_in_vaso(ode,symbols);
+%% 
+% 
+% 
+% 
+%% Rewrite Neuronal ODEs as Linear Combination in Individual Neuronal States
+% 
+% 
+% We rewrite the ODE(s) $$\mathbf{f}_k(\mathbf{X},\mathbf\theta)$$ as a linear 
+% combination in the individual state $$\mathbf{n}_u$$:
+% 
+%         $$\mathbf{R}_{uk}  \mathbf{n}_u + \mathbf{r}_{uk} \stackrel{!}{=} 
+% \mathbf{f}_{k}(\mathbf{X},\mathbf\theta)$$,
+% 
+% where matrices $$\mathbf{R}_{uk}$$ and $\mathbf{r}_{uk}$ are defined such 
+% that the ODE $$\mathbf{f}_k(\mathbf{X},\mathbf\theta)$$ is expressed as a linear 
+% combination in the individual state $$\mathbf{n}_u$$.
+% 
+% 
+%%
+[state.neuronal.R,state.neuronal.r] = rewrite_odes_as_linear_combination_in_ind_neuronal_states(ode,symbols,coupling_idx.states);
 %% 
 % 
 %% Posterior over Individual States
@@ -380,6 +534,15 @@ tic;
 % \ln p(\mathbf{x}_u\mid \mathbf{\theta}, \mathbf{X}_{-u},\mathbf{Y},\mathbf{\phi},\gamma,\mathbf{\sigma}) 
 % ~ \right)\qquad (12)$.
 %% 
+%% 
+%% Denoising BOLD Observations
+%% 
+% We denoise the BOLD observation by standard GP regression.
+% 
+% 
+%%
+bold_response.denoised_obs = denoising_BOLD_observations(simulation.bold_response{:,{'n_1','n_3','n_2'}},inv_C,symbols,simulation);
+%% 
 % 
 %% Fitting observations of state trajectories
 % 
@@ -413,24 +576,192 @@ tic;
 % 
 % 
 % * *Initialize the state estimation by the GP regression posterior*
+% 
+% **
 %%
-            state.proxy.mean = array2table([time.est',mu],'VariableNames',['time',symbols.state_string]);
+state.proxy.mean = array2table([time.est',mu],'VariableNames',['time',symbols.state_string]);
+bold_response.obs_old = bold_response.denoised_obs;
+ode_param.proxy.mean = zeros(length(symbols.param),1);
 %% 
 % **
 % 
 % * *Coordinate ascent*
-
+% 
+% **
+%%
             for i = 1:opt_settings.coord_ascent_numb_iter
 %% 
 % 
+%% 
+%% Proxy for Hemodynamic States
+%   
 % 
-% * *Proxy for ODE parameters*
+% Determine the proxies for the states, starting with deoxyhemoglobin followed 
+% by blood volume, blood flow and finally vasosignalling. The information flow 
+% in the hemodynamic system is shown in its factor graph below:
+% 
+% .
+% 
+% The model inversion in the hemodynmic factor graph above occurs locally 
+% w.r.t. individual states. Given the expression for the BOLD signal change equation, 
+% we invert the BOLD signal change equation analytically to determine the deoxyhemoglobin 
+% content $$\mathbf{q}$$ (1). The newly inferred deoxyhemoglobin content $$\mathbf{q}$$ 
+% influences the expression for the factor associated with the change in deoxyhemoglobin 
+% content $$\mathbf{h}_{\dot{\mathbf{q}}}$$, which we subsequently invert analytically 
+% to infer the blood volume $\mathbf{v}$ (2). Thereafter, we infer the blood flow 
+% $$\mathbf{f}$$ (3) by inverting the factors associated with the change in blood 
+% volume $$\mathbf{h}_{\dot{\mathbf{v}}}$$ as well as vasosignalling $$\mathbf{h}_{\dot{\mathbf{s}}}$$, 
+% followed by inferring vasosignalling $$\mathbf{s}$$ (4) by inverting the factors 
+% associated with blood flow induction $$\mathbf{h}_{\dot{\mathbf{f}}}$$ and vasosignalling 
+% $$\mathbf{h}_{\dot{\mathbf{s}}}$$. Finally, the neuronal dynamics (5) are learned, 
+% in part, by inverting the factor associated with vasosignalling $$\mathbf{h}_{\dot{\mathbf{s}}}$$. 
+% The typical trajectories of each of the states are shown (red) together with 
+% their iterative approximation (grey lines) obtained by graphical DCM.
+% 
+% 
+% 
+% * *Proxy for deoxyhemolgobin content*
+% 
+%                 Damping is required since we invert only the factor for 
+% the BOLD signal change equation w.r.t. a monotonic function of deoxyhemoglobin 
+% content $\exp( \mathbf{q})$.
+% 
+% 
+% 
+%                            * Undamped proxy:*
+% 
+% **
+%%
+                state_proxy_undamped = proxy_for_deoxyhemoglobin_content(state.deoxyhemo,state.proxy.mean{:,symbols.state_string},...
+                    bold_response.denoised_obs,symbols,A_plus_gamma_inv,opt_settings);
+%% 
+%                            * *
+% 
+% *                            Damped proxy:*
+% 
+% **
+
+                state.proxy.mean{:,{'q_1','q_3','q_2'}} = (1-opt_settings.damping) * state.proxy.mean{:,{'q_1','q_3','q_2'}} + ...
+                    opt_settings.damping * state_proxy_undamped;
+%% 
+% 
+% 
+% * *Proxy for blood volume*
+% 
+% *              *    Damping is required since we invert only the a subset 
+% of ODEs w.r.t. a monotonic function of blood volume $\exp\left( 17/ 8 ~ \mathbf{v} 
+% \right)$.
+% 
+% *                            *
+% 
+% *                            Undamped proxy:*
+% 
+% **
+
+                state_proxy_undamped = proxy_for_blood_volume(state.vol,dC_times_invC,state.proxy.mean{:,symbols.state_string},...
+                    ode_param.proxy.mean,symbols,A_plus_gamma_inv,opt_settings);
+%% 
+%                             
+% 
+% *                            Damped proxy:*
+% 
+% **
+
+                state.proxy.mean{:,{'v_1','v_3','v_2'}} = (1-opt_settings.damping) * state.proxy.mean{:,{'v_1','v_3','v_2'}} + ...
+                    opt_settings.damping * state_proxy_undamped;
+%% 
+% 
+% 
+% * *Proxy for blood flow*
+% 
+%                 Damping is required since we invert only the a subset of 
+% ODEs w.r.t. a mononic function of blood flow $\exp(\mathbf{f})$.
+% 
+%                             
+% 
+% *                            Undamped proxy:*
+% 
+% **
+
+                state_proxy_undamped = proxy_for_blood_flow(state.flow,dC_times_invC,state.proxy.mean{:,symbols.state_string},...
+                    ode_param.proxy.mean,symbols,A_plus_gamma_inv,opt_settings);
+%% 
+%                             
+% 
+% *                            Damped proxy:*
+% 
+% **
+
+                state.proxy.mean{:,{'f_1','f_3','f_2'}} = (1-opt_settings.damping) * state.proxy.mean{:,{'f_1','f_3','f_2'}} + ...
+                    opt_settings.damping * state_proxy_undamped;
+%% 
+% **
+% 
+% * *Proxy for vasosignalling*
+% 
+%                 No damping is required because we invert all ODEs w.r.t. 
+% vasosingalling $\mathbf{s}$.
+% 
+% 
+
+                state.proxy.mean{:,{'s_1','s_3','s_2'}} = proxy_for_vasosignalling(state.vaso,dC_times_invC,...
+                    state.proxy.mean{:,symbols.state_string},ode_param.proxy.mean,symbols,A_plus_gamma_inv,opt_settings);
+%% 
+% 
+% 
+% 
+%%         Proxy for Neuronal States
+% 
+% 
+% *            *Determine the proxies for the neuronal states. An example 
+% of the information flow in the neuronal part of the nonlinear forward modulating 
+% (nonlin_fwd_mod) is shown in its factor graph below:
+% 
+% 
+% 
+% .
+% 
+%                  
+% 
+%                            In the neuronal factor graph (for the nonlinear 
+% forwad modulation) above each individual state appears linear in every factor 
+% in the neuronal model. We can therefore analytically invert every factor to 
+% determine the neuronal state. The typical trajectories of each of the states 
+% are shown (red) together with their iterative approximation (grey lines) obtained 
+% by variational gradient matching.
+% 
+% 
+% 
+% No damping is required because we invert all ODEs w.r.t. neuronal populations 
+% $\mathbf{n}$.
+% 
+% 
+%%
+                state.proxy.mean{:,{'n_1','n_3','n_2'}} = proxy_for_neuronal_populations(state.neuronal,...
+                    state.proxy.mean{:,symbols.state_string},ode_param.proxy.mean',dC_times_invC,...
+                    coupling_idx.states,symbols,A_plus_gamma_inv,opt_settings);
+%% 
+% **
+% 
+% **
+% 
+% Keep initial value at zero:
+% 
+% **
+%%
+                state_idx = cellfun(@(x) ~strcmp(x(1),'u'),symbols.state_string);
+                state.proxy.mean{:,symbols.state_string(state_idx)} = bsxfun(@minus,state.proxy.mean{:,symbols.state_string(state_idx)},...
+                    state.proxy.mean{1,symbols.state_string(state_idx)});
+%% *            *
+%% **
+%% *Proxy for ODE parameters*
+% **
 % 
 %                     Expanding the proxy distribution in equation (11) for 
 % $$\mathbf{\theta}$$ yields:
 % 
 %                            $\hat{q}(\mathbf{\mathbf\theta}) \propto \exp 
-% \left( ~E_{Q_{-\mathbf\theta}}     \ln p(\mathbf\theta \mid \mathbf{X},\mathbf{Y},\mathbf\phi,\gamma,\mathbf\sigma) 
+% \left( ~E_{Q_{-\mathbf\theta}}     \ln p(\theta \mid \mathbf{X},\mathbf{Y},\mathbf\phi,\gamma,\mathbf\sigma) 
 % ~     \right) \\ \qquad= \exp \left( ~E_{Q_{-\mathbf{\theta}}} \ln \mathcal{N}\left(\mathbf{\theta} 
 % ; \left(    \mathbf{B}_{\mathbf{\theta}}^T \mathbf{B}_{\mathbf{\theta}} \right)^{-1} 
 % \left( \sum_k    \mathbf{B}_{\mathbf{\theta} k}^T ~ \left( {'\mathbf{C}_{\mathbf{\phi} 
@@ -442,61 +773,77 @@ tic;
 % with its density given in equation (6).
 % 
 % 
-
-             [param_proxy_mean,param_proxy_inv_cov] = proxy_for_ode_parameters(state.proxy.mean{:,symbols.state_string},...
-                    dC_times_invC,ode_param.lin_comb,symbols,A_plus_gamma_inv,opt_settings);
-%% 
 % 
-% 
-% Intermediate results
-% 
-% 
-
-            if i==1 || ~mod(i,1)
-                plot_results(fig_handle,state.proxy,simulation,param_proxy_mean,plot_handle,symbols,plot_settings,'not_final');
-            end           
-%% 
-% **
-% 
-% * *Proxy for individual states*
-% 
-%                 Expanding the proxy distribution in equation (12) over 
-% the individual state $$\mathbf{x}_u$$:
-% 
-%                 $\hat{q}(\mathbf{x}_u) \stackrel{(a)}{\propto} \exp \left( 
-% ~ E_{Q_{-u}}  \ln ( p(\mathbf{x}_u \mid \mathbf\theta, \mathbf{X}_{-u},\mathbf\phi,\gamma) 
-% p(\mathbf{x}_u  \mid\mathbf{Y},\mathbf\phi,\mathbf\sigma) ) ~ \right)\\ \qquad 
-% ~ \stackrel{(b)}{=} \exp\big( ~ E_{Q_{-u}} \ln     \mathcal{N}\left(\mathbf{x}_u 
-% ; -\mathbf{B}_{u}^+ \mathbf{b}_u,     ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) 
-% ~     \mathbf{B}_u^{+T} \right) + E_{Q_{-u}} \ln    \mathcal{N}\left(\mathbf{x}_u 
-% ; \mathbf\mu_u(\mathbf{Y}), \mathbf\Sigma_u    \right) \big)\\ \qquad ~= \exp\big( 
-% ~ E_{Q_{-u}} \ln                \mathcal{N}\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ 
-% \mathbf{b}_u,                ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) 
-% ~                \mathbf{B}_u^{+T} \right) + E_{Q_{-u}} \ln                \mathcal{N}\left(\mathbf{x}_u 
-% ; \mathbf\mu_u(\mathbf{Y}), \mathbf{\sigma}_u                \right) \big)$.
-% 
-%                 In (a) we decompose the full conditional nto an ODE-informed 
-% distribution and a data-informed distribution and in (b) we substitute the ODE-informed 
-% distribution $p(\mathbf{x}_u \mid \mathbf\theta, \mathbf{X}_{-u},\mathbf\phi,\gamma)$ 
-% with its density given by equation (8).
-% 
-% 
-
-            [state.proxy.mean{:,symbols.state_string},state.proxy.inv_cov] = proxy_for_ind_states(state.lin_comb,...
-                state.proxy.mean{:,symbols.state_string},param_proxy_mean',dC_times_invC,coupling_idx.states,symbols,mu,...
-                inv_sigma,simulation.observed_states,A_plus_gamma_inv,opt_settings);
-%% 
-% 
-
-end
-%% 
-% **
-% 
-% Final results
+%                     No damping is required because we invert all ODEs w.r.t. 
+% neuronal couplings $\mathbf{\theta}$.
 % 
 % 
 %%
-            plot_results(fig_handle,state.proxy,simulation,param_proxy_mean,plot_handle,symbols,plot_settings,'final');
+            if i>200 || i==opt_settings.coord_ascent_numb_iter
+                [ode_param.proxy.mean,ode_param.proxy.inv_cov] = proxy_for_ode_parameters(...
+                    state.proxy.mean{:,symbols.state_string},dC_times_invC,ode_param.lin_comb,...
+                    symbols,A_plus_gamma_inv,opt_settings);
+            end
+%% **
+%% *            *
+%% *Intercept due to Confounding Effects*
+%                    The BOLD response is given by:
+% 
+%                         $\mathbf{y} = \mathbf{\lambda}(\mathbf{q},\mathbf{v}) 
+% + \mathbf{\mathcal{X} ~\mathbf{\beta}$,
+% 
+%                     where $\mathbf{y}$ are the BOLD observations, $ \mathbf{\lambda}(\mathbf{q},\mathbf{v})$ 
+% is the BOLD signal change equation and the matrix $\mathcal{X}$ is given. The 
+% intercept is determined by a minimum least squares estimator:
+% 
+%                         $\mathbf{\mathcal{X}} ~\hat{\beta} := \mathbf{\mathcal{X}} 
+% ( \mathbf{\mathcal{X}}^T \mathbf{\mathcal{X}} )^{-1} \mathbf{\mathcal{X}}^T 
+% (\mathbf{y} - \mathbf{\lambda}(\mathbf{q},\mathbf{v}))$.
+% 
+% 
+%%
+            bold_signal_change = bold_signal_change_eqn(state.proxy.mean{:,{'v_1','v_3','v_2'}},state.proxy.mean{:,{'q_1','q_3','q_2'}});
+            intercept = simulation.X0 * (simulation.X0' * simulation.X0)^(-1) * simulation.X0' * (bold_response.obs_old-bold_signal_change);
+            bold_response.denoised_obs = bold_response.obs_old + intercept;
+%% 
+% 
+% 
+% 
+% 
+% Intermediate Results:
+% 
+% 
+%%
+            if i==1 || ~mod(i,20)
+                plot_results(fig_handle,state.proxy,simulation,ode_param.proxy.mean,plot_handle,symbols,plot_settings,'not_final');
+            end
+%% 
+% 
+%%
+end
+%% **
+%% **
+%% *Numerical Integration with Estimated ODE Parameters*
+% **
+% 
+% See whether we actually fit the BOLD responses well. Curves are shown in 
+% black.
+% 
+% 
+%%
+simulation2 = simulation_old; simulation2.ode_param = ode_param.proxy.mean';
+[simulation2,obs_to_state_relation] = simulate_state_dynamics_dcm(simulation2,symbols,ode,time,...
+    plot_settings,state.ext_input,'no plot');
+state.proxy.num_int = simulation2.state;
+%% 
+% **
+% 
+% Final Results
+% 
+% 
+
+plot_results(fig_handle,state.proxy,simulation,ode_param.proxy.mean,plot_handle,symbols,...
+    plot_settings,'final',simulation2.bold_response_true,simulation.odes,candidate_odes);
 %% 
 % 
 %% Time Taken
@@ -530,4 +877,5 @@ disp(['time taken: ' num2str(toc) ' seconds'])
 % 
 % 
 % 
-% The authors in bold font have contributed equally to their respective papers.
+% The authors in *bold font* have contributed equally to their respective 
+% papers.

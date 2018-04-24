@@ -1,2 +1,2 @@
-[\theta_1].*[prey] - [\theta_2].*[prey].*[predator]
--[\theta_3].*[predator] + [\theta_4].*[prey].*[predator]
+[theta_1].*[x_1] - [theta_2].*[x_1].*[x_2]
+-[theta_3].*[x_2] + [theta_4].*[x_1].*[x_2]
