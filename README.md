@@ -13,3 +13,7 @@ Run one of the Matlab scripts *VGM_for_Lotka_Volterra.m*, *VGM_for_Lorenz96.m* a
 The symbolic (Matlab) toolbox is required.
 
 The code documentation is contained in the folder "docs".
+
+Some results:
+
+![Alt text](docs/VGM_for_Lotka_Volterra_42-eps-converted-to.pdf)
