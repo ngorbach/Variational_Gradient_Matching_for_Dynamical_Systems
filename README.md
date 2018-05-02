@@ -14,6 +14,9 @@ The symbolic (Matlab) toolbox is required.
 
 The code documentation is contained in the folder "docs".
 
+
+
+
 Some results:
 
 **Lotka-Volterra**:
@@ -27,3 +30,7 @@ Some results:
 **Lorenz Attractor**:
 
 ![Alt text](docs/sample_results/VGM_for_Lorenz_Attractor.png)
+
+**Dynamic Causal Modeling**:
+
+![Alt text](docs/sample_results/VGM_for_dynamic_causal_modeling.png)
