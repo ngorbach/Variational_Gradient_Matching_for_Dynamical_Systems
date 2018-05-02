@@ -1,3 +1,4 @@
+<span style="font-family: 'Minion Pro';">
 # Variational Gradient Matching for Dynamical Systems
 
 ![Alt text](docs/logo.png)
@@ -13,3 +14,4 @@ Run one of the Matlab scripts "VGM_for_Lotka_Volterra.m", "VGM_for_Lorenz96.m" a
 The symbolic (Matlab) toolbox is required.
 
 The code documentation is contained in the folder "docs".
+</span>
