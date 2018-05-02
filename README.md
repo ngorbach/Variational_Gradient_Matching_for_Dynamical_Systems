@@ -16,4 +16,4 @@ The code documentation is contained in the folder "docs".
 
 Some results:
 
-![Alt text](docs/VGM_for_Lotka_Volterra_42-eps-converted-to.pdf)
+![Alt text](docs/VGM_for_Lotka_Volterra.png)
