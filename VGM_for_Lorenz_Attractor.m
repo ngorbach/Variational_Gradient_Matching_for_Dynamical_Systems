@@ -9,8 +9,10 @@
 % Instructional code for the NIPS (2018) paper <https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf 
 % Scalable Variational Inference for Dynamical Systems> by Nico S. Gorbach, Stefan 
 % Bauer and Joachim M. Buhmann. Please cite our paper if you use our program for 
-% a further publication. Part of the derivation below is described in Wenk et 
-% al. (2018). 
+% a further publication. The derivations in this document are also given in the 
+% doctoral thesis <https://www.research-collection.ethz.ch/handle/20.500.11850/261734 
+% https://www.research-collection.ethz.ch/handle/20.500.11850/261734> as well 
+% as in parts of Wenk et al. (2018).
 % 
 % Example dynamical system used in this code:* Lorenz attractor* system with 
 % the* y-dimension unobserved*. The ODE parameters are also unobserved.
@@ -66,7 +68,7 @@
         simulation.interval_between_observations = 0.1;
 %% 
 % **
-%% User Input: Estimation
+%% User Input: Estimation Settings
 % 
 % 
 % * *Kernel parameters *$\mathbf\phi$
@@ -528,6 +530,10 @@ disp(['time taken: ' num2str(toc) ' seconds'])
 % 
 %% References
 % 
+% 
+% Gorbach, N.S.  Validation and Inference of Structural Connectivity and 
+% Neural Dynamics with MRI data. 2018. ETH Zürich Doctoral Thesis. <https://www.research-collection.ethz.ch/handle/20.500.11850/261734 
+% https://www.research-collection.ethz.ch/handle/20.500.11850/261734>. 
 % 
 % *Gorbach, N.S. , Bauer, S. *and Buhmann, J.M., Scalable Variational Inference 
 % for Dynamical Systems. 2017a. Neural Information Processing Systems (NIPS). 
