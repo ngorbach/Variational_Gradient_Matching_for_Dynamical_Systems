@@ -16,8 +16,14 @@ The code documentation is contained in the folder "docs".
 
 Some results:
 
+**Lotka-Volterra**:
+
 ![Alt text](docs/sample_results/VGM_for_Lotka_Volterra.png)
 
+**Lorenz 96**:
+
 ![Alt text](docs/sample_results/VGM_for_Lorenz96.png)
+
+**Lorenz Attractor**:
 
 ![Alt text](docs/sample_results/VGM_for_Lorenz_Attractor.png)
