@@ -1,5 +1,7 @@
 # Variational Gradient Matching for Dynamical Systems
 
+![Alt text](docs/logo.png)
+
 Authors: Nico Stephan Gorbach and Stefan Bauer, email: nico.gorbach@gmail.com
 
 Sample code for the NIPS (2018) paper "*Scalable Variational Inference for Dynamical Systems*" by Nico S. Gorbach, Stefan Bauer and Joachim M. Buhmann.
