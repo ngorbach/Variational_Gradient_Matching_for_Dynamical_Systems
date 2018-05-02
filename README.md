@@ -18,4 +18,6 @@ Some results:
 
 ![Alt text](docs/sample_results/VGM_for_Lotka_Volterra.png)
 
+![Alt text](docs/sample_results/VGM_for_Lorenz96.png)
+
 ![Alt text](docs/sample_results/VGM_for_Lorenz_Attractor.png)
