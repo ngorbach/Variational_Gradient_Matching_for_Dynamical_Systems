@@ -13,9 +13,9 @@ odes_path = ['dcm/ODEs/' candidate_odes '.txt'];
 symbols_raw = importdata(['dcm/ODEs/' candidate_odes '_symbols.mat']);
 
 % Refine symbols
-symbols.state = cell2sym(cellfun(@(x) sym(x([2:end-1])),symbols_raw.state,'UniformOutput',false));
-symbols.state_string = cellfun(@(x) x([2:end-1]),symbols_raw.state,'UniformOutput',false);
-symbols.param = cell2sym(cellfun(@(x) sym(x([2:end-1])),symbols_raw.param,'UniformOutput',false));
+symbols.state = cell2sym(cellfun(@(x) sym(x(2:end-1)),symbols_raw.state,'UniformOutput',false));
+symbols.state_string = cellfun(@(x) x(2:end-1),symbols_raw.state,'UniformOutput',false);
+symbols.param = cell2sym(cellfun(@(x) sym(x(2:end-1)),symbols_raw.param,'UniformOutput',false));
 
 %%
 % observed time points:
