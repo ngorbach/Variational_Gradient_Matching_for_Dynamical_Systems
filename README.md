@@ -25,7 +25,7 @@ The symbolic (Matlab) toolbox is required.
 <hr>
 
 
-<p align="left">
+<div align="left">
 
 Some results:
 =======
