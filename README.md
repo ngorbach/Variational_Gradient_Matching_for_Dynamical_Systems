@@ -20,8 +20,7 @@ Authors: **Nico Stephan Gorbach** and **Stefan Bauer**, email: nico.gorbach@gmai
 <hr>
 <div align="left">
 
-Contents
-=======
+## Contents
 
 
 <div align="justify">
@@ -40,23 +39,23 @@ The Matlab symbolic toolbox is required.
 
 <div align="left">
 
-Some Results
-=======
+## Some Results
 
-**Lotka-Volterra**:
+
+### Lotka-Volterra
 
 ![Alt text](docs/sample_results/VGM_for_Lotka_Volterra.png)
 
 
-**Lorenz 96**:
+### Lorenz 96
 
 ![Alt text](docs/sample_results/VGM_for_Lorenz96.png)
 
 
-**Lorenz Attractor**:
+### Lorenz Attractor
 
 ![Alt text](docs/sample_results/VGM_for_Lorenz_Attractor.png)
 
-**Dynamic Causal Modeling**:
+### Dynamic Causal Modeling
 
 ![Alt text](docs/sample_results/VGM_for_dynamic_causal_modeling.png)
