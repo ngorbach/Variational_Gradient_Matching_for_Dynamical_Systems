@@ -11,6 +11,15 @@ Authors: **Nico Stephan Gorbach** and **Stefan Bauer**, email: nico.gorbach@gmai
 </p>
 <hr>
 
+<h2 align="center">A Git Porcelain inside Emacs</h2>
+<p align="center">
+  <a href="https://ngorbach.github.io/Variational_Gradient_Matching_for_Dynamical_Systems/#17"><b>code documentation</b></a> |
+  <a href="https://magit.vc/manual"><b>manual</b></a> |
+  <a href="https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf"><b>NIPS paper</b></a> |
+  <a href="https://www.research-collection.ethz.ch/handle/20.500.11850/261734"><b>doctoral thesis</b></a> |
+ </p>
+
+<hr>
 <div align="left">
 
 Contents
