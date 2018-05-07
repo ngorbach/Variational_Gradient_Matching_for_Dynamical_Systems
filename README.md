@@ -26,7 +26,7 @@ Please cite our paper if you use our program for a further publication. The deri
 Run one of the Matlab scripts *VGM_for_Lotka_Volterra.m*, *VGM_for_Lorenz96.m* and *VGM_for_Lorenz_attractor.m*. Alternatively, you can also run the live scripts *VGM_for_Lotka_Volterra_live_script.mlx*, *VGM_for_Lorenz96_live_script.mlx* or *VGM_for_Lorenz_Attractor_live_script.mlx*. The code documentation is contained in the folder "docs".
 
 <p align="justify">
-The symbolic (Matlab) toolbox is required.
+The Matlab symbolic toolbox is required.
 </p>
 <hr>
 
