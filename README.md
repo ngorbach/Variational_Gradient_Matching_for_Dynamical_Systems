@@ -26,6 +26,7 @@ The symbolic (Matlab) toolbox is required.
 
 
 <p align="left">
+
 Some results:
 =======
 
