@@ -28,13 +28,19 @@ Lotka-Volterra
 
 ![Alt text](docs/sample_results/VGM_for_Lotka_Volterra.png)
 
+<hr>
+
 **Lorenz 96**:
 
 ![Alt text](docs/sample_results/VGM_for_Lorenz96.png)
 
+<hr>
+
 **Lorenz Attractor**:
 
 ![Alt text](docs/sample_results/VGM_for_Lorenz_Attractor.png)
+
+<hr>
 
 **Dynamic Causal Modeling**:
 
