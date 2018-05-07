@@ -1,4 +1,4 @@
-Variational Gradient Matching for Dynamical Systems
+# Variational Gradient Matching for Dynamical Systems
 
 ![Alt text](docs/logo.png)
 
@@ -21,7 +21,8 @@ The symbolic (Matlab) toolbox is required.
 
 Some results:
 
-**Lotka-Volterra**:
+Lotka-Volterra
+=======
 
 ![Alt text](docs/sample_results/VGM_for_Lotka_Volterra.png)
 
