@@ -1,7 +1,7 @@
 <div align="center">
 
 Variational Gradient Matching for Dynamical Systems
-=======
+-------
 
 ![Alt text](docs/logo.png)
 
@@ -25,6 +25,7 @@ The symbolic (Matlab) toolbox is required.
 <hr>
 
 
+<p align="left">
 Some results:
 =======
 
