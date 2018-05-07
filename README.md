@@ -11,6 +11,11 @@ Authors: **Nico Stephan Gorbach** and **Stefan Bauer**, email: nico.gorbach@gmai
 </p>
 <hr>
 
+<div align="left">
+
+Contents
+=======
+
 <p align="justify">
 Sample code for the NIPS (2018) paper **Scalable Variational Inference for Dynamical Systems** by Nico S. Gorbach, Stefan Bauer and Joachim M. Buhmann.
 The paper is available at <https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf>.
@@ -27,7 +32,7 @@ The symbolic (Matlab) toolbox is required.
 
 <div align="left">
 
-Some results:
+Some Results
 =======
 
 **Lotka-Volterra**:
