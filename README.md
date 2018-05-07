@@ -2,7 +2,7 @@
 
 # Variational Gradient Matching for Dynamical Systems
 
-![Alt text](docs/logo.png)
+![Alt text](docs/logo.pdf)
 
 Authors: **Nico Stephan Gorbach** and **Stefan Bauer**, email: nico.gorbach@gmail.com
 </h2>
