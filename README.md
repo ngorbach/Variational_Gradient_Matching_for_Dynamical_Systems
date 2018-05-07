@@ -1,7 +1,6 @@
 <div align="center">
 
-Variational Gradient Matching for Dynamical Systems
-=======
+# Variational Gradient Matching for Dynamical Systems
 
 ![Alt text](docs/logo.png)
 
