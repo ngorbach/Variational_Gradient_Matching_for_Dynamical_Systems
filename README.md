@@ -4,9 +4,6 @@
 
 # Variational Gradient Matching for Dynamical Systems
 
-Authors: **Nico Stephan Gorbach** and **Stefan Bauer**, email: nico.gorbach@gmail.com
-</h2>
-
 </p>
 
 <h2 align="center"></h2>
@@ -31,6 +28,11 @@ Sample code for the NIPS (2018) paper <a href="https://papers.nips.cc/paper/7066
 
 Run one of the Matlab scripts *VGM_for_Lotka_Volterra.m*, *VGM_for_Lorenz96.m* and *VGM_for_Lorenz_attractor.m*. Alternatively, you can also run the live scripts *VGM_for_Lotka_Volterra_live_script.mlx*, *VGM_for_Lorenz96_live_script.mlx* or *VGM_for_Lorenz_Attractor_live_script.mlx*. The Matlab symbolic toolbox is required.
 </p>
+<hr>
+
+<div align="left">
+
+## Authors: **Nico Stephan Gorbach** and **Stefan Bauer**, email: nico.gorbach@gmail.com
 <hr>
 
 
