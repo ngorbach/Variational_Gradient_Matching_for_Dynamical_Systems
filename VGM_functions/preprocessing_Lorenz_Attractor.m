@@ -44,7 +44,7 @@ opt_settings.pseudo_inv_type = 'Moore-Penrose';
 % Optimization settings
 
 % Number of coordinate ascent iterations
-opt_settings.coord_ascent_numb_iter = 40;
+opt_settings.coord_ascent_numb_iter = 25;
 
 % The observed state trajectories are clamped to the trajectories determined by standard GP regression (Boolean):
 opt_settings.clamp_obs_state_to_GP_fit = true;

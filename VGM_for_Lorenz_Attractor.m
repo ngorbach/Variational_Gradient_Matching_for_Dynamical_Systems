@@ -1,8 +1,7 @@
 %% Variational Gradient Matching for Dynamical Systems: Lorenz Attractor
+% .
 % 
-%% .
-%% *Authors*: 
-% *Nico Stephan Gorbach* and *Stefan Bauer*, email: nico.gorbach@gmail.com
+% Authors: *Nico Stephan Gorbach* and *Stefan Bauer*, email: nico.gorbach@gmail.com
 % 
 % 
 %% Contents:
@@ -519,7 +518,7 @@ end
 % 
 % **
 %%
-            plot_results(fig_handle,state.proxy,simulation,param_proxy_mean,plot_handle,symbols,plot_settings,'final');
+plot_results(fig_handle,state.proxy,simulation,param_proxy_mean,plot_handle,symbols,plot_settings,'final');
 %% 
 % 
 %% Time Taken

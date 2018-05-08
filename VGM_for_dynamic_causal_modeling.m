@@ -1,8 +1,7 @@
 %% Variational Gradient Matching for Dynamical Systems: Dynamic Causal Modeling
+% .
 % 
-%% ,
-%% *Authors*: 
-% *Nico Stephan Gorbach* and *Stefan Bauer*, email: nico.gorbach@gmail.com
+% Authors:*  Nico Stephan Gorbach *and* Stefan Bauer*,* *email: nico.gorbach@gmail.com
 % 
 % 
 %% Contents:
@@ -41,7 +40,7 @@
 % 
 % 
 %%
-        simulation.odes = 'nonlinear_forward_modulation_by_attention';
+        simulation.odes = 'forward_modulation_and_driven_by_attention';
 %% 
 % **
 % 
@@ -99,7 +98,7 @@
 % 
 % 
 
-        candidate_odes = 'nonlinear_forward_modulation_by_attention'; 
+        candidate_odes = 'forward_modulation_and_driven_by_attention';
 %% 
 % **
 % 
@@ -830,7 +829,7 @@ ode_param.proxy.mean = zeros(length(symbols.param),1);
 % 
 % 
 %%
-            if i==1 || ~mod(i,20)
+            if i==1 || ~mod(i,2)
                 plot_results(fig_handle,state.proxy,simulation,ode_param.proxy.mean,plot_handle,symbols,plot_settings,'not_final');
             end
 %% 
