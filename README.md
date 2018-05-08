@@ -28,10 +28,6 @@ Run one of the Matlab scripts *VGM_for_Lotka_Volterra.m*, *VGM_for_Lorenz96.m* a
 
 <div align="left">
 
-## Authors
-
-**Nico Stephan Gorbach** and **Stefan Bauer**, email: nico.gorbach@gmail.com
-
 <hr>
 
 
@@ -57,3 +53,9 @@ Run one of the Matlab scripts *VGM_for_Lotka_Volterra.m*, *VGM_for_Lorenz96.m* a
 ### Dynamic Causal Modeling
 
 ![Alt text](docs/sample_results/VGM_for_dynamic_causal_modeling.png)
+
+<hr>
+
+## Authors
+
+**Nico Stephan Gorbach** and **Stefan Bauer**, email: nico.gorbach@gmail.com
