@@ -10,8 +10,7 @@
   <a href="https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf"><b>NIPS 2017 version</b></a> |
   <a href="https://arxiv.org/abs/1705.07079"><b>arXiv version</b></a> |
   <a href="https://www.research-collection.ethz.ch/handle/20.500.11850/261734"><b>doctoral thesis</b></a> |
-<a href="https://papers.nips.cc/paper/7274-efficient-and-flexible-inference-for-stochastic-systems.pdf"><b>supp. paper 1</b></a> |
-<a href="https://arxiv.org/pdf/1804.04378.pdf"><b>supp. paper 2</b></a> 
+<a href="https://papers.nips.cc/paper/7274-efficient-and-flexible-inference-for-stochastic-systems.pdf"><b>supplementary paper</b></a> |
  </p>
 
 <hr>
