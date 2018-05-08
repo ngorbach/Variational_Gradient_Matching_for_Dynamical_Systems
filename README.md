@@ -28,11 +28,6 @@ Run one of the Matlab scripts *VGM_for_Lotka_Volterra.m*, *VGM_for_Lorenz96.m* a
 
 <div align="left">
 
-<hr>
-
-
-<div align="left">
-
 ## Some Results
 
 
