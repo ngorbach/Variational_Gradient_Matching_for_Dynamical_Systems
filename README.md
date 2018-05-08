@@ -4,8 +4,6 @@
 
 # Variational Gradient Matching for Dynamical Systems
 
-</p>
-
 <h2 align="center"></h2>
 <p align="center">
   <a href="https://ngorbach.github.io/Variational_Gradient_Matching_for_Dynamical_Systems/#17"><b>code documentation</b></a> |
@@ -32,7 +30,10 @@ Run one of the Matlab scripts *VGM_for_Lotka_Volterra.m*, *VGM_for_Lorenz96.m* a
 
 <div align="left">
 
-## Authors: **Nico Stephan Gorbach** and **Stefan Bauer**, email: nico.gorbach@gmail.com
+## Authors
+
+**Nico Stephan Gorbach** and **Stefan Bauer**, email: nico.gorbach@gmail.com
+
 <hr>
 
 
