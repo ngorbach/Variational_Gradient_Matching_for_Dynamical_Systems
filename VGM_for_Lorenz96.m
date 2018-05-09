@@ -7,10 +7,10 @@
 % Instructional code for the NIPS (2018) paper <https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf 
 % Scalable Variational Inference for Dynamical Systems> by Nico S. Gorbach, Stefan 
 % Bauer and Joachim M. Buhmann. Please cite our paper if you use our program for 
-% a further publication. The derivations in this document are also given in the 
-% doctoral thesis <https://www.research-collection.ethz.ch/handle/20.500.11850/261734 
-% https://www.research-collection.ethz.ch/handle/20.500.11850/261734> as well 
-% as in parts of Wenk et al. (2018). 
+% a further publication. The derivations in this document are also given in this 
+% <https://www.research-collection.ethz.ch/handle/20.500.11850/261734 doctoral 
+% thesis >as well as in parts of <https://arxiv.org/pdf/1804.04378.pdf Wenk et 
+% al. (2018)>.
 % 
 % Example dynamical system used in this code: *Lorenz 96* system with a *100 
 % ODEs, with half *of the states *unobserved*. The ODE parameter is also unobserved.
