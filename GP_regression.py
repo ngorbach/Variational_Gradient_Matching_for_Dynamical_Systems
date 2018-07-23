@@ -1,6 +1,4 @@
 
-# coding: utf-8
-
 # # GP Regression
 # 
 # #### Authors: Nico S. Gorbach and Stefan Bauer

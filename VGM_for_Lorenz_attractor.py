@@ -1,6 +1,4 @@
 
-# coding: utf-8
-
 # # Variational Gradient Matching for Dynamical Systems: Lorenz Attractor
 #                         Fast Parameter Identification for Nonlinear Dynamical Systems
 #                         

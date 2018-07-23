@@ -1,6 +1,4 @@
 
-# coding: utf-8
-
 # # Proxies for ODE Parameters and States
 # 
 # #### Authors: Nico S. Gorbach and Stefan Bauer

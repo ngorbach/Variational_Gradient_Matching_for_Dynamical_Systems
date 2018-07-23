@@ -1,6 +1,4 @@
 
-# coding: utf-8
-
 # # Rewrite ODEs as Local Linear Combinations
 # 
 # #### Authors: Nico S. Gorbach and Stefan Bauer

@@ -1,6 +1,4 @@
 
-# coding: utf-8
-
 # # Simulate State Dynamics
 # 
 # #### Authors: Nico S. Gorbach and Stefan Bauer
