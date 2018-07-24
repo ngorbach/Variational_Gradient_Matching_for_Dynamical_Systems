@@ -188,6 +188,6 @@ def proxy_for_ind_states(state_proxy,ode_param_proxy,locally_linear_odes,dC_time
             ax.plot(observations[:,0],observations[:,1],'*',markersize=7,color=cmap(1),label='observed')
             ax.legend(fontsize=12)
             
-    plt.show()
+    # plt.show()
          
     return global_mean

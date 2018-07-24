@@ -405,3 +405,4 @@ simulation_with_est_param = simulation
 simulation_with_est_param.ode_param = proxy.param
 simulation.state, simulation.observations, time_points.observed, obs_to_state_relations = simulate_state_dynamics(simulation_with_est_param,time_points,symbols.state,symbols.param,odes,2,simulation.observations,time_points.observed,proxy.state)
 
+plt.show()
