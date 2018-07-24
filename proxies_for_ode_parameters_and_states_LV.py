@@ -167,7 +167,7 @@ def proxy_for_ind_states(state_proxy,ode_param_proxy,locally_linear_odes,dC_time
     if numb_hidden_states==3:
         fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
         ax = fig.gca(projection='3d')
-        ax.plot(global_mean[:,0],global_mean[:,1],global_mean[:,2],color=cmap(0),label='state trajectory')
+        ax.plot(global_mean[:,0],global_mean[:,1],global_mean[:,2],color=cmap(0),label='estimated')
         ax.set_xlabel(state_symbols[0],fontsize=18)
         ax.set_ylabel(state_symbols[1],fontsize=18)
         ax.set_zlabel(state_symbols[2],fontsize=18)
@@ -179,7 +179,7 @@ def proxy_for_ind_states(state_proxy,ode_param_proxy,locally_linear_odes,dC_time
     else:
         fig = plt.figure(num=None, figsize=(6, 3), dpi=80)
         ax = fig.add_subplot(111)
-        ax.plot(global_mean[:,0],global_mean[:,1],color=cmap(0),label='state trajectory')
+        ax.plot(global_mean[:,0],global_mean[:,1],color=cmap(0),label='estimated')
         ax.set_xlabel(state_symbols[0],fontsize=18)
         ax.set_ylabel(state_symbols[1],fontsize=18)
         ax.set_title('Phase Space',fontsize=18)

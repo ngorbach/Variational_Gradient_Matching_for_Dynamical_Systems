@@ -88,21 +88,23 @@ def fitting_state_observations(observations,prior_inv_cov,hidden_states,observed
     if numb_hidden_states==3:
         fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
         ax = fig.gca(projection='3d')
-        ax.plot(GP_post_mean[:,0],GP_post_mean[:,1],GP_post_mean[:,2],color=cmap(0),label='state trajectory')
+        ax.plot(GP_post_mean[:,0],GP_post_mean[:,1],GP_post_mean[:,2],color=cmap(0),label='estimated')
         ax.set_xlabel(hidden_states[0],fontsize=18)
         ax.set_ylabel(hidden_states[1],fontsize=18)
         ax.set_zlabel(hidden_states[2],fontsize=18)
         ax.set_title('Phase Space',fontsize=18)
+        ax.legend(fontsize=15)
         if len(observed_states) == numb_hidden_states:
             ax.plot(observations[:,0],observations[:,1],observations[:,2],'*',markersize=7,color=cmap(1),label='observed')
-            ax.legend(fontsize=15)
+            ax.legend(fontsize=15)    
     else:
         fig = plt.figure(num=None, figsize=(6, 3), dpi=80)
         ax = fig.add_subplot(111)
-        ax.plot(GP_post_mean[:,0],GP_post_mean[:,1],color=cmap(0),label='state trajectory')
+        ax.plot(GP_post_mean[:,0],GP_post_mean[:,1],color=cmap(0),label='estimated')
         ax.set_xlabel(hidden_states[0],fontsize=18)
         ax.set_ylabel(hidden_states[1],fontsize=18)
         ax.set_title('Phase Space',fontsize=18)
+        ax.legend(fontsize=15)
         if len(observed_states) == numb_hidden_states:
             ax.plot(observations[:,0],observations[:,1],'*',markersize=7,color=cmap(1),label='observed')
             ax.legend(fontsize=15)

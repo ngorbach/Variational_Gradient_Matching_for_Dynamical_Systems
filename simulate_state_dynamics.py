@@ -53,10 +53,11 @@ def simulate_state_dynamics(simulation,time_points,state_symbols,ode_param_symbo
     if len(args)==0:
         observations, observed_time_points = simulate_state_observations(\
                 state,state_symbols,simulation.final_time_point,simulation.interval_between_observations,\
-                simulation.integration_interval,simulation.obs_variance,simulation.observed_states)
+                simulation.integration_interval,simulation.obs_variance,simulation.observed_states,time_points.final_observed)
     else:
         observations = args[0]
         observed_time_points = args[1]
+        state_proxy = args[2]
     
     # mapping between observation- and state trajectories
     obs_to_state_relations = mapping_between_observation_and_state_trajectories(time_points.for_estimation,\
@@ -84,40 +85,44 @@ def simulate_state_dynamics(simulation,time_points,state_symbols,ode_param_symbo
     handle=[[] for i in range(numb_hidden_states)]
     for u in range(numb_hidden_states):
         handle[u] = fig.add_subplot(numb_hidden_states,1,u+1)
-        handle[u].plot(time_points.true, state[:,u],color=cmap(color_idx),label='state trajectory')
+        if len(args)!=0:
+            handle[u].plot(time_points.for_estimation, state_proxy[:,u],color=cmap(0),label='VGM estimation') 
+        handle[u].plot(time_points.true, state[:,u],color=cmap(color_idx),label='numerical integration')
         plt.xlabel('time',fontsize=18), plt.title(state_symbols[u],position=(0.02,1),fontsize=15)
-        handle[u].legend(fontsize=15)
+        handle[u].legend(fontsize=12)
     u2=0
     for u in observed_state_idx: 
         handle[u].plot(observed_time_points, observations[:,u2],'*',markersize=7,color=cmap(1),label='observed')
-        handle[u].legend(fontsize=15)
+        handle[u].legend(fontsize=12)
         u2 += 1 
      
     # phase space
     if numb_hidden_states==3:
         fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
         ax = fig.gca(projection='3d')
-        ax.plot(state[:,0],state[:,1],state[:,2],color=cmap(color_idx),label='state trajectory')
+        ax.plot(state[:,0],state[:,1],state[:,2],color=cmap(color_idx),label='num. integration')
         ax.set_xlabel(state_symbols[0],fontsize=18)
         ax.set_ylabel(state_symbols[1],fontsize=18)
         ax.set_zlabel(state_symbols[2],fontsize=18)
         ax.set_title('Phase Space',fontsize=18)
-        ax.legend(fontsize=15)
+        ax.legend(fontsize=12)
         if len(simulation.observed_states) == numb_hidden_states:
             ax.plot(observations[:,0],observations[:,1],observations[:,2],'*',markersize=7,color=cmap(1),label='observed')
-            ax.legend(fontsize=15)
+            ax.legend(fontsize=12)
 
     else:
         fig = plt.figure(num=None, figsize=(6, 3), dpi=80)
         ax = fig.add_subplot(111)
-        ax.plot(state[:,0],state[:,1],color=cmap(color_idx),label='state trajectory')
+        ax.plot(state[:,0],state[:,1],color=cmap(color_idx),label='numerical integration')
         ax.set_xlabel(state_symbols[0],fontsize=18)
         ax.set_ylabel(state_symbols[1],fontsize=18)
         ax.set_title('Phase Space',fontsize=18)
-        ax.legend(fontsize=15)
+        if len(args)!=0:
+            ax.plot(state_proxy[:,0], state_proxy[:,1],color=cmap(0),label='VGM estimation') 
+        ax.legend(fontsize=12)
         if len(simulation.observed_states) == numb_hidden_states:
             ax.plot(observations[:,0],observations[:,1],'*',markersize=7,color=cmap(1),label='observed')
-            ax.legend(fontsize=15)
+            ax.legend(fontsize=12)
         
     #plt.show()
     
@@ -131,10 +136,10 @@ def simulate_state_dynamics(simulation,time_points,state_symbols,ode_param_symbo
 
 
 def simulate_state_observations(state,state_symbols,final_time_point,interval_between_observations,\
-                                integration_interval,obs_variance,observed_states):
+                                integration_interval,obs_variance,observed_states,final_observed_time_point):
     
     integration_time_points = np.arange(0,final_time_point,integration_interval)
-    observed_time_points = np.arange(0,2.0,interval_between_observations)
+    observed_time_points = np.arange(0,final_observed_time_point,interval_between_observations)
 
     # indices of observed time points
     observed_time_idx = np.round(observed_time_points / integration_interval + 1)

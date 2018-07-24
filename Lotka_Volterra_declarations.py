@@ -31,6 +31,7 @@ class kernel:
 class time_points:
     true = np.arange(0.0, 4.0, 0.01)
     observed = None
+    final_observed = 2.0
     
 class symbols:
     state = sym.symbols(['x_1','x_2'])
