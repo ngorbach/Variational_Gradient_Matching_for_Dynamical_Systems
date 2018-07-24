@@ -58,9 +58,10 @@ def proxy_for_ode_parameters(state_proxy,locally_linear_odes,dC_times_inv_C,ode_
     cmap = plt.get_cmap("tab10")
     plt.figure(num=None, figsize=(7, 4), dpi=80)
     ax = plt.subplot(111)
-    ax.bar(np.asarray(range(len(global_mean)))+0.12,ode_param_true,color=cmap(1),width=0.2)
-    ax.bar(np.asarray(range(len(global_mean)))-0.12,global_mean.T[0].tolist(),color=cmap(0),width=0.2)
+    ax.bar(np.asarray(range(len(global_mean)))+0.12,ode_param_true,color=cmap(1),width=0.2,label='true')
+    ax.bar(np.asarray(range(len(global_mean)))-0.12,global_mean.T[0].tolist(),color=cmap(0),width=0.2,label='estimated')
     plt.title('ODE Parameters',fontsize=18), plt.xticks(range(len(global_mean)),ode_param_symbols,fontsize=15)
+    ax.legend(fontsize=15)
     # plt.show()
     
     return global_mean
@@ -80,22 +81,29 @@ def proxy_for_ode_parameters(state_proxy,locally_linear_odes,dC_times_inv_C,ode_
 # \end{align}
     
 def proxy_for_ind_states(state_proxy,ode_param_proxy,locally_linear_odes,dC_times_inv_C,state_symbols,\
-                         observed_states,state_couplings,time_points,simulation):
-          
+                         observed_states,state_couplings,time_points,simulation,\
+                         GP_post_mean,GP_post_inv_cov,clamp_states_to_observation_fit,observations):
+     
+    # numer of hidden states
+    numb_hidden_states = len(state_symbols)
+     
+    if clamp_states_to_observation_fit==1:
     # indices of observed states
-    unobserved_state_idx = [u for u in range(len(state_symbols)) if state_symbols[u] not in observed_states]
+        hidden_states_to_infer = [u for u in range(len(state_symbols)) if state_symbols[u] not in observed_states]
+    else:
+        hidden_states_to_infer = range(len(state_symbols))     
     
     # initialization
     global_mean = state_proxy[:]
     # iterate through each unobserved state
-    for u in unobserved_state_idx:
+    for u in hidden_states_to_infer:
         
         # initialization
         local_mean = np.zeros((state_proxy.shape[0],1))
         local_scaling = np.zeros((state_proxy.shape[0],state_proxy.shape[0]))
         
         # iterate through each ODE
-        for k in range(len(state_symbols)):
+        for k in range(numb_hidden_states):
             
             # determine matrices $\mathbf{R}$ and $\mathbf{r}$
             R_tmp = locally_linear_odes.state.R[u][k](ode_param_proxy[0],ode_param_proxy[1],ode_param_proxy[2],\
@@ -111,7 +119,7 @@ def proxy_for_ind_states(state_proxy,ode_param_proxy,locally_linear_odes,dC_time
                                            np.ones((state_proxy.shape[0]))).T
             if len(r)==1:
                 tmp = r[:]
-                r = [tmp[:] for i in range(state_proxy.shape[0])]   
+                r = np.asarray([tmp[:] for i in range(state_proxy.shape[0])])   
             r = r.reshape(state_proxy.shape[0],-1)
             
             # Define matrices B and b such that $\mathbf{B}_{uk} \mathbf{x}_u +
@@ -131,7 +139,9 @@ def proxy_for_ind_states(state_proxy,ode_param_proxy,locally_linear_odes,dC_time
         # Mean of state proxy distribution (option: Moore-penrose inverse example): 
         # $\left( \mathbf{B}_{u} \mathbf{B}_{u}^T \right)^{-1} \sum_k
         # \mathbf{B}_{uk}^T \left(\mathbf{\epsilon_0}^{(k)} -\mathbf{b}_{uk} \right)$   
-        global_mean[:,u] = np.squeeze(np.linalg.solve(local_scaling,local_mean)) 
+        # global_mean[:,u] = np.squeeze(np.linalg.solve(local_scaling,local_mean)) 
+        global_mean[:,u] = np.squeeze(np.linalg.solve(local_scaling + GP_post_inv_cov[u],local_mean\
+                   + np.dot(GP_post_inv_cov[u],GP_post_mean[:,u]).reshape(-1,1)))
      
     # plotting
     warnings.simplefilter("ignore")
@@ -142,14 +152,42 @@ def proxy_for_ind_states(state_proxy,ode_param_proxy,locally_linear_odes,dC_time
     for u in range(len(state_symbols)):
         handle[u] = fig.add_subplot(len(state_symbols),1,u+1)
         plt.subplot(len(state_symbols),1,u+1)
-        handle[u].plot(time_points.true, simulation.state[:,u],color=cmap(1))
-        handle[u].plot(time_points.observed, global_mean[:,u],color=cmap(0))
-        plt.xlabel('time',fontsize=12), plt.title(state_symbols[u],position=(0.02,1))
+        handle[u].plot(time_points.true, simulation.state[:,u],color=cmap(1),label='true')
+        handle[u].plot(time_points.for_estimation, global_mean[:,u],color=cmap(0),label='estimated')
+        plt.xlabel('time',fontsize=18), plt.title(state_symbols[u],position=(0.02,1),fontsize=18)
+        handle[u].legend(fontsize=15)
     observed_state_idx = [u for u in range(len(state_symbols)) if state_symbols[u] in simulation.observed_states]    
     u2=0
     for u in observed_state_idx: 
-        handle[u].plot(time_points.observed, simulation.observations[:,u2],'*',markersize=4,color=cmap(1))
+        handle[u].plot(time_points.observed, simulation.observations[:,u2],'*',markersize=7,color=cmap(1),label='observed')
+        handle[u].legend(fontsize=15)
         u2 += 1
+        
+    # phase space    
+    if numb_hidden_states==3:
+        fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
+        ax = fig.gca(projection='3d')
+        ax.plot(global_mean[:,0],global_mean[:,1],global_mean[:,2],color=cmap(0),label='state trajectory')
+        ax.set_xlabel(state_symbols[0],fontsize=18)
+        ax.set_ylabel(state_symbols[1],fontsize=18)
+        ax.set_zlabel(state_symbols[2],fontsize=18)
+        ax.set_title('Phase Plot',fontsize=18)
+        ax.legend(fontsize=15)
+        if len(simulation.observed_states) == numb_hidden_states:
+            ax.plot(observations[:,0],observations[:,1],observations[:,2],'*',markersize=7,color=cmap(1),label='observed')
+            ax.legend(fontsize=15)
+    else:
+        fig = plt.figure(num=None, figsize=(6, 3), dpi=80)
+        ax = fig.add_subplot(111)
+        ax.plot(global_mean[:,0],global_mean[:,1],color=cmap(0),label='state trajectory')
+        ax.set_xlabel(state_symbols[0],fontsize=18)
+        ax.set_ylabel(state_symbols[1],fontsize=18)
+        ax.set_title('Phase Space',fontsize=18)
+        ax.legend(fontsize=15)
+        if len(simulation.observed_states) == numb_hidden_states:
+            ax.plot(observations[:,0],observations[:,1],'*',markersize=7,color=cmap(1),label='observed')
+            ax.legend(fontsize=15)
+            
     plt.show()
          
     return global_mean

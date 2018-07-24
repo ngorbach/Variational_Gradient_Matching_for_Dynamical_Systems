@@ -17,6 +17,7 @@ import sympy as sym
 
 # ## Object Class Declarations
 
+odes_path = 'Lotka_Volterra_ODEs.txt' 
 
 class simulation:
     initial_states = [5,3]
@@ -28,7 +29,7 @@ class kernel:
     param = None
     
 class time_points:
-    true = np.arange(0.0, 2.0, 0.01)
+    true = np.arange(0.0, 4.0, 0.01)
     observed = None
     
 class symbols:
@@ -36,7 +37,8 @@ class symbols:
     param = sym.symbols(['theta_1','theta_2','theta_3','theta_4'])
     
 class opt_settings:
-    number_of_ascending_steps = 10
+    number_of_ascending_steps = 50
+    clamp_states_to_observation_fit = 0
     
 class locally_linear_odes:
     class ode_param:

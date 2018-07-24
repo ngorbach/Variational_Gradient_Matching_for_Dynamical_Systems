@@ -28,43 +28,88 @@ from scipy.linalg import block_diag
 # and $\boldsymbol\Sigma_k ^{-1}:=\boldsymbol\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldsymbol\phi_k}^{-1}$
 
 
-def fitting_state_observations(observations,prior_inv_cov,observed_states,obs_to_state_relations,obs_variance,\
-                               observed_time_points,symbols):
+def fitting_state_observations(observations,prior_inv_cov,hidden_states,observed_states,\
+                               obs_to_state_relations,obs_variance,given_time_points,observed_time_points):
 
+    # number of hidden and observed states
+    numb_hidden_states = len(hidden_states)
+    numb_observed_states = len(observed_states)
+    # number of given and observed_time_points
+    numb_given_time_points = prior_inv_cov.shape[0]
+    numb_observed_time_points = len(observed_time_points)
+    
     # Form block-diagonal matrix out of $\mathbf{C}_{\boldmath\mathbf{\phi}_k}^{-1}$
-    inv_C_blockdiag = block_diag(*[prior_inv_cov]*len(symbols.state))
+    inv_C_blockdiag = block_diag(*[prior_inv_cov]*numb_hidden_states)
     
     # variance of state observations
-    variance = obs_variance**(-1) * np.ones((prior_inv_cov.shape[0],len(observed_states)))
+    variance = obs_variance**(-1) * np.ones((numb_observed_time_points,numb_observed_states))
     D = np.dot(np.diag(variance.reshape(1,-1)[0]),np.identity(variance.reshape(1,-1).shape[1]))
     
     # GP posterior inverse covariance matrix: $\boldmath\mathbf{\sigma}_k^{-1}:=\mathbf{\sigma}_k^{-2} \mathbf{I} + 
     # \mathbf{C}_{\boldmath\mathbf{\phi}_k}^{-1}$
     obs_to_state_relations_times_D = np.dot(obs_to_state_relations.T,D)
     A_times_D_times_A = np.dot(obs_to_state_relations_times_D,obs_to_state_relations)
-    post_inv_cov_flat = A_times_D_times_A + inv_C_blockdiag
+    GP_post_inv_cov_flat = A_times_D_times_A + inv_C_blockdiag
     
     # GP posterior mean: $\boldmath\mu_k(\mathbf{y}_k) := \mathbf{\sigma}_k^{-2}\left(\mathbf{\sigma}_k^{-2} \mathbf{I} + 
     # \mathbf{C}_{\boldmath\mathbf{\phi}_k}^{-1}\right)^{-1} \mathbf{y}_k$
-    post_mean_flat = np.linalg.solve(post_inv_cov_flat,np.dot(obs_to_state_relations_times_D,observations.reshape(-1,1,order='F')))
+    GP_post_mean_flat = np.linalg.solve(GP_post_inv_cov_flat,np.dot(obs_to_state_relations_times_D,\
+                                                                    observations.reshape(-1,1,order='F')))
     
     # unflatten GP posterior mean
-    post_mean = post_mean_flat.reshape(1,-1).reshape(prior_inv_cov.shape[0],len(symbols.state),order='F')
+    GP_post_mean = GP_post_mean_flat.reshape(1,-1).reshape(numb_given_time_points,numb_hidden_states,order='F')
     
     # unflatten GP posterior inverse covariance matrix
-    post_inv_cov = extract_block_diag(post_inv_cov_flat,prior_inv_cov.shape[0],k=0)
+    GP_post_inv_cov = extract_block_diag(GP_post_inv_cov_flat,prior_inv_cov.shape[0],k=0)
     
-    # plotting
+ 
+    
+    # Plotting
+    
+    # indices of observed states
+    observed_state_idx = [u for u in range(numb_hidden_states) if hidden_states[u] in observed_states]
+    
     cmap = plt.get_cmap("tab10")
-    plt.figure(num=None, figsize=(10, 8), dpi=80)
+    fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
     plt.subplots_adjust(hspace=0.5)
-    for i in range(len(symbols.state)):
-        plt.subplot(len(symbols.param),1,i+1)
-        plt.plot(observed_time_points, post_mean[:,i],color=cmap(1))
-        plt.xlabel('time',fontsize=12), plt.title(symbols.state[i],position=(0.02,1))
+    handle=[[] for i in range(numb_hidden_states)]
+    for u in range(numb_hidden_states):
+        handle[u] = fig.add_subplot(numb_hidden_states,1,u+1)
+        handle[u].plot(given_time_points, GP_post_mean[:,u],color=cmap(0),label='estimated')
+        plt.xlabel('time',fontsize=18), plt.title(hidden_states[i],position=(0.02,1),fontsize=18)
+        handle[u].legend(fontsize=15)
+    u2=0
+    for u in observed_state_idx: 
+        handle[u].plot(observed_time_points, observations[:,u2],'*',markersize=7,color=cmap(1),label='observed')
+        handle[u].legend(fontsize=15)
+        u2 += 1 
+       
+    # phase space
+    if numb_hidden_states==3:
+        fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
+        ax = fig.gca(projection='3d')
+        ax.plot(GP_post_mean[:,0],GP_post_mean[:,1],GP_post_mean[:,2],color=cmap(0),label='state trajectory')
+        ax.set_xlabel(hidden_states[0],fontsize=18)
+        ax.set_ylabel(hidden_states[1],fontsize=18)
+        ax.set_zlabel(hidden_states[2],fontsize=18)
+        ax.set_title('Phase Space',fontsize=18)
+        if len(observed_states) == numb_hidden_states:
+            ax.plot(observations[:,0],observations[:,1],observations[:,2],'*',markersize=7,color=cmap(1),label='observed')
+            ax.legend(fontsize=15)
+    else:
+        fig = plt.figure(num=None, figsize=(6, 3), dpi=80)
+        ax = fig.add_subplot(111)
+        ax.plot(GP_post_mean[:,0],GP_post_mean[:,1],color=cmap(0),label='state trajectory')
+        ax.set_xlabel(hidden_states[0],fontsize=18)
+        ax.set_ylabel(hidden_states[1],fontsize=18)
+        ax.set_title('Phase Space',fontsize=18)
+        if len(observed_states) == numb_hidden_states:
+            ax.plot(observations[:,0],observations[:,1],'*',markersize=7,color=cmap(1),label='observed')
+            ax.legend(fontsize=15)
+    
     #plt.show()
         
-    return post_mean
+    return GP_post_mean, GP_post_inv_cov
 
 
 # In[3]:
@@ -129,10 +174,11 @@ def kernel_function(given_time_points,kernel_param):
     plt.subplots_adjust(hspace=0.5)
     handle = fig.add_subplot(111)
     prior_state_sample = np.random.multivariate_normal(np.zeros((C.shape[0])),C)
-    handle.plot(given_time_points, prior_state_sample,color=cmap(4))
+    handle.plot(given_time_points, prior_state_sample,color=cmap(4),label='trajectory sample 1')
     prior_state_sample = np.random.multivariate_normal(np.zeros((C.shape[0])),C)
-    handle.plot(given_time_points, prior_state_sample,color=cmap(6))
-    plt.xlabel('time',fontsize=12), plt.title('Prior State Samples',position=(0.1,1))
+    handle.plot(given_time_points, prior_state_sample,color=cmap(6),label='trajectory sample 2')
+    plt.xlabel('time',fontsize=18), plt.title('Prior State Trajectory Samples',position=(0.5,1),fontsize=18)
+    handle.legend(fontsize=15)
     #plt.show()
     
     return dC_times_inv_C,inv_C

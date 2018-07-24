@@ -27,16 +27,19 @@ import sympy as sym
 
 def rewrite_odes_as_linear_combination_in_parameters(odes,state_symbols,ode_param_symbols): 
 
+    # number of hidden states
+    numb_hidden_states = len(state_symbols)
+    
     # append state symbols with constant vector
     state_symbols_appended = state_symbols[:]
     state_symbols_appended.append(sym.symbols('one_vector'))
     
     # initialize vectors B and b
-    B=[[] for k in range(len(state_symbols))]
-    b=[[] for k in range(len(state_symbols))]
+    B=[[] for k in range(numb_hidden_states)]
+    b=[[] for k in range(numb_hidden_states)]
     
     # rewrite ODEs as linear combinations in parameters (locally w.r.t. individual ODE)
-    for k in range(len(state_symbols)):
+    for k in range(numb_hidden_states):
         expr_B,expr_b = sym.linear_eq_to_matrix([odes(state_symbols,ode_param_symbols)[k].expand()],\
                                                  ode_param_symbols)
         expr_b = -expr_b  # see the documentation of the function "sympy.linear_eq_to_matrix"
@@ -69,8 +72,12 @@ def rewrite_odes_as_linear_combination_in_parameters(odes,state_symbols,ode_para
 # state $\mathbf{x}_u$.
 
 
-def rewrite_odes_as_linear_combination_in_states(odes,state_symbols,ode_param_symbols,observed_states): 
+def rewrite_odes_as_linear_combination_in_states(odes,state_symbols,ode_param_symbols,observed_states,\
+                                                 clamp_states_to_observation_fit): 
 
+    # number of hidden states
+    numb_hidden_states = len(state_symbols)
+    
     # unpack state and parameter symbols
     symbolic_one = sym.symbols('one_vector')
     symbols_all = ode_param_symbols[:]
@@ -82,14 +89,20 @@ def rewrite_odes_as_linear_combination_in_states(odes,state_symbols,ode_param_sy
     state_symbols_appended = state_symbols[:]
     state_symbols_appended.append(sym.symbols('one_vector'))
     
+    # determine set of hidden states to infer
+    if clamp_states_to_observation_fit==1:
+    # indices of observed states
+        hidden_states_to_infer = [u for u in range(len(state_symbols)) if state_symbols[u] not in observed_states]
+    else:
+        hidden_states_to_infer = range(len(state_symbols))   
+        
     # initialize matrices R and r
-    R=[[[],[],[]] for k in range(len(state_symbols))]
-    r=[[[],[],[]] for k in range(len(state_symbols))]
+    R=[[[],[],[]] for k in range(numb_hidden_states)]
+    r=[[[],[],[]] for k in range(numb_hidden_states)]
     
     # rewrite ODEs as linear combinations in individual states (locally w.r.t. individual ODE)
-    unobserved_state_idx = [u for u in range(len(state_symbols)) if state_symbols[u] not in observed_states]
-    for u in unobserved_state_idx:
-        for k in range(len(state_symbols)):
+    for u in range(numb_hidden_states):
+        for k in range(numb_hidden_states):
             expr_R,expr_r = sym.linear_eq_to_matrix([odes(state_symbols,ode_param_symbols)[k].expand()],\
                                                      state_symbols[u])  
             expr_r = -expr_r
