@@ -77,11 +77,11 @@ def fitting_state_observations(observations,prior_inv_cov,hidden_states,observed
         handle[u] = fig.add_subplot(numb_hidden_states,1,u+1)
         handle[u].plot(given_time_points, GP_post_mean[:,u],color=cmap(0),label='estimated')
         plt.xlabel('time',fontsize=18), plt.title(hidden_states[i],position=(0.02,1),fontsize=18)
-        handle[u].legend(fontsize=15)
+        handle[u].legend(fontsize=12)
     u2=0
     for u in observed_state_idx: 
         handle[u].plot(observed_time_points, observations[:,u2],'*',markersize=7,color=cmap(1),label='observed')
-        handle[u].legend(fontsize=15)
+        handle[u].legend(fontsize=12)
         u2 += 1 
        
     # phase space
@@ -96,7 +96,7 @@ def fitting_state_observations(observations,prior_inv_cov,hidden_states,observed
         ax.legend(fontsize=15)
         if len(observed_states) == numb_hidden_states:
             ax.plot(observations[:,0],observations[:,1],observations[:,2],'*',markersize=7,color=cmap(1),label='observed')
-            ax.legend(fontsize=15)    
+            ax.legend(fontsize=12)    
     else:
         fig = plt.figure(num=None, figsize=(6, 3), dpi=80)
         ax = fig.add_subplot(111)
@@ -104,10 +104,10 @@ def fitting_state_observations(observations,prior_inv_cov,hidden_states,observed
         ax.set_xlabel(hidden_states[0],fontsize=18)
         ax.set_ylabel(hidden_states[1],fontsize=18)
         ax.set_title('Phase Space',fontsize=18)
-        ax.legend(fontsize=15)
+        ax.legend(fontsize=12)
         if len(observed_states) == numb_hidden_states:
             ax.plot(observations[:,0],observations[:,1],'*',markersize=7,color=cmap(1),label='observed')
-            ax.legend(fontsize=15)
+            ax.legend(fontsize=12)
     
     #plt.show()
         
@@ -180,7 +180,7 @@ def kernel_function(given_time_points,kernel_param):
     prior_state_sample = np.random.multivariate_normal(np.zeros((C.shape[0])),C)
     handle.plot(given_time_points, prior_state_sample,color=cmap(6),label='trajectory sample 2')
     plt.xlabel('time',fontsize=18), plt.title('Prior State Trajectory Samples',position=(0.5,1),fontsize=18)
-    handle.legend(fontsize=15)
+    handle.legend(fontsize=12)
     #plt.show()
     
     return dC_times_inv_C,inv_C
