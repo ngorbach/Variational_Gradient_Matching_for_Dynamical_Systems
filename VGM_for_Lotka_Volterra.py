@@ -385,6 +385,7 @@ proxy.state = GP_post_mean
 
 
 for i in range(opt_settings.number_of_ascending_steps):
+    print 'iteration number %s' %(i)
     proxy.param = proxy_for_ode_parameters(proxy.state,locally_linear_odes,dC_times_inv_C,symbols.param,simulation.ode_param)
     proxy.state = proxy_for_ind_states(proxy.state,proxy.param,locally_linear_odes,dC_times_inv_C,symbols.state,simulation.observed_states,state_couplings,time_points,simulation,GP_post_mean,GP_post_inv_cov,opt_settings.clamp_states_to_observation_fit,simulation.observations)
 
