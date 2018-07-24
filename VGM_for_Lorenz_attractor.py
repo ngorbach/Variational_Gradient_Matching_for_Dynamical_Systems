@@ -47,7 +47,7 @@ simulation.ode_param = [10.0,28.0,8.0/3.0]
 # In[3]:
 
 
-simulation.observed_states = sym.symbols(['x','y','z'])
+simulation.observed_states = sym.symbols(['x','z'])
 
 
 # ##### Final time for simulation
@@ -387,16 +387,19 @@ proxy.state = GP_post_mean
 
 
 for i in range(opt_settings.number_of_ascending_steps):
+    print 'iteration number %s' %(i)
     proxy.param = proxy_for_ode_parameters(proxy.state,locally_linear_odes,dC_times_inv_C,symbols.param,simulation.ode_param)
     proxy.state = proxy_for_ind_states(proxy.state,proxy.param,locally_linear_odes,dC_times_inv_C,symbols.state,simulation.observed_states,state_couplings,time_points,simulation,GP_post_mean,GP_post_inv_cov,opt_settings.clamp_states_to_observation_fit,simulation.observations)
 
 
 # ## Numerical Integration with Estimated ODE Parameters
+# 
+# We plug the estimated ODE parameters into a numerical integrator and observe it's trajectories (in green).
 
 # In[16]:
 
 
 simulation_with_est_param = simulation
 simulation_with_est_param.ode_param = proxy.param
-simulation.state, simulation.observations, time_points.observed, obs_to_state_relations = simulate_state_dynamics(simulation_with_est_param,time_points,symbols.state,symbols.param,odes,2,simulation.observations,time_points.observed)
+simulation.state, simulation.observations, time_points.observed, obs_to_state_relations = simulate_state_dynamics(simulation_with_est_param,time_points,symbols.state,symbols.param,odes,2,simulation.observations,time_points.observed,proxy.state)
 

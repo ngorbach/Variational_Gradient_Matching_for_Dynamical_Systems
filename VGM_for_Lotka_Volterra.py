@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# # Variational Gradient Matching for Dynamical Systems: Lorenz Attractor
+# # Variational Gradient Matching for Dynamical Systems: Lotka-Volterra
 #                         Fast Parameter Identification for Nonlinear Dynamical Systems
 #                         
 # <img src="docs/logo.png">
@@ -32,7 +32,7 @@ from proxies_for_ode_parameters_and_states_LV import *
 # ### Simulation Settings
 
 # ##### True ODE parameters
-# Input a row vector of real numbers of size $1$ x $3$:
+# Input a row vector of real numbers of size $1$ x $4$:
 
 # In[2]:
 
@@ -41,7 +41,7 @@ simulation.ode_param = [2,1,4,1]
 
 
 # ##### Observed states
-# Input 1, 2 or 3 symbolic variables from the set $(x,y,z)$:
+# Input 1, 2 symbolic variables from the set $(x_1,x_2)$:
 
 # In[3]:
 
@@ -55,7 +55,7 @@ simulation.observed_states = sym.symbols(['x_1','x_2'])
 # In[4]:
 
 
-simulation.final_time_point = 2.0
+simulation.final_time_point = 4.0
 
 
 # ##### Observation noise
@@ -64,7 +64,7 @@ simulation.final_time_point = 2.0
 # In[5]:
 
 
-simulation.obs_variance = 0.1
+simulation.obs_variance = 0.005
 
 
 # ##### Time interval between observations
@@ -93,7 +93,7 @@ kernel.param = [10,0.2]
 # In[8]:
 
 
-time_points.for_estimation = np.arange(0,2.0,0.1)
+time_points.for_estimation = np.arange(0,4.0,0.1)
 
 
 # ## Import Lotka-Volterra ODEs
@@ -108,7 +108,6 @@ time_points.for_estimation = np.arange(0,2.0,0.1)
 # In[9]:
 
 
-odes_path = 'Lotka_Volterra_ODEs.txt' 
 odes = import_odes(symbols,odes_path)
 state_couplings = find_state_couplings_in_odes(odes,symbols)
 
@@ -118,7 +117,7 @@ state_couplings = find_state_couplings_in_odes(odes,symbols)
 # In[10]:
 
 
-simulation.state, simulation.observations, time_points.observed, obs_to_state_relations = simulate_state_dynamics(simulation,time_points,symbols,odes,1)
+simulation.state, simulation.observations, time_points.observed, obs_to_state_relations = simulate_state_dynamics(simulation,time_points,symbols.state,symbols.param,odes,1)
 
 
 # ## Prior on States and State Derivatives
@@ -232,7 +231,7 @@ locally_linear_odes.ode_param.B,locally_linear_odes.ode_param.b = rewrite_odes_a
 # In[13]:
 
 
-locally_linear_odes.state.R,locally_linear_odes.state.r = rewrite_odes_as_linear_combination_in_states(odes,symbols.state,symbols.param,simulation.observed_states)
+locally_linear_odes.state.R,locally_linear_odes.state.r = rewrite_odes_as_linear_combination_in_states(odes,symbols.state,symbols.param,simulation.observed_states,opt_settings.clamp_states_to_observation_fit)
 
 
 # ## Posterior over Individual States
@@ -273,8 +272,8 @@ locally_linear_odes.state.R,locally_linear_odes.state.r = rewrite_odes_as_linear
 # 
 # \begin{align}
 # \boldsymbol\theta^\star :&=\mathrm{arg}\max_{\boldsymbol\theta} ~ \ln p(\boldsymbol\theta \mid \mathbf{Y},\boldsymbol\phi,\gamma, \boldsymbol\sigma) \nonumber \\
-# &= \mathrm{arg}\max_{\boldsymbol\theta} ~ \ln \int  p(\boldsymbol\theta,\mathbf{X} \mid \mathbf{Y},\boldsymbol\phi,\gamma,\boldsymbol\sigma) d\mathbf{X} \nonumber \\
-# &= \mathrm{arg}\max_{\boldsymbol\theta} ~ \ln \int  \underbrace{p(\boldsymbol\theta \mid \mathbf{X},\boldsymbol\phi,\gamma)}_{\textrm{ODE-informed}} \underbrace{p(\mathbf{X} \mid \mathbf{Y}, \boldsymbol\phi, \boldsymbol\sigma)}_{\textrm{data-informed}} d\mathbf{X}.
+# &= \mathrm{arg}\max_{\boldsymbol\theta} ~ \ln \int  p(\boldsymbol\theta,\mathbf{X} \mid \mathbf{Y},\boldsymbol\phi,\gamma,\boldsymbol\sigma) ~ d\mathbf{X} \nonumber \\
+# &= \mathrm{arg}\max_{\boldsymbol\theta} ~ \ln \int  \underbrace{p(\boldsymbol\theta \mid \mathbf{X},\boldsymbol\phi,\gamma)}_{\textrm{ODE-informed}} ~ \underbrace{p(\mathbf{X} \mid \mathbf{Y}, \boldsymbol\phi, \boldsymbol\sigma)}_{\textrm{data-informed}} ~ d\mathbf{X}.
 # \label{eq:map_param}
 # \end{align}
 # 
@@ -322,9 +321,9 @@ locally_linear_odes.state.R,locally_linear_odes.state.r = rewrite_odes_as_linear
 # &\qquad \qquad \qquad + \mathbb{E}_{Q_{-u}}  \ln \mathcal{N}\left(\mathbf{x}_u ; \boldsymbol\mu_u(\mathbf{Y}), \boldsymbol\Sigma_u \right) \big),
 # \end{align}
 
-# ## Fitting Observations of State Trajectories
+# ## Initialization of State Trajectories
 # 
-# We fit the observations of state trajectories by standard GP regression. The data-informed distribution $p(\mathbf{X} \mid \mathbf{Y}, \boldsymbol\phi,\boldsymbol\sigma)$ in equation (9) can be determined analytically using Gaussian process regression with the GP prior $p(\mathbf{X} \mid \boldsymbol\phi) = \prod_k \mathcal{N}(\mathbf{x}_k ;\mathbf{0},\mathbf{C}_{\boldsymbol\phi_k})$:
+# We initialize the state trajectories by fitting the observations of state trajectories using classical GP regression. The data-informed distribution $p(\mathbf{X} \mid \mathbf{Y}, \boldsymbol\phi,\boldsymbol\sigma)$ in equation (9) can be determined analytically using Gaussian process regression with the GP prior $p(\mathbf{X} \mid \boldsymbol\phi) = \prod_k \mathcal{N}(\mathbf{x}_k ;\mathbf{0},\mathbf{C}_{\boldsymbol\phi_k})$:
 # 
 # \begin{align}
 # p(\mathbf{X} \mid \mathbf{Y}, \boldsymbol\phi,\gamma) = \prod_k\mathcal{N}(\mathbf{x}_k;\boldsymbol\mu_k(\mathbf{y}_k),\boldsymbol\Sigma_k),
@@ -335,7 +334,8 @@ locally_linear_odes.state.R,locally_linear_odes.state.r = rewrite_odes_as_linear
 # In[14]:
 
 
-proxy.state = fitting_state_observations(simulation.observations,inv_C,simulation.observed_states,obs_to_state_relations,simulation.obs_variance,time_points.observed,symbols)
+GP_post_mean,GP_post_inv_cov = fitting_state_observations(simulation.observations,inv_C,symbols.state,simulation.observed_states,obs_to_state_relations,simulation.obs_variance,time_points.for_estimation,time_points.observed)
+proxy.state = GP_post_mean
 
 
 # ## Variational Coordinate Ascent
@@ -384,15 +384,17 @@ proxy.state = fitting_state_observations(simulation.observations,inv_C,simulatio
 
 for i in range(opt_settings.number_of_ascending_steps):
     proxy.param = proxy_for_ode_parameters(proxy.state,locally_linear_odes,dC_times_inv_C,symbols.param,simulation.ode_param)
-    proxy.state = proxy_for_ind_states(proxy.state,proxy.param,locally_linear_odes,dC_times_inv_C,symbols.state,simulation.observed_states,state_couplings,time_points,simulation)
+    proxy.state = proxy_for_ind_states(proxy.state,proxy.param,locally_linear_odes,dC_times_inv_C,symbols.state,simulation.observed_states,state_couplings,time_points,simulation,GP_post_mean,GP_post_inv_cov,opt_settings.clamp_states_to_observation_fit,simulation.observations)
 
 
 # ## Numerical Integration with Estimated ODE Parameters
+# 
+# We plug the estimated ODE parameters into a numerical integrator and observe it's trajectories (in green).
 
 # In[16]:
 
 
 simulation_with_est_param = simulation
 simulation_with_est_param.ode_param = proxy.param
-simulation.state, simulation.observations, time_points.observed, obs_to_state_relations = simulate_state_dynamics(simulation_with_est_param,time_points,symbols,odes,2,simulation.observations,time_points.observed)
+simulation.state, simulation.observations, time_points.observed, obs_to_state_relations = simulate_state_dynamics(simulation_with_est_param,time_points,symbols.state,symbols.param,odes,2,simulation.observations,time_points.observed,proxy.state)
 
