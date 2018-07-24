@@ -19,6 +19,8 @@
 # In[1]:
 
 
+import sys
+sys.path.insert(0, './VGM_modules')
 from Lorenz_attractor_declarations import *
 from import_odes import *
 from simulate_state_dynamics import *
