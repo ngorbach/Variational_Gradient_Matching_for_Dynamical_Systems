@@ -154,7 +154,11 @@ def proxy_for_ind_states(state_proxy,ode_param_proxy,locally_linear_odes,dC_time
         plt.subplot(len(state_symbols),1,u+1)
         handle[u].plot(time_points.true, simulation.state[:,u],color=cmap(1),label='true')
         handle[u].plot(time_points.for_estimation, global_mean[:,u],color=cmap(0),label='estimated')
-        plt.xlabel('time',fontsize=18), plt.title(state_symbols[u],position=(0.02,1),fontsize=18)
+        plt.xlabel('time',fontsize=18), 
+        if state_symbols[u] in simulation.observed_states:
+            plt.title('observed %s' % state_symbols[u],loc='left')
+        else:
+            plt.title('unobserved %s' % state_symbols[u],loc='left')
         handle[u].legend(fontsize=12)
     observed_state_idx = [u for u in range(len(state_symbols)) if state_symbols[u] in simulation.observed_states]    
     u2=0

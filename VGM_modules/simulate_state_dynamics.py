@@ -88,7 +88,11 @@ def simulate_state_dynamics(simulation,time_points,state_symbols,ode_param_symbo
         if len(args)!=0:
             handle[u].plot(time_points.for_estimation, state_proxy[:,u],color=cmap(0),label='VGM estimation') 
         handle[u].plot(time_points.true, state[:,u],color=cmap(color_idx),label='numerical integration')
-        plt.xlabel('time',fontsize=18), plt.title(state_symbols[u],position=(0.02,1),fontsize=15)
+        plt.xlabel('time',fontsize=18),
+        if state_symbols[u] in simulation.observed_states:
+            plt.title('observed %s' % state_symbols[u],loc='left',fontsize=18)
+        else:
+            plt.title('unobserved %s' % state_symbols[u],loc='left',fontsize=18)
         handle[u].legend(fontsize=12)
     u2=0
     for u in observed_state_idx: 

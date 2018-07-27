@@ -76,7 +76,11 @@ def fitting_state_observations(observations,prior_inv_cov,hidden_states,observed
     for u in range(numb_hidden_states):
         handle[u] = fig.add_subplot(numb_hidden_states,1,u+1)
         handle[u].plot(given_time_points, GP_post_mean[:,u],color=cmap(0),label='estimated')
-        plt.xlabel('time',fontsize=18), plt.title(hidden_states[i],position=(0.02,1),fontsize=18)
+        plt.xlabel('time',fontsize=18), 
+        if hidden_states[u] in observed_states:
+            plt.title('observed %s' % hidden_states[u],loc='left',fontsize=18)
+        else:
+            plt.title('unobserved %s' % hidden_states[u],loc='left',fontsize=18)
         handle[u].legend(fontsize=12)
     u2=0
     for u in observed_state_idx: 
