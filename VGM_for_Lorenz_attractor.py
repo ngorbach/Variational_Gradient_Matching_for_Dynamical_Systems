@@ -1,6 +1,3 @@
-
-# coding: utf-8
-
 # # Variational Gradient Matching for Dynamical Systems: Lorenz Attractor
 #                         Fast Parameter Identification for Nonlinear Dynamical Systems
 #                         
@@ -18,7 +15,6 @@
 
 # In[1]:
 
-
 import sys
 sys.path.insert(0, './VGM_modules')
 from Lorenz_attractor_declarations import *
@@ -27,6 +23,16 @@ from simulate_state_dynamics import *
 from GP_regression import *
 from rewrite_odes_as_local_linear_combinations import *
 from proxies_for_ode_parameters_and_states import *
+
+
+#import sys
+#sys.path.insert(0, './VGM_modules')
+#from Lorenz_attractor_declarations import *
+#from import_odes import *
+#from simulate_state_dynamics import *
+#from GP_regression import *
+#from rewrite_odes_as_local_linear_combinations import *
+#from proxies_for_ode_parameters_and_states import *
 
 
 # ## User Input

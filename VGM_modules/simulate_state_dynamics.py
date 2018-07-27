@@ -72,7 +72,8 @@ def simulate_state_dynamics(simulation,time_points,state_symbols,ode_param_symbo
     plt.figure(num=None, figsize=(7, 4), dpi=80)
     ax = plt.subplot(111)
     ax.bar(np.asarray(range(numb_ode_parameters)),np.squeeze(simulation.ode_param),color=cmap(color_idx),width=0.2)
-    plt.title('ODE Parameters',fontsize=18), plt.xticks(range(numb_ode_parameters),ode_param_symbols,fontsize=15)
+    plt.title('ODE Parameters',fontsize=18)
+    plt.xticks(range(numb_ode_parameters),['$\%s$' % symbol for symbol in ode_param_symbols],fontsize=18)
 
 
     # plotting states
@@ -90,9 +91,9 @@ def simulate_state_dynamics(simulation,time_points,state_symbols,ode_param_symbo
         handle[u].plot(time_points.true, state[:,u],color=cmap(color_idx),label='numerical integration')
         plt.xlabel('time',fontsize=18),
         if state_symbols[u] in simulation.observed_states:
-            plt.title('observed %s' % state_symbols[u],loc='left',fontsize=18)
+            plt.title('observed $%s$' % state_symbols[u],loc='left',fontsize=18)
         else:
-            plt.title('unobserved %s' % state_symbols[u],loc='left',fontsize=18)
+            plt.title('unobserved $%s$' % state_symbols[u],loc='left',fontsize=18)
         handle[u].legend(fontsize=12)
     u2=0
     for u in observed_state_idx: 
@@ -105,9 +106,9 @@ def simulate_state_dynamics(simulation,time_points,state_symbols,ode_param_symbo
         fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
         ax = fig.gca(projection='3d')
         ax.plot(state[:,0],state[:,1],state[:,2],color=cmap(color_idx),label='numerical integration')
-        ax.set_xlabel(state_symbols[0],fontsize=18)
-        ax.set_ylabel(state_symbols[1],fontsize=18)
-        ax.set_zlabel(state_symbols[2],fontsize=18)
+        ax.set_xlabel('$%s$' % state_symbols[0],fontsize=18)
+        ax.set_ylabel('$%s$' % state_symbols[1],fontsize=18)
+        ax.set_zlabel('$%s$' % state_symbols[2],fontsize=18)
         ax.set_title('Phase Space',fontsize=18)
         ax.legend(fontsize=12)
         if len(simulation.observed_states) == numb_hidden_states:
@@ -118,8 +119,8 @@ def simulate_state_dynamics(simulation,time_points,state_symbols,ode_param_symbo
         fig = plt.figure(num=None, figsize=(6, 3), dpi=80)
         ax = fig.add_subplot(111)
         ax.plot(state[:,0],state[:,1],color=cmap(color_idx),label='numerical integration')
-        ax.set_xlabel(state_symbols[0],fontsize=18)
-        ax.set_ylabel(state_symbols[1],fontsize=18)
+        ax.set_xlabel('$%s$' % state_symbols[0],fontsize=18)
+        ax.set_ylabel('$%s$' % state_symbols[1],fontsize=18)
         ax.set_title('Phase Space',fontsize=18)
         if len(args)!=0:
             ax.plot(state_proxy[:,0], state_proxy[:,1],color=cmap(0),label='VGM estimation') 

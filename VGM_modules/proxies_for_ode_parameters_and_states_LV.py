@@ -60,7 +60,7 @@ def proxy_for_ode_parameters(state_proxy,locally_linear_odes,dC_times_inv_C,ode_
     ax = plt.subplot(111)
     ax.bar(np.asarray(range(len(global_mean)))+0.12,ode_param_true,color=cmap(1),width=0.2,label='true')
     ax.bar(np.asarray(range(len(global_mean)))-0.12,global_mean.T[0].tolist(),color=cmap(0),width=0.2,label='estimated')
-    plt.title('ODE Parameters',fontsize=18), plt.xticks(range(len(global_mean)),ode_param_symbols,fontsize=15)
+    plt.title('ODE Parameters',fontsize=18), plt.xticks(range(len(global_mean)),['$\%s$' % symbol for symbol in ode_param_symbols],fontsize=18)
     ax.legend(fontsize=12)
     # plt.show()
     
@@ -87,7 +87,7 @@ def proxy_for_ind_states(state_proxy,ode_param_proxy,locally_linear_odes,dC_time
     # numer of hidden states
     numb_hidden_states = len(state_symbols)
      
-    if clamp_states_to_observation_fit==1:
+    if clamp_states_to_observation_fit==True:
     # indices of observed states
         hidden_states_to_infer = [u for u in range(len(state_symbols)) if state_symbols[u] not in observed_states]
     else:
@@ -143,7 +143,7 @@ def proxy_for_ind_states(state_proxy,ode_param_proxy,locally_linear_odes,dC_time
         global_mean[:,u] = np.squeeze(np.linalg.solve(local_scaling + GP_post_inv_cov[u],local_mean\
                    + np.dot(GP_post_inv_cov[u],GP_post_mean[:,u]).reshape(-1,1)))
      
-    # plotting
+    # plotting 
     warnings.simplefilter("ignore")
     cmap = plt.get_cmap("tab10")
     fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
@@ -156,9 +156,9 @@ def proxy_for_ind_states(state_proxy,ode_param_proxy,locally_linear_odes,dC_time
         handle[u].plot(time_points.for_estimation, global_mean[:,u],color=cmap(0),label='estimated')
         plt.xlabel('time',fontsize=18), 
         if state_symbols[u] in simulation.observed_states:
-            plt.title('observed %s' % state_symbols[u],loc='left')
+            plt.title('observed $%s$' % state_symbols[u],loc='left',fontsize=18)
         else:
-            plt.title('unobserved %s' % state_symbols[u],loc='left')
+            plt.title('unobserved $%s$' % state_symbols[u],loc='left',fontsize=18)
         handle[u].legend(fontsize=12)
     observed_state_idx = [u for u in range(len(state_symbols)) if state_symbols[u] in simulation.observed_states]    
     u2=0
@@ -172,11 +172,11 @@ def proxy_for_ind_states(state_proxy,ode_param_proxy,locally_linear_odes,dC_time
         fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
         ax = fig.gca(projection='3d')
         ax.plot(global_mean[:,0],global_mean[:,1],global_mean[:,2],color=cmap(0),label='estimated')
-        ax.set_xlabel(state_symbols[0],fontsize=18)
-        ax.set_ylabel(state_symbols[1],fontsize=18)
-        ax.set_zlabel(state_symbols[2],fontsize=18)
+        ax.set_xlabel('$%s$' % state_symbols[0],fontsize=18)
+        ax.set_ylabel('$%s$' % state_symbols[1],fontsize=18)
+        ax.set_zlabel('$%s$' % state_symbols[2],fontsize=18)
         ax.set_title('Phase Plot',fontsize=18)
-        ax.legend(fontsize=15)
+        ax.legend(fontsize=12)
         if len(simulation.observed_states) == numb_hidden_states:
             ax.plot(observations[:,0],observations[:,1],observations[:,2],'*',markersize=7,color=cmap(1),label='observed')
             ax.legend(fontsize=12)
@@ -184,10 +184,10 @@ def proxy_for_ind_states(state_proxy,ode_param_proxy,locally_linear_odes,dC_time
         fig = plt.figure(num=None, figsize=(6, 3), dpi=80)
         ax = fig.add_subplot(111)
         ax.plot(global_mean[:,0],global_mean[:,1],color=cmap(0),label='estimated')
-        ax.set_xlabel(state_symbols[0],fontsize=18)
-        ax.set_ylabel(state_symbols[1],fontsize=18)
+        ax.set_xlabel('$%s$' % state_symbols[0],fontsize=18)
+        ax.set_ylabel('$%s$' % state_symbols[1],fontsize=18)
         ax.set_title('Phase Space',fontsize=18)
-        ax.legend(fontsize=15)
+        ax.legend(fontsize=12)
         if len(simulation.observed_states) == numb_hidden_states:
             ax.plot(observations[:,0],observations[:,1],'*',markersize=7,color=cmap(1),label='observed')
             ax.legend(fontsize=12)

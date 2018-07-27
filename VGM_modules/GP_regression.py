@@ -65,7 +65,7 @@ def fitting_state_observations(observations,prior_inv_cov,hidden_states,observed
  
     
     # Plotting
-    
+
     # indices of observed states
     observed_state_idx = [u for u in range(numb_hidden_states) if hidden_states[u] in observed_states]
     
@@ -78,9 +78,9 @@ def fitting_state_observations(observations,prior_inv_cov,hidden_states,observed
         handle[u].plot(given_time_points, GP_post_mean[:,u],color=cmap(0),label='estimated')
         plt.xlabel('time',fontsize=18), 
         if hidden_states[u] in observed_states:
-            plt.title('observed %s' % hidden_states[u],loc='left',fontsize=18)
+            plt.title('observed $%s$' % hidden_states[u],loc='left',fontsize=18)
         else:
-            plt.title('unobserved %s' % hidden_states[u],loc='left',fontsize=18)
+            plt.title('unobserved $%s$' % hidden_states[u],loc='left',fontsize=18)
         handle[u].legend(fontsize=12)
     u2=0
     for u in observed_state_idx: 
@@ -93,9 +93,9 @@ def fitting_state_observations(observations,prior_inv_cov,hidden_states,observed
         fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
         ax = fig.gca(projection='3d')
         ax.plot(GP_post_mean[:,0],GP_post_mean[:,1],GP_post_mean[:,2],color=cmap(0),label='estimated')
-        ax.set_xlabel(hidden_states[0],fontsize=18)
-        ax.set_ylabel(hidden_states[1],fontsize=18)
-        ax.set_zlabel(hidden_states[2],fontsize=18)
+        ax.set_xlabel('$%s$' % hidden_states[0],fontsize=18)
+        ax.set_ylabel('$%s$' % hidden_states[1],fontsize=18)
+        ax.set_zlabel('$%s$' % hidden_states[2],fontsize=18)
         ax.set_title('Phase Space',fontsize=18)
         ax.legend(fontsize=15)
         if len(observed_states) == numb_hidden_states:
@@ -105,8 +105,8 @@ def fitting_state_observations(observations,prior_inv_cov,hidden_states,observed
         fig = plt.figure(num=None, figsize=(6, 3), dpi=80)
         ax = fig.add_subplot(111)
         ax.plot(GP_post_mean[:,0],GP_post_mean[:,1],color=cmap(0),label='estimated')
-        ax.set_xlabel(hidden_states[0],fontsize=18)
-        ax.set_ylabel(hidden_states[1],fontsize=18)
+        ax.set_xlabel('$%s$' % hidden_states[0],fontsize=18)
+        ax.set_ylabel('$%s$' % hidden_states[1],fontsize=18)
         ax.set_title('Phase Space',fontsize=18)
         ax.legend(fontsize=12)
         if len(observed_states) == numb_hidden_states:
