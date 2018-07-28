@@ -1,6 +1,3 @@
-
-# coding: utf-8
-
 # # Variational Gradient Matching for Dynamical Systems: Lotka-Volterra
 #                         Fast Parameter Identification for Nonlinear Dynamical Systems
 #                         
