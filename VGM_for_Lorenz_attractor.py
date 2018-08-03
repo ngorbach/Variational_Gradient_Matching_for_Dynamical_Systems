@@ -55,7 +55,7 @@ simulation.ode_param = [10.0,28.0,8.0/3.0]
 # In[3]:
 
 
-simulation.observed_states = sym.symbols(['x','z'])
+simulation.observed_states = sym.symbols(['x','y','z'])
 
 
 # ##### Final time for simulation
@@ -86,14 +86,6 @@ simulation.interval_between_observations = 0.1
 
 
 # ### Estimation Settings
-
-# ##### Kernel parameters $\boldsymbol\phi$
-# Input a row vector of positive real numbers of size 1 x 2:
-
-# In[7]:
-
-
-kernel.param = [10,0.2]
 
 
 # ##### Time points used to estimate the state trajectories
@@ -127,7 +119,7 @@ state_couplings = find_state_couplings_in_odes(odes,symbols)
 # In[10]:
 
 
-simulation.state, simulation.observations, time_points.observed, obs_to_state_relations = simulate_state_dynamics(simulation,time_points,symbols.state,symbols.param,odes,1)
+simulation.state, simulation.observations, obs_to_state_relations = setup_simulation(simulation,time_points,symbols,odes,1)
 
 
 # ## Prior on States and State Derivatives
@@ -182,7 +174,7 @@ simulation.state, simulation.observations, time_points.observed, obs_to_state_re
 # In[11]:
 
 
-dC_times_inv_C,inv_C = kernel_function(time_points.for_estimation,kernel.param)
+dC_times_inv_C,inv_C = kernel_function(time_points.for_estimation)
 
 
 # ## Rewrite ODE's as Linear Combination in Parameters
@@ -241,7 +233,7 @@ locally_linear_odes.ode_param.B,locally_linear_odes.ode_param.b = rewrite_odes_a
 # In[13]:
 
 
-locally_linear_odes.state.R,locally_linear_odes.state.r = rewrite_odes_as_linear_combination_in_states(odes,symbols.state,symbols.param,simulation.observed_states,opt_settings.clamp_states_to_observation_fit)
+locally_linear_odes.state.R,locally_linear_odes.state.r = rewrite_odes_as_linear_combination_in_states(odes,symbols.state,symbols.param,simulation.observed_states)
 
 
 # ## Posterior over Individual States
@@ -344,7 +336,7 @@ locally_linear_odes.state.R,locally_linear_odes.state.r = rewrite_odes_as_linear
 # In[14]:
 
 
-GP_post_mean,GP_post_inv_cov = fitting_state_observations(simulation.observations,inv_C,symbols.state,simulation.observed_states,obs_to_state_relations,simulation.obs_variance,time_points.for_estimation,time_points.observed)
+GP_post_mean,GP_post_inv_cov = fitting_state_observations(simulation.observations,inv_C,symbols.state,obs_to_state_relations,simulation.obs_variance,time_points.for_estimation)
 proxy.state = GP_post_mean
 
 
@@ -393,13 +385,14 @@ proxy.state = GP_post_mean
 
 # In[15]:
 
-
 for i in range(opt_settings.number_of_ascending_steps):
-    print 'iteration number %s' %(i)
+    print '.',
     proxy.param = proxy_for_ode_parameters(proxy.state,locally_linear_odes,dC_times_inv_C,symbols.param,simulation.ode_param)
-    proxy.state = proxy_for_ind_states(proxy.state,proxy.param,locally_linear_odes,dC_times_inv_C,symbols.state,simulation.observed_states,state_couplings,time_points,simulation,GP_post_mean,GP_post_inv_cov,opt_settings.clamp_states_to_observation_fit,simulation.observations)
+    proxy.state = proxy_for_ind_states(proxy.state,proxy.param,locally_linear_odes,dC_times_inv_C,\
+                                       state_couplings,GP_post_mean,GP_post_inv_cov,simulation.observations,\
+                                       simulation.state)
 
-
+    
 # ## Numerical Integration with Estimated ODE Parameters
 # 
 # We plug the estimated ODE parameters into a numerical integrator and observe it's trajectories (in green).
@@ -409,6 +402,12 @@ for i in range(opt_settings.number_of_ascending_steps):
 
 simulation_with_est_param = simulation
 simulation_with_est_param.ode_param = proxy.param
-simulation.state, simulation.observations, time_points.observed, obs_to_state_relations = simulate_state_dynamics(simulation_with_est_param,time_points,symbols.state,symbols.param,odes,2,simulation.observations,time_points.observed,proxy.state)
-
+setup_simulation(simulation_with_est_param,time_points,symbols,odes,2,simulation.observations,proxy.state)
 plt.show()
+
+# In[17]:
+
+
+# Write proxies for states and ODE parameters to file in directoy './data'
+proxy.state.to_csv('./data/state_proxies.csv')
+proxy.param.to_csv('./data/ODE_param_proxies.csv')

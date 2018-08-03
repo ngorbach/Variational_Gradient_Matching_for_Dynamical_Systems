@@ -27,9 +27,6 @@ class simulation:
     state = None
     observations = None
     
-class kernel:
-    param = None
-    
 class time_points:
     true = np.arange(0.0, 20.0, 0.01)
     observed = None
@@ -41,7 +38,6 @@ class symbols:
     
 class opt_settings:
     number_of_ascending_steps = 10
-    clamp_states_to_observation_fit = 1
     
 class locally_linear_odes:
     class ode_param:
@@ -54,3 +50,5 @@ class locally_linear_odes:
 class proxy:
     ode_param = None
     state = None
+    
+    

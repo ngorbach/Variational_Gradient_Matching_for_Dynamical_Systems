@@ -14,15 +14,17 @@ from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
 from scipy.optimize import linear_sum_assignment
 from mpl_toolkits.mplot3d import Axes3D
+import pandas as pd
+from plotting import *
 
 # In[2]:
 
-# ## Integrand
 
-
-def integrand(state,t,odes,ode_param):
-        
-    return odes(state,ode_param)
+def integrand(states,t,odes,ode_param):
+    
+    '''Evaluates state derivatives'''
+    
+    return odes(states,ode_param)
 
 
 # In[3]:
@@ -30,146 +32,118 @@ def integrand(state,t,odes,ode_param):
 # ## Numerical Integration
     
 
-def numerical_integration(odes,t,init_val,param):
+def numerical_integration(odes,time_points,states,param,state_symbols):
     
-    return integrate.odeint(integrand, init_val, t, args=(odes,param))
+    '''Integrates the ODEs using numerical integration'''
+    
+    state = integrate.odeint(integrand, states, time_points, args=(odes,param))
+    
+    # pack states into pandas DataFrames
+    state = pd.DataFrame(state,columns=map(str,state_symbols),index=time_points).rename_axis('time')
+    
+    return state
 
 
 # In[5]:
 
-# ## Simulate the State Dynamics with given ODE Parameters
 
+def setup_simulation(simulation,time_points,symbols,odes,color_idx1=1,*args):
 
-def simulate_state_dynamics(simulation,time_points,state_symbols,ode_param_symbols,odes,color_idx,*args):
+    '''Simulates the State Dynamics with given ODE Parameters'''
     
-    # number of hidden states and ODE parameters
-    numb_hidden_states = len(state_symbols)
-    numb_ode_parameters = len(simulation.ode_param)
-    
-    # simulate state trajectories by numerical integration
-    state = numerical_integration(odes,time_points.true,simulation.initial_states,simulation.ode_param)
     
     # simulate state observations
     if len(args)==0:
-        observations, observed_time_points = simulate_state_observations(\
-                state,state_symbols,simulation.final_time_point,simulation.interval_between_observations,\
-                simulation.integration_interval,simulation.obs_variance,simulation.observed_states,time_points.final_observed)
-    else:
-        observations = args[0]
-        observed_time_points = args[1]
-        state_proxy = args[2]
-    
-    # mapping between observation- and state trajectories
-    obs_to_state_relations = mapping_between_observation_and_state_trajectories(time_points.for_estimation,\
-                                                                                observed_time_points,state_symbols,\
-                                                                                simulation.observed_states)
-    
-    
-    ## Plotting
-    
-    # plotting ODE parameters
-    cmap = plt.get_cmap("tab10")
-    plt.figure(num=None, figsize=(7, 4), dpi=80)
-    ax = plt.subplot(111)
-    ax.bar(np.asarray(range(numb_ode_parameters)),np.squeeze(simulation.ode_param),color=cmap(color_idx),width=0.2)
-    plt.title('ODE Parameters',fontsize=18)
-    plt.xticks(range(numb_ode_parameters),['$\%s$' % symbol for symbol in ode_param_symbols],fontsize=18)
-
-
-    # plotting states
-    
-    # indices of observed states
-    observed_state_idx = [u for u in range(numb_hidden_states) if state_symbols[u] in simulation.observed_states] 
-    cmap = plt.get_cmap("tab10")
-    fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
-    plt.subplots_adjust(hspace=0.5)
-    handle=[[] for i in range(numb_hidden_states)]
-    for u in range(numb_hidden_states):
-        handle[u] = fig.add_subplot(numb_hidden_states,1,u+1)
-        if len(args)!=0:
-            handle[u].plot(time_points.for_estimation, state_proxy[:,u],color=cmap(0),label='VGM estimation') 
-        handle[u].plot(time_points.true, state[:,u],color=cmap(color_idx),label='numerical integration')
-        plt.xlabel('time',fontsize=18),
-        if state_symbols[u] in simulation.observed_states:
-            plt.title('observed $%s$' % state_symbols[u],loc='left',fontsize=18)
-        else:
-            plt.title('unobserved $%s$' % state_symbols[u],loc='left',fontsize=18)
-        handle[u].legend(fontsize=12)
-    u2=0
-    for u in observed_state_idx: 
-        handle[u].plot(observed_time_points, observations[:,u2],'*',markersize=7,color=cmap(1),label='observed')
-        handle[u].legend(fontsize=12)
-        u2 += 1 
-     
-    # phase space
-    if numb_hidden_states==3:
-        fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
-        ax = fig.gca(projection='3d')
-        ax.plot(state[:,0],state[:,1],state[:,2],color=cmap(color_idx),label='numerical integration')
-        ax.set_xlabel('$%s$' % state_symbols[0],fontsize=18)
-        ax.set_ylabel('$%s$' % state_symbols[1],fontsize=18)
-        ax.set_zlabel('$%s$' % state_symbols[2],fontsize=18)
-        ax.set_title('Phase Space',fontsize=18)
-        ax.legend(fontsize=12)
-        if len(simulation.observed_states) == numb_hidden_states:
-            ax.plot(observations[:,0],observations[:,1],observations[:,2],'*',markersize=7,color=cmap(1),label='observed')
-            ax.legend(fontsize=12)
-
-    else:
-        fig = plt.figure(num=None, figsize=(6, 3), dpi=80)
-        ax = fig.add_subplot(111)
-        ax.plot(state[:,0],state[:,1],color=cmap(color_idx),label='numerical integration')
-        ax.set_xlabel('$%s$' % state_symbols[0],fontsize=18)
-        ax.set_ylabel('$%s$' % state_symbols[1],fontsize=18)
-        ax.set_title('Phase Space',fontsize=18)
-        if len(args)!=0:
-            ax.plot(state_proxy[:,0], state_proxy[:,1],color=cmap(0),label='VGM estimation') 
-        ax.legend(fontsize=12)
-        if len(simulation.observed_states) == numb_hidden_states:
-            ax.plot(observations[:,0],observations[:,1],'*',markersize=7,color=cmap(1),label='observed')
-            ax.legend(fontsize=12)
         
-    #plt.show()
+        # simulate state trajectories by numerical integration
+        state = numerical_integration(odes,time_points.true,simulation.initial_states,simulation.ode_param,symbols.state)
     
-    return state, observations, observed_time_points, obs_to_state_relations
+        observations = simulate_state_observations(state,simulation.interval_between_observations,\
+                simulation.observed_states,time_points.final_observed,simulation.obs_variance).rename_axis('time')
+        
+
+        # write state- and observed trajectories to file in directoy './data'
+        state.to_csv('./data/true_states.csv')
+        observations.to_csv('./data/observations.csv')
+        
+        # pack simulation.ode_param into pandas DataFrame
+        simulation.ode_param = pd.DataFrame(np.array(simulation.ode_param),columns=['value'],\
+                                            index=map(str,symbols.param)).rename_axis('ODE parameter symbols')
+            
+        ## plotting ODE parameters and states
+        plot_ode_parameters(simulation.ode_param)
+        plot_states(state,observations)
+        
+        # mapping between observation- and state trajectories
+        obs_to_state_relations = \
+        mapping_between_observation_and_state_trajectories(time_points.for_estimation,\
+                                                           np.array(observations.index),symbols.state,\
+                                                           simulation.observed_states)
+        
+    else:
+        
+        # unpack ode_param into list
+        ode_param = simulation.ode_param.values
+        
+        # simulate state trajectories by numerical integration
+        state = numerical_integration(odes,time_points.true,simulation.initial_states,ode_param,symbols.state)
+        
+        # unpack arbitrary length arguments
+        observations = args[0]
+        state_proxy = args[1]
+        
+        ## plotting ODE parameters and states
+        plot_ode_parameters(simulation.ode_param,[2,0,1])
+        plot_states(state,observations,['num. int. with estimated param','VGM estimate','observed'],[2,0,1],1,state_proxy)
+        obs_to_state_relations = []
+        
+
+    return state, observations, obs_to_state_relations
 
 
 
 # In[4]:
 
-# ## Simulate observations of state trajectories by adding normally distributed noise to the true state trajectories
 
-
-def simulate_state_observations(state,state_symbols,final_time_point,interval_between_observations,\
-                                integration_interval,obs_variance,observed_states,final_observed_time_point):
+def simulate_state_observations(state,interval_between_observations,observed_states,\
+                                final_observed_time_point,obs_variance=0.1):
     
-    integration_time_points = np.arange(0,final_time_point,integration_interval)
+    '''Simulates observations of state trajectories by adding normally distributed noise to the true state trajectories'''
+    
+    #integration_time_points = np.arange(0,final_time_point,integration_interval)
+    integration_time_points = np.array(state.index)
     observed_time_points = np.arange(0,final_observed_time_point,interval_between_observations)
 
     # indices of observed time points
+    integration_interval = state.index[2] - state.index[1]
     observed_time_idx = np.round(observed_time_points / integration_interval + 1)
     
-    state_true = state[observed_time_idx.astype(int),:]
-    idx = [i for i in range(len(state_symbols)) if state_symbols[i] in observed_states]
-    state_true = state_true[:,idx]
-
+    # unpack subset of state
+    state_subset = state[map(str,observed_states)]
+    state_subset = state_subset.iloc[observed_time_idx.astype(int),:]
+    
     # add normally distributed noise with variance $\sigma$ to the true state trajectories
-    observations = state_true + np.sqrt(obs_variance) * np.random.randn(observed_time_idx.shape[0],state_true.shape[1])
+    observations = state_subset + np.sqrt(obs_variance) * \
+    np.random.randn(observed_time_idx.shape[0],state_subset.shape[1])
     
     observed_time_points = integration_time_points[observed_time_idx.astype(int)]
     
-    return observations, observed_time_points
+    # pack observations into pandas DataFrames
+    observations = pd.DataFrame(observations,columns=map(str,observed_states),\
+                                index=observed_time_points).rename_axis('time')
+        
+    return observations
 
 
 
 # In[6]:
 
-# ## Mapping between Observations and States
-    
 
 def mapping_between_observation_and_state_trajectories(given_time_points,observed_time_points,state_symbols,\
                                                        observed_states):
 
+    '''Deftermines relationship between observation- and state trajectories'''
+    
     # Euclidean distance between observed time_points and given time points
     if len(observed_time_points) > len(given_time_points):
         dist = cdist(given_time_points.reshape(-1,1),observed_time_points.reshape(-1,1),'euclidean')

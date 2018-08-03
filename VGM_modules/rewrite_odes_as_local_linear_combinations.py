@@ -27,6 +27,8 @@ import sympy as sym
 
 def rewrite_odes_as_linear_combination_in_parameters(odes,state_symbols,ode_param_symbols): 
 
+    '''Rewrites each ODE as a Linear Combination in all ODE Parameters'''
+    
     # number of hidden states
     numb_hidden_states = len(state_symbols)
     
@@ -73,8 +75,10 @@ def rewrite_odes_as_linear_combination_in_parameters(odes,state_symbols,ode_para
 
 
 def rewrite_odes_as_linear_combination_in_states(odes,state_symbols,ode_param_symbols,observed_states,\
-                                                 clamp_states_to_observation_fit): 
+                                                 clamp_states_to_observation_fit=1): 
 
+    '''Rewrite each ODE as a Linear Combination in an Individual State'''
+    
     # number of hidden states
     numb_hidden_states = len(state_symbols)
     
@@ -105,7 +109,7 @@ def rewrite_odes_as_linear_combination_in_states(odes,state_symbols,ode_param_sy
         for k in range(numb_hidden_states):
             expr_R,expr_r = sym.linear_eq_to_matrix([odes(state_symbols,ode_param_symbols)[k].expand()],\
                                                      state_symbols[u])  
-            expr_r = -expr_r
+            expr_r = -expr_r  # see the documentation of the function "sympy.linear_eq_to_matrix"
         
             # replace scalar by vector populated by the same scalar
             for i in range(len(expr_R)):

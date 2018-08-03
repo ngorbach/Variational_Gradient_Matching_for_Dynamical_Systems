@@ -77,15 +77,6 @@ simulation.interval_between_observations = 0.1
 
 # ### Estimation Settings
 
-# ##### Kernel parameters $\boldsymbol\phi$
-# Input a row vector of positive real numbers of size 1 x 2:
-
-# In[7]:
-
-
-kernel.param = [10,0.2]
-
-
 # ##### Time points used to estimate the state trajectories
 # Input a row vector of positive real numbers in ascending order:
 
@@ -171,7 +162,7 @@ simulation.state, simulation.observations, time_points.observed, obs_to_state_re
 # In[11]:
 
 
-dC_times_inv_C,inv_C = kernel_function(time_points.for_estimation,kernel.param)
+dC_times_inv_C,inv_C = kernel_function(time_points.for_estimation)
 
 
 # ## Rewrite ODE's as Linear Combination in Parameters
@@ -382,8 +373,9 @@ proxy.state = GP_post_mean
 
 
 for i in range(opt_settings.number_of_ascending_steps):
-    print 'iteration number %s' %(i)
+    print '.',
     proxy.param = proxy_for_ode_parameters(proxy.state,locally_linear_odes,dC_times_inv_C,symbols.param,simulation.ode_param)
+    proxy.param = simulation.ode_param
     proxy.state = proxy_for_ind_states(proxy.state,proxy.param,locally_linear_odes,dC_times_inv_C,symbols.state,simulation.observed_states,state_couplings,time_points,simulation,GP_post_mean,GP_post_inv_cov,opt_settings.clamp_states_to_observation_fit,simulation.observations)
 
 

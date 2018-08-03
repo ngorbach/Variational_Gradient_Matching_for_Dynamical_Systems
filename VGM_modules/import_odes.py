@@ -14,10 +14,11 @@ import sympy as sym
 
 # In[2]:
 
-# ## Import ODEs
-
 
 def import_odes(symbols,odes_path):
+    
+    '''Imports ODEs from file specified by odes_path'''
+    
     with open(odes_path) as f:
         odes_string = f.read().splitlines()
         
@@ -28,10 +29,12 @@ def import_odes(symbols,odes_path):
 
 # In[3]:
 
-# ## Find Couplings  between States across ODEs
 
 
 def find_state_couplings_in_odes(odes,symbols):
+    
+    '''Find Couplings  between States across ODEs'''
+    
     state_couplings = np.zeros((len(symbols.state),len(symbols.state)))
     for u in range(len(symbols.state)):
         odes_sym = odes(symbols.state,symbols.param)[u]
