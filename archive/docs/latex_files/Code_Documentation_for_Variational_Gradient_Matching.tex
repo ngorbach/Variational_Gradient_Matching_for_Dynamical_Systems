@@ -1,0 +1,97 @@
+
+% This LaTeX was auto-generated from MATLAB code.
+% To make changes, upda\textit{•}te the MATLAB code and republish this document.
+
+\documentclass[a4paper, 11pt, twoside]{book}
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage[a4paper,left=2cm,right=2cm,top=2.5cm,bottom=2.5cm]{geometry}
+%\sloppy
+\definecolor{lightgray}{gray}{0.5}
+\setlength{\parindent}{0pt}
+
+\usepackage{amsmath}
+ \usepackage{amssymb}
+\usepackage{amsthm}
+
+\usepackage[utf8]{inputenc}
+\usepackage{verbatim}
+
+\usepackage{fontspec}
+\usepackage{fontenc}
+\setmainfont[BoldFont={Minion Pro Semibold}, ItalicFont={Minion Pro Italic}]{Minion Pro}
+\usepackage{titlesec}
+   \newfontfamily\headingfont[]{Minion Pro Semibold}
+  \titleformat{\chapter}[display]
+  {\huge\headingfont}{\chaptertitlename\ \thechapter}{20pt}{\huge}
+  
+\usepackage{fancyvrb}
+ 
+ \usepackage[pagebackref=true,breaklinks=true,letterpaper=true,colorlinks,bookmarks=false]{hyperref}
+
+\usepackage[dvipsnames]{xcolor}
+\hypersetup{
+colorlinks,
+linkcolor=black,
+citecolor=black,
+urlcolor=blue
+}
+
+\usepackage{float}
+
+ \usepackage{fancyhdr}
+ \pagestyle{fancy}
+\fancyhead{}
+\fancyhead[EL]{\leftmark}
+\fancyhead[OR]{\rightmark}
+%\lhead{Variational Gradient Matching for Dynamical Systems}
+%\fancyfoot[L]{Version of \today}
+\fancyfoot[C]{\thepage}
+
+\begin{document}
+
+  \input{titlepage}
+
+ \cleardoublepage 
+ 
+\setcounter{tocdepth}{2}
+\tableofcontents   
+ 
+  \setcounter{chapter}{1}
+\chapter*{VGM for Lotka-Volterra}
+ \phantomsection\addcontentsline{toc}{chapter}{VGM for Lotka-Volterra}
+\input{lotka_volterra}
+\cleardoublepage
+
+  \setcounter{chapter}{2}
+  \setcounter{section}{0}
+\chapter*{VGM for Lorenz 96}   
+\phantomsection\addcontentsline{toc}{chapter}{VGM for Lorenz 96}
+\input{lorenz96}
+\cleardoublepage
+
+  \setcounter{chapter}{3}
+    \setcounter{section}{0}
+\chapter*{VGM for Lorenz Attractor}
+\phantomsection\addcontentsline{toc}{chapter}{VGM for Lorenz Attractor}
+\input{lorenz_attractor}
+\cleardoublepage
+
+  \setcounter{chapter}{4}
+    \setcounter{section}{0}
+\chapter*{VGM for Dynamic Causal Modeling}
+\phantomsection\addcontentsline{toc}{chapter}{VGM for Dynamic Casual Modeling}
+\input{dcm}
+\cleardoublepage
+
+  \setcounter{chapter}{5}
+    \setcounter{section}{0}
+\chapter*{References}
+\phantomsection\addcontentsline{toc}{chapter}{References}
+\input{references}
+\cleardoublepage
+
+
+
+\end{document}
+    
