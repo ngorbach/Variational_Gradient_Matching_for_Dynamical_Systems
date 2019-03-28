@@ -20,6 +20,7 @@ import sys
 # ## Object Class Declarations
 
 odes_path = 'Lorenz_attractor_ODEs.txt'
+fig_shape=(10,8)
 
 class simulation:
     initial_states = [1,1,1]
@@ -33,8 +34,8 @@ class time_points:
     final_observed = 20.0
     
 class symbols:
-    state = sym.symbols(['x','y','z'])
-    param = sym.symbols(['sigma','rho','alpha'])
+    state = sym.symbols(['_x','_y','_z'])
+    param = sym.symbols(['_sigma','_rho','_alpha'])
     
 class opt_settings:
     number_of_ascending_steps = 10

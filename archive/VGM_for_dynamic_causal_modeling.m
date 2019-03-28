@@ -40,7 +40,7 @@
 % 
 % 
 %%
-        simulation.odes = 'forward_modulation_and_driven_by_attention';
+        simulation.odes = 'nonlinear_forward_modulation_by_attention';
 %% 
 % **
 % 
@@ -98,7 +98,7 @@
 % 
 % 
 
-        candidate_odes = 'forward_modulation_and_driven_by_attention';
+        candidate_odes = 'nonlinear_forward_modulation_by_attention';
 %% 
 % **
 % 
@@ -552,7 +552,7 @@ tic;
 % 
 % 
 %%
-bold_response.denoised_obs = denoising_BOLD_observations(simulation.bold_response{:,{'n_1','n_3','n_2'}},inv_C,symbols,simulation);
+bold_response.denoised_obs = denoising_BOLD_observations(simulation.bold_response{:,{'n_1','n_3','n_2'}},inv_C,symbols);
 %% 
 % 
 %% Fitting observations of state trajectories

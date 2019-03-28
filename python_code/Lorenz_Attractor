@@ -1,0 +1,588 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jul 11 07:25:40 2018
+
+@author: nico
+"""
+
+import numpy as np
+import sympy as sym
+import scipy.integrate as integrate
+from scipy.spatial.distance import cdist
+from scipy.optimize import linear_sum_assignment
+from scipy.linalg import block_diag
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+number_of_ascents = 1
+class simulation:
+    initial_states = [1,1,1]
+    integration_interval = 0.01
+    state = None
+    observations = None
+    
+class kernel:
+    param = None
+    
+class time_points:
+    true = np.arange(0.0, 20.0, 0.01)
+    observed = None
+    
+class symbols:
+    state = sym.symbols(['x','y','z'])
+    param = sym.symbols(['sigma','rho','alpha'])
+    
+class opt_settings:
+    number_of_ascending_steps = 10
+    
+class lin_comb:
+    def ode_param(self):
+        pass
+        
+    def state(self):
+        pass
+        
+class proxy:
+    ode_param = None
+    state = None
+    
+class locally_linear_ODEs:
+    class ode_param:
+        B = None
+        b = None
+    class state:
+        B = None
+        b = None
+        
+
+        
+
+
+
+
+
+
+def import_odes(symbols,odes_path):
+    with open(odes_path) as f:
+        odes_string = f.read().splitlines()
+        
+    odes_symbolic = [o.factor() for o in sym.sympify(odes_string)]
+    odes = sym.lambdify( [symbols.state,symbols.param],odes_symbolic)
+    
+#    print('\n')
+#    for k in range(len(odes_symbolic)):
+#        print(odes_symbolic[k].factor())
+    
+   
+    return odes
+
+
+def find_state_couplings_in_odes(odes,symbols):
+    state_couplings = np.zeros((len(symbols.state),len(symbols.state)))
+    for u in range(len(symbols.state)):
+        odes_sym = odes(symbols.state,symbols.param)[u]
+        mapping = filter(lambda v: v is not None,ismember(symbols.state,odes_sym.free_symbols))
+        idx = [j for (j,val) in enumerate(mapping) if np.not_equal(val,None)]
+        state_couplings[u,[idx]] = 1
+        
+    return state_couplings
+
+
+def integrand(state,t,odes,ode_param):
+        
+    return odes(state,ode_param)
+
+
+def numerical_integration(odes,t,init_val,param):
+    
+    I = integrate.odeint(integrand, init_val, t, args=(odes,param))
+
+    return I
+
+
+def simulate_state_observations(state,state_symbols,final_time_point,interval_between_observations,integration_interval,obs_variance,observed_states):
+    '''Simulate observations of state trajectories by adding normally distributed noise to the true state trajectories'''
+    
+    integration_time_points = np.arange(0,final_time_point,integration_interval)
+    observed_time_points = np.arange(0,final_time_point,interval_between_observations)
+
+    # indices of observed time points
+    observed_time_idx = np.round(observed_time_points / integration_interval + 1)
+    
+    state_true = state[observed_time_idx.astype(int),:]
+    idx = [i for i in range(len(state_symbols)) if state_symbols[i] in observed_states]
+    state_true = state_true[:,idx]
+
+    # add normally distributed noise with variance $\sigma$ to the true state trajectories
+    observations = state_true + np.sqrt(obs_variance) * np.random.randn(observed_time_idx.shape[0],state_true.shape[1])
+    
+    observed_time_points = integration_time_points[observed_time_idx.astype(int)]
+    
+    return observations, observed_time_points
+
+
+def simulate_state_dynamics(simulation,time_points,symbols,odes,color_idx,*args):
+    '''Simulate the state dynamics with given ODE parameters'''
+    
+    # simulate state trajectories by numerical integration
+    state = numerical_integration(odes,time_points.true,simulation.initial_states,simulation.ode_param)
+    
+    # simulate state observations
+    if len(args)==0:
+        observations, observed_time_points = simulate_state_observations(state,symbols.state,simulation.final_time_point,simulation.interval_between_observations,simulation.integration_interval,simulation.obs_variance,simulation.observed_states)
+    else:
+        observations = args[0]
+        observed_time_points = args[1]
+        
+    # mapping between observation- and state trajectories
+    obs_to_state_relations = mapping_between_observation_and_state_trajectories(time_points.for_estimation,observed_time_points,symbols.state,simulation.observed_states)
+    
+    
+    ## Plotting
+    
+    # indices of observed states
+    observed_state_idx = [u for u in range(len(symbols.state)) if symbols.state[u] in simulation.observed_states]    
+    cmap = plt.get_cmap("tab10")
+    fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
+    plt.subplots_adjust(hspace=0.5)
+    handle=[[] for i in range(len(symbols.state))]
+    for u in range(len(symbols.state)):
+        handle[u] = fig.add_subplot(len(symbols.param),1,u+1)
+        handle[u].plot(time_points.true, state[:,u],color=cmap(color_idx))
+        plt.xlabel('time',fontsize=12), plt.title(symbols.state[u],position=(0.02,1))
+    u2=0
+    for u in observed_state_idx: 
+        handle[u].plot(observed_time_points, observations[:,u2],'*',markersize=4,color=cmap(1))
+        u2 += 1   
+    fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
+    ax = fig.gca(projection='3d')
+    ax.plot(state[:,0],state[:,1],state[:,2],color=cmap(color_idx))
+    ax.set_xlabel(symbols.state[0],fontsize=25)
+    ax.set_ylabel(symbols.state[1],fontsize=25)
+    ax.set_zlabel(symbols.state[2],fontsize=25)
+    ax.set_title('Phase Plot',fontsize=25)
+    #plt.show()
+    
+    return state, observations, observed_time_points, obs_to_state_relations
+
+
+def mapping_between_observation_and_state_trajectories(given_time_points,observed_time_points,state_symbols,observed_states):
+    '''Determing mapping between observed trajectories and state trajectories'''
+    
+    # Euclidean distance between given time points and observed time points
+    dist = cdist(given_time_points.reshape(-1,1),observed_time_points.reshape(-1,1),'euclidean')
+    row_ind, col_ind = linear_sum_assignment(dist)
+    
+    # mapping between observation- and state time points
+    obs_time_to_state_time_relations = np.zeros((len(observed_time_points),len(given_time_points)))
+    obs_time_to_state_time_relations[row_ind,col_ind] = 1
+    
+    # indices of observed states
+    observed_state_idx = [u for u in range(len(symbols.state)) if symbols.state[u] in simulation.observed_states]  
+    
+    # mapping between observation- and state time points
+    state_mat = np.zeros((len(state_symbols),len(state_symbols)))
+    state_mat[observed_state_idx,observed_state_idx] = 1
+    
+    # indices of observed states
+    unobserved_state_idx = [i for i in range(len(symbols.state)) if state_symbols[i] not in observed_states]
+    
+    # mapping between state and observations
+    state_mat = np.delete(state_mat,unobserved_state_idx,0)
+    
+    # Kronecker-delta product
+    obs_to_state_relations = np.kron(state_mat,obs_time_to_state_time_relations)
+    
+    return obs_to_state_relations
+
+
+def fitting_state_observations(observations,prior_inv_cov,observed_states,obs_to_state_relations,obs_variance,observed_time_points,symbols):
+    '''Fit the observations of state trajectories by standard GP regression'''
+    
+    # $p(\mathbf{X} \mid \mathbf{Y}, \boldsymbol\phi,\gamma) = \prod_k \mathcal{N}(\mathbf{x}_k ; \boldsymbol\mu_k(\mathbf{y}_k),\boldsymbol\sigma_k)$,
+    #
+    # where $\boldsymbol\mu_k(\mathbf{y}_k) := \boldsymbol\sigma_k^{-2} \left(\boldsymbol\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldsymbol\phi_k}^{-1} \right)^{-1} \mathbf{y}_k$
+    # and $\boldsymbol\sigma_k ^{-1}:=\boldsymbol\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldsymbopl\phi_k}^{-1}$
+
+    # Form block-diagonal matrix out of $\mathbf{C}_{\boldmath\mathbf{\phi}_k}^{-1}$
+    inv_C_blockdiag = block_diag(*[prior_inv_cov]*len(symbols.state))
+    
+    # variance of state observations
+    variance = obs_variance**(-1) * np.ones((prior_inv_cov.shape[0],len(observed_states)))
+    D = np.dot(np.diag(variance.reshape(1,-1)[0]),np.identity(variance.reshape(1,-1).shape[1]))
+    
+    # GP posterior inverse covariance matrix: $\boldmath\mathbf{\sigma}_k^{-1}:=\mathbf{\sigma}_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\mathbf{\phi}_k}^{-1}$
+    obs_to_state_relations_times_D = np.dot(obs_to_state_relations.T,D)
+    A_times_D_times_A = np.dot(obs_to_state_relations_times_D,obs_to_state_relations)
+    post_inv_cov_flat = A_times_D_times_A + inv_C_blockdiag
+    
+    # GP posterior mean: $\boldmath\mu_k(\mathbf{y}_k) := \mathbf{\sigma}_k^{-2}\left(\mathbf{\sigma}_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\mathbf{\phi}_k}^{-1}\right)^{-1} \mathbf{y}_k$
+    post_mean_flat = np.linalg.solve(post_inv_cov_flat,np.dot(obs_to_state_relations_times_D,observations.reshape(-1,1,order='F')))
+    
+    # unflatten GP posterior mean
+    post_mean = post_mean_flat.reshape(1,-1).reshape(prior_inv_cov.shape[0],len(symbols.state),order='F')
+    
+    # unflatten GP posterior inverse covariance matrix
+    post_inv_cov = extract_block_diag(post_inv_cov_flat,prior_inv_cov.shape[0],k=0)
+    
+    # plotting
+    cmap = plt.get_cmap("tab10")
+    plt.figure(num=None, figsize=(10, 8), dpi=80)
+    plt.subplots_adjust(hspace=0.5)
+    for i in range(len(symbols.state)):
+        plt.subplot(len(symbols.param),1,i+1)
+        plt.plot(observed_time_points, post_mean[:,i],color=cmap(1))
+        plt.xlabel('time',fontsize=12), plt.title(symbols.state[i],position=(0.02,1))
+    #plt.show()
+        
+    return post_mean
+
+
+def kernel_function(given_time_points,kernel_param):
+    '''Compute the GP covariance matrix and it's derivatives'''
+    
+    # Gradient matching with Gaussian processes assumes a joint Gaussian process prior on states and their derivatives:
+    # $\left(\begin{array}{c} \mathbf{X} \\ \dot{\mathbf{X}} \end{array}\right) \sim \mathcal{N} \left(
+    # \begin{array}{c} \mathbf{X} \\ \dot{\mathbf{X}} \end{array};
+    # \begin{array}{c}
+    # \mathbf{0} \\
+    # \mathbf{0}
+    # \end{array},
+    # \begin{array}{cc}
+    # \mathbf{C}_{\boldsymbol\phi} & \mathbf{C}_{\boldsymbol\phi}' \\ '\mathbf{C}_{\boldsymbol\phi} &
+    # \mathbf{C}_{\boldsymbol\phi}'' \end{array} \right)$,
+    #
+    # $\mathrm{cov}(x_k(t), x_k(t)) = C_{\boldsymbol\phi_k}(t,t')$
+    # $\mathrm{cov}(\dot{x}_k(t), x_k(t)) = \frac{\partial C_{\boldsymbol\phi_k}(t,t') }{\partial t} =: C_{\boldsymbol\phi_k}'(t,t')$
+    # $\mathrm{cov}(x_k(t), \dot{x}_k(t)) = \frac{\partial C_{\boldsymbol\phi_k}(t,t')}{\partial t'} =: {'C_{\boldsymbol\phi_k}(t,t')}$
+    # $\mathrm{cov}(\dot{x}_k(t), \dot{x}_k(t)) = \frac{\partial C_{\boldsymbol\phi_k}(t,t') }{\partial t \partial t'} =: C_{\boldsymbol\phi_k}''(t,t')$.
+         
+    # radial basis function (RBF) kernel
+    t = sym.symbols(['t0','t1'])
+    rbf_kernel = kernel_param[0] * sym.exp(- (t[0] - t[1])**2 / kernel_param[1]**2)
+    
+    # kernel derivatives
+    cov_func = sym.lambdify(t,rbf_kernel)
+    cov_func_d = sym.lambdify(t,rbf_kernel.diff(t[0]))
+    cov_func_dd = sym.lambdify(t,rbf_kernel.diff(t[0]).diff(t[1]))
+    
+    # populate GP covariance matrices
+    C = np.zeros((given_time_points.shape[0],given_time_points.shape[0]))
+    dC = np.zeros((given_time_points.shape[0],given_time_points.shape[0]))
+    Cd = np.zeros((given_time_points.shape[0],given_time_points.shape[0]))
+    ddC = np.zeros((given_time_points.shape[0],given_time_points.shape[0]))
+    for i in range(0,given_time_points.shape[0]):
+        C[i,:] = cov_func(given_time_points[i],given_time_points)
+        dC[i,:] = cov_func_d(given_time_points[i],given_time_points)
+        Cd[i,:] = cov_func_d(given_time_points,given_time_points[i])
+        ddC[i,:] = cov_func_dd(given_time_points[i],given_time_points)
+      
+    # compute inverse GP covariance matrix
+    inv_C = np.linalg.inv(C)
+    
+    # compute $\mathbf{C}_{\boldsymbol\phi_k}' ~ \mathbf{C}_{\boldsymbol\phi_k}^{-1}$
+    dC_times_inv_C = np.dot(dC,inv_C)
+    
+    # plotting
+    cmap = plt.get_cmap("tab10")
+    fig = plt.figure(num=None, figsize=(7, 4), dpi=80)
+    plt.subplots_adjust(hspace=0.5)
+    handle = fig.add_subplot(111)
+    prior_state_sample = np.random.multivariate_normal(np.zeros((C.shape[0])),C)
+    handle.plot(given_time_points, prior_state_sample,color=cmap(4))
+    prior_state_sample = np.random.multivariate_normal(np.zeros((C.shape[0])),C)
+    handle.plot(given_time_points, prior_state_sample,color=cmap(6))
+    plt.xlabel('time',fontsize=12), plt.title('Prior State Samples',position=(0.1,1))
+    #plt.show()
+    
+    return dC_times_inv_C,inv_C
+
+
+def rewrite_odes_as_linear_combination_in_parameters(odes,state_symbols,ode_param_symbols): 
+    '''Rewrite each ODE as a linear combination in all ODE parameters'''
+
+    # $\mathbf{B}_{\boldsymbol\theta k} \boldsymbol\theta + \mathbf{b}_{\boldsymbol\theta k} \stackrel{!}{=}
+    # \mathbf{f}_k(\mathbf{X},\boldsymbopl\theta)$,
+    #
+    # where matrices $\mathbf{B}_{\boldsymbol\theta k}$ and $\mathbf{b}_{\boldsymbol\theta k}$ are defined 
+    # such that the ODEs $\mathbf{f}_k(\mathbf{X},\boldsymbol\theta)$ are expressed as a linear combination 
+    # in $\boldsymbol\theta$.
+
+    # append state symbols with constant vector
+    state_symbols_appended = state_symbols[:]
+    state_symbols_appended.append(sym.symbols('one_vector'))
+    
+    # initialize vectors B and b
+    B=[[] for k in range(len(state_symbols))]
+    b=[[] for k in range(len(state_symbols))]
+    
+    # rewrite ODEs as linear combinations in parameters (locally w.r.t. individual ODE)
+    for k in range(len(state_symbols)):
+        expr_B,expr_b = sym.linear_eq_to_matrix([odes(state_symbols,ode_param_symbols)[k]],ode_param_symbols)
+        expr_b = -expr_b  # see the documentation of the function "sympy.linear_eq_to_matrix"
+        
+        # replace scalar constant by vector populated by the same constant
+        for i in range(len(expr_B)):
+            if len(expr_B[i].free_symbols) == 0: expr_B[i] = sym.symbols('one_vector')
+        for i in range(len(expr_b)):
+            if len(expr_b[i].free_symbols) == 0: expr_b[i] = sym.symbols('one_vector')
+           
+        # transform symbolic expressions for B and b into functions
+        B[k] = sym.lambdify(state_symbols_appended,expr_B)
+        b[k] = sym.lambdify(state_symbols_appended,expr_b)
+    
+    return B,b
+
+
+def rewrite_odes_as_linear_combination_in_states(odes,state_symbols,ode_param_symbols,observed_states): 
+    '''Rewrite each ODE as a linear combination in an individual state'''
+    
+    # $\mathbf{R}_{uk} \mathbf{x}_u + \mathbf{r}_{uk} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\boldsymbol\theta)$.
+    #
+    # where matrices $\mathbf{R}_{uk}$ and $\mathbf{r}_{uk}$ are defined such
+    # that the ODEs $\mathbf{f}_k(\mathbf{X},\boldsymbol\theta)$ is rewritten as a linear
+    # combination in the individual state $\mathbf{x}_u$.
+
+    # unpack state and parameter symbols
+    symbolic_one = sym.symbols('one_vector')
+    symbols_all = ode_param_symbols[:]
+    symbols_all.append(state_symbols[:])
+    symbols_all.append(symbolic_one)
+    symbols_all = sym.flatten(symbols_all)
+    
+    # append state symbols with constant vector
+    state_symbols_appended = state_symbols[:]
+    state_symbols_appended.append(sym.symbols('one_vector'))
+    
+    # initialize matrices R and r
+    R=[[[],[],[]] for k in range(len(state_symbols))]
+    r=[[[],[],[]] for k in range(len(state_symbols))]
+    
+    # rewrite ODEs as linear combinations in individual states (locally w.r.t. individual ODE)
+    unobserved_state_idx = [u for u in range(len(state_symbols)) if state_symbols[u] not in observed_states]
+    for u in unobserved_state_idx:
+        for k in range(len(state_symbols)):
+            expr_R,expr_r = sym.linear_eq_to_matrix([odes(state_symbols,ode_param_symbols)[k].expand()],state_symbols[u])  
+            expr_r = -expr_r
+        
+            # replace scalar by vector populated by the same scalar
+            for i in range(len(expr_R)):
+                if len(expr_R[i].free_symbols) == 0: expr_R[i] *= sym.symbols('one_vector')
+            for i in range(len(expr_r)):
+                if len(expr_r[i].free_symbols) == 0: expr_r[i] *= sym.symbols('one_vector')
+            
+            
+            # transform symbolic expressions for R and r into functions
+            R[u][k] = sym.lambdify(symbols_all,expr_R)
+            r[u][k] = sym.lambdify(symbols_all,expr_r)
+            
+#            R[u][k] = sym.lambdify(*(ode_param_symbols,state_symbols),expr_R)
+#            r[u][k] = sym.lambdify(*[ode_param_symbols,state_symbols],expr_r)
+
+    return R,r
+
+
+def proxy_for_ode_parameters(state_proxy,locally_linear_ODEs,dC_times_inv_C,ode_param_symbols,ode_param_true):
+    '''Determine proxy for each individual state'''
+
+    # $\hat{q}(\boldsymbol\theta) {\propto} \exp \bigg( ~E_{Q_{-\boldsymbol\theta}}  
+    # \ln \mathcal{N}\left(\boldsymbol\theta ; \left( \mathbf{B}_{\boldsymbol\theta}^T 
+    # \mathbf{B}_{\boldsymbol\theta} \right)^{-1} \left( \sum_k \mathbf{B}_{\boldsymbol\theta k}^T ~ 
+    # \left( {'\mathbf{C}_{\mathbf{\phi} k}} \mathbf{C}_{\mathbf{\phi} k}^{-1} \mathbf{X}_k -
+    # \mathbf{b}_{\boldsymbol\theta k} \right) \right), ~ \mathbf{B}_{\boldsymbol\theta}^+ ~
+    # (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\boldsymbol\theta}^{+T} \right) ~\bigg)$,
+     
+    # initialization
+    local_mean = np.zeros((len(ode_param_symbols),1))
+    local_scaling = np.zeros((len(ode_param_symbols),len(ode_param_symbols)))
+    
+    # iterate through each ODE
+    for k in range(len(locally_linear_ODEs.ode_param.B)):
+          
+        # determine vectors B and b
+        B = locally_linear_ODEs.ode_param.B[k](*np.append(state_proxy,np.zeros((state_proxy.shape[0],1)),axis=1).T).T.reshape(state_proxy.shape[0],-1)
+        b = locally_linear_ODEs.ode_param.b[k](*np.append(state_proxy,np.zeros((state_proxy.shape[0],1)),axis=1).T).T.reshape(state_proxy.shape[0],-1)
+        
+        # The Moore-Penrose inverse of $\mathbf{B}_{\boldsymbol\theta}$: $\mathbf{B}_{\boldsymbol\theta}^+ 
+        # := \left(\mathbf{B}_{\boldsymbol\theta}^T \mathbf{B}_{\boldsymbol\theta} \right)^{-1} \mathbf{B}_{\boldsymbol\theta}^T$
+        #
+        # local mean: $\mathbf{B}_{\boldsymbol\theta k}^T ~ \left( {'\mathbf{C}_{\mathbf{\phi}_k}} 
+        # \mathbf{C}_{\mathbf{\phi} k}^{-1} \mathbf{X}_k - \mathbf{b}_{\boldsymbol\theta k} \right)$   
+        local_mean += np.dot(B.T,np.dot(dC_times_inv_C,state_proxy[:,k]).reshape(-1,1) - b)
+        local_scaling += np.dot(B.T,B)
+      
+    # (global) mean of parameter proxy distribution:
+    # $\left( \mathbf{B}_{\mathbf{\theta}}^T \mathbf{B}_{\mathbf{\theta}} \right)^{-1}
+    # \left( \sum_k \mathbf{B}_{\mathbf{\theta} k}^T ~ \left( {'\mathbf{C}_{\mathbf{\phi} k}}
+    # \mathbf{C}_{\mathbf{\phi} k}^{-1} \mathbf{X}_k - \mathbf{b}_{\mathbf{\theta} k} \right) \right)$
+    global_mean = np.linalg.solve(local_scaling,local_mean)
+    
+    # plotting
+    cmap = plt.get_cmap("tab10")
+    plt.figure(num=None, figsize=(7, 4), dpi=80)
+    ax = plt.subplot(111)
+    ax.bar(np.asarray(range(len(global_mean)))+0.12,ode_param_true,color=cmap(1),width=0.2)
+    ax.bar(np.asarray(range(len(global_mean)))-0.12,global_mean.T[0].tolist(),color=cmap(0),width=0.2)
+    plt.title('ODE Parameters',fontsize=18), plt.xticks(range(len(global_mean)),ode_param_symbols,fontsize=15)
+    # plt.show()
+    
+    return global_mean
+
+
+def proxy_for_ind_states(state_proxy,ode_param_proxy,locally_linear_ODEs,dC_times_inv_C,state_symbols,observed_states,state_couplings):
+    '''Determine proxy for each individual state'''
+    
+    # $\hat{q}(\mathbf{x}_u) \propto \exp\big( ~ E_{Q_{-u}} \ln
+    # \mathcal{N}\left(\mathbf{x}_u ; \left( \mathbf{B}_{u} \mathbf{B}_{u}^T
+    # \right)^{-1} \left( - \sum_k \mathbf{B}_{uk}^T \mathbf{b}_{uk} \right),
+    # ~\mathbf{B}_{u}^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T}
+    # \right)$
+    #    
+    # $\qquad \qquad \qquad \qquad \qquad + E_{Q_{-u}} \ln
+    # \mathcal{N}\left(\mathbf{x}_u ; \boldmath\mu_u(\mathbf{Y}), \mathbf{\sigma}_u \right) \big)$,
+      
+    # indices of observed states
+    unobserved_state_idx = [u for u in range(len(state_symbols)) if state_symbols[u] not in observed_states]
+    
+    # initialization
+    global_mean = state_proxy[:]
+    # iterate through each unobserved state
+    for u in unobserved_state_idx:
+        
+        # initialization
+        local_mean = np.zeros((state_proxy.shape[0],1))
+        local_scaling = np.zeros((state_proxy.shape[0],state_proxy.shape[0]))
+        
+        # iterate through each ODE
+        for k in range(len(state_symbols)):
+            
+            # determine matrices $\mathbf{R}$ and $\mathbf{r}$
+            R_tmp = locally_linear_ODEs.state.R[u][k](ode_param_proxy[0],ode_param_proxy[1],ode_param_proxy[2],state_proxy[:,0],state_proxy[:,1],state_proxy[:,2],np.ones((state_proxy.shape[0]))).T
+            #R_tmp = locally_linear_ODEs.state.R[u][k](*[ode_param_proxy,state_proxy.T])
+            R = np.zeros((state_proxy.shape[0],state_proxy.shape[0]))
+            np.fill_diagonal(R,R_tmp)
+            
+        
+            r = locally_linear_ODEs.state.r[u][k](ode_param_proxy[0],ode_param_proxy[1],ode_param_proxy[2],state_proxy[:,0],state_proxy[:,1],state_proxy[:,2],np.ones((state_proxy.shape[0]))).T
+            if len(r)==1:
+                tmp = r[:]
+                r = [tmp[:] for i in range(state_proxy.shape[0])]   
+            r = r.reshape(state_proxy.shape[0],-1)
+            
+            # Define matrices B and b such that $\mathbf{B}_{uk} \mathbf{x}_u +
+            # \mathbf{b}_{uk} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\mathbf{\theta}) -
+            # {'\mathbf{C}}_{\mathbf{\phi}_{k}} \mathbf{C}_{\mathbf{\phi}_{k}}^{-1} \mathbf{X}$
+            if k != u:
+                B = R[:]
+                b = r - np.dot(dC_times_inv_C,state_proxy[:,k]).reshape(-1,1)
+            else:
+                B = R - dC_times_inv_C
+                b = r[:]
+            
+            # local mean: $\mathbf{B}_{uk}^T \left(\mathbf{\epsilon_0}^{(k)} -\mathbf{b}_{uk}
+            local_mean += -np.dot(B.T,b)
+            local_scaling += np.dot(B.T,B)
+            
+        # Mean of state proxy distribution (option: Moore-penrose inverse example): 
+        # $\left( \mathbf{B}_{u} \mathbf{B}_{u}^T \right)^{-1} \sum_k
+        # \mathbf{B}_{uk}^T \left(\mathbf{\epsilon_0}^{(k)} -\mathbf{b}_{uk} \right)$   
+        global_mean[:,u] = np.squeeze(np.linalg.solve(local_scaling,local_mean))
+        
+     
+    # plotting
+    warnings.simplefilter("ignore")
+    cmap = plt.get_cmap("tab10")
+    fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
+    plt.subplots_adjust(hspace=0.5)
+    handle=[[] for i in range(len(state_symbols))]
+    for u in range(len(state_symbols)):
+        handle[u] = fig.add_subplot(len(state_symbols),1,u+1)
+        plt.subplot(len(state_symbols),1,u+1)
+        handle[u].plot(time_points.true, simulation.state[:,u],color=cmap(1))
+        handle[u].plot(time_points.observed, global_mean[:,u],color=cmap(0))
+        plt.xlabel('time',fontsize=12), plt.title(state_symbols[u],position=(0.02,1))
+    observed_state_idx = [u for u in range(len(state_symbols)) if state_symbols[u] in simulation.observed_states]    
+    u2=0
+    for u in observed_state_idx: 
+        handle[u].plot(time_points.observed, simulation.observations[:,u2],'*',markersize=4,color=cmap(1))
+        u2 += 1
+    plt.show()
+    
+         
+    return global_mean
+
+                  
+def ismember(a, b):
+    bind = {}
+    for i, elt in enumerate(b):
+        if elt not in bind:
+            bind[elt] = 1
+    return [bind.get(itm, None) for itm in a]
+
+
+def extract_block_diag(A,M,k=0):
+    '''Extracts blocks of size M from the kth diagonal
+    of square matrix A, whose size must be a multiple of M.'''
+
+    # Check that the matrix can be block divided
+    if A.shape[0] != A.shape[1] or A.shape[0] % M != 0:
+        raise StandardError('Matrix must be square and a multiple of block size')
+
+    # Assign indices for offset from main diagonal
+    if abs(k) > M - 1:
+        raise StandardError('kth diagonal does not exist in matrix')
+    elif k > 0:
+        ro = 0
+        co = abs(k)*M 
+    elif k < 0:
+        ro = abs(k)*M
+        co = 0
+    else:
+        ro = 0
+        co = 0
+
+    blocks = np.array([A[i+ro:i+ro+M,i+co:i+co+M] 
+                       for i in range(0,len(A)-abs(k)*M,M)])
+    return blocks
+
+
+
+
+simulation.ode_param = [10.0,28.0,8.0/3.0]#[30*np.random.rand(1),30*np.random.rand(1),8.0/3.0]#[10.0,28.0,8.0/3.0]
+simulation.final_time_point = 20.0
+simulation.observed_time_points = np.arange(0,simulation.final_time_point,0.1)
+simulation.obs_variance = 0.1
+simulation.interval_between_observations = 0.1
+simulation.observed_states = sym.symbols(['x','z'])
+    
+time_points.for_estimation = np.arange(0,20.0,0.1)
+kernel.param = [10,0.2]
+    
+
+
+
+odes_path = 'Lorenz_attractor_ODEs.txt'  
+odes = import_odes(symbols,odes_path)
+
+state_couplings = find_state_couplings_in_odes(odes,symbols)
+
+simulation.state, simulation.observations, time_points.observed, obs_to_state_relations = simulate_state_dynamics(simulation,time_points,symbols,odes,1)
+
+dC_times_inv_C,inv_C = kernel_function(time_points.for_estimation,kernel.param)
+    
+locally_linear_ODEs.ode_param.B,locally_linear_ODEs.ode_param.b = rewrite_odes_as_linear_combination_in_parameters(odes,symbols.state,symbols.param)
+locally_linear_ODEs.state.R,locally_linear_ODEs.state.r = rewrite_odes_as_linear_combination_in_states(odes,symbols.state,symbols.param,simulation.observed_states)
+
+proxy.state = fitting_state_observations(simulation.observations,inv_C,simulation.observed_states,obs_to_state_relations,simulation.obs_variance,time_points.observed,symbols)
+
+
+for i in range(opt_settings.number_of_ascending_steps):
+    proxy.param = proxy_for_ode_parameters(proxy.state,locally_linear_ODEs,dC_times_inv_C,symbols.param,simulation.ode_param)
+    proxy.state = proxy_for_ind_states(proxy.state,proxy.param,locally_linear_ODEs,dC_times_inv_C,symbols.state,simulation.observed_states,state_couplings)
+
+simulation_with_est_param = simulation
+simulation_with_est_param.ode_param = proxy.param
+simulation.state, simulation.observations, time_points.observed, obs_to_state_relations = simulate_state_dynamics(simulation_with_est_param,time_points,symbols,odes,2,simulation.observations,time_points.observed)
+
+plt.show()

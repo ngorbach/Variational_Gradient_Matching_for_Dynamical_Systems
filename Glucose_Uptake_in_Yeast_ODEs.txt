@@ -1,0 +1,9 @@
+-_k_1 * _x_Ee * _x_Glce + _k_1b *  _x_EGlce
+-_k_2 * _x_Ei * _x_Glci + _k_2b * _x_EGlci
+_k_4 * _x_Ei * _x_G6Pi - _k_4b * _x_EGlci
+_k_3 * _x_EGlci * _x_G6Pi - _k_3b * _x_EGlcG6Pi
+-_k_3 * _x_EGlci * _x_G6Pi + _k_3b * _x_EGlcG6Pi - _k_4 * _x_Ei * _x_G6Pi + _k_4b * _x_EG6Pi
+_alpha * (_x_EGlci - _x_EGlce) + _k_1 * _x_Ee * _x_Glce - _k_1b * _x_EGlce
+_alpha * (_x_EGlce - _x_EGlci) - _k_3 * _x_EGlci * _x_G6Pi + _k_3b * _x_EGlcG6Pi + _k_2 * _x_Ei * _x_Glci - _k_2b * _x_EGlci
+_beta * (_x_Ei - _x_Ee) - _k_1 * _x_Ee * _x_Glce + _k_1b * _x_EGlce
+_beta * (_x_Ee * _x_Ei) - _k_4 * _x_Ei * _x_G6Pi + _k_4b * _x_EG6Pi - _k_2 * _x_Ei * _x_Glci + _k_2b * _x_EGlci

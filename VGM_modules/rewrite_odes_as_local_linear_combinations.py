@@ -42,8 +42,7 @@ def rewrite_odes_as_linear_combination_in_parameters(odes,state_symbols,ode_para
     
     # rewrite ODEs as linear combinations in parameters (locally w.r.t. individual ODE)
     for k in range(numb_hidden_states):
-        expr_B,expr_b = sym.linear_eq_to_matrix([odes(state_symbols,ode_param_symbols)[k].expand()],\
-                                                 ode_param_symbols)
+        expr_B,expr_b = sym.linear_eq_to_matrix([odes(*state_symbols,*ode_param_symbols)[k].expand()],ode_param_symbols)
         expr_b = -expr_b  # see the documentation of the function "sympy.linear_eq_to_matrix"
         
         # replace scalar constant by vector populated by the same constant
@@ -75,23 +74,19 @@ def rewrite_odes_as_linear_combination_in_parameters(odes,state_symbols,ode_para
 
 
 def rewrite_odes_as_linear_combination_in_states(odes,state_symbols,ode_param_symbols,observed_states,\
-                                                 clamp_states_to_observation_fit=1): 
+                                                 state_couplings,clamp_states_to_observation_fit=1): 
 
     '''Rewrite each ODE as a Linear Combination in an Individual State'''
     
     # number of hidden states
     numb_hidden_states = len(state_symbols)
     
-    # unpack state and parameter symbols
-    symbolic_one = sym.symbols('one_vector')
-    symbols_all = ode_param_symbols[:]
-    symbols_all.append(state_symbols[:])
-    symbols_all.append(symbolic_one)
-    symbols_all = sym.flatten(symbols_all)
+    # number of ODEs
+    numb_odes = len(odes(*state_symbols,*ode_param_symbols))
     
-    # append state symbols with constant vector
-    state_symbols_appended = state_symbols[:]
-    state_symbols_appended.append(sym.symbols('one_vector'))
+    # unpack state and parameter symbols
+    symbols_all = [lst for sublist in [ode_param_symbols,state_symbols,sym.symbols(['one_vector'])] for lst in sublist]
+    
     
     # determine set of hidden states to infer
     if clamp_states_to_observation_fit==1:
@@ -101,14 +96,16 @@ def rewrite_odes_as_linear_combination_in_states(odes,state_symbols,ode_param_sy
         hidden_states_to_infer = range(len(state_symbols))   
         
     # initialize matrices R and r
-    R=[[[],[],[]] for k in range(numb_hidden_states)]
-    r=[[[],[],[]] for k in range(numb_hidden_states)]
+#    R=[[[],[],[]] for k in range(numb_hidden_states)]
+#    r=[[[],[],[]] for k in range(numb_hidden_states)]
     
+    R = [[[] for k in range(numb_odes)] for u in range(numb_hidden_states)]
+    r = [[[] for k in range(numb_odes)] for u in range(numb_hidden_states)]
+
     # rewrite ODEs as linear combinations in individual states (locally w.r.t. individual ODE)
     for u in range(numb_hidden_states):
-        for k in range(numb_hidden_states):
-            expr_R,expr_r = sym.linear_eq_to_matrix([odes(state_symbols,ode_param_symbols)[k].expand()],\
-                                                     state_symbols[u])  
+        for k in state_couplings[u]:
+            expr_R,expr_r = sym.linear_eq_to_matrix([odes(*state_symbols,*ode_param_symbols)[k].expand()],state_symbols[u])  
             expr_r = -expr_r  # see the documentation of the function "sympy.linear_eq_to_matrix"
         
             # replace scalar by vector populated by the same scalar
@@ -116,7 +113,6 @@ def rewrite_odes_as_linear_combination_in_states(odes,state_symbols,ode_param_sy
                 if len(expr_R[i].free_symbols) == 0: expr_R[i] *= sym.symbols('one_vector')
             for i in range(len(expr_r)):
                 if len(expr_r[i].free_symbols) == 0: expr_r[i] *= sym.symbols('one_vector')
-            
             
             # transform symbolic expressions for R and r into functions
             R[u][k] = sym.lambdify(symbols_all,expr_R)

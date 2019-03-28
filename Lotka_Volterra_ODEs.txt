@@ -1,2 +1,2 @@
-theta_1 * x_1 - theta_2 * x_1 * x_2
--theta_3 * x_2 + theta_4 * x_1 * x_2
+_theta_1 * _x_1 - _theta_2 * _x_1 * _x_2
+-_theta_3 * _x_2 + _theta_4 * _x_1 * _x_2

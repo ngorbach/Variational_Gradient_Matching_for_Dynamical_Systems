@@ -13,7 +13,42 @@ import matplotlib.pyplot as plt
 from scipy.linalg import block_diag
 import pandas as pd
 from plotting import *
+from scipy.special import kv, gamma
 
+# In[2]:
+
+# ## Fit the observations of state trajectories by standard GP regression
+# 
+# The GP posterior is given by:
+# 
+# \begin{align}
+# p(\mathbf{X} \mid \mathbf{Y}, \boldsymbol\phi,\gamma) = \prod_k \mathcal{N}(\mathbf{x}_k ; 
+# \boldsymbol\mu_k(\mathbf{y}_k),\boldsymbol\Sigma_k),
+# \end{align}
+# 
+# where $\boldsymbol\mu_k(\mathbf{y}_k) := \boldsymbol\sigma_k^{-2} \left(\boldsymbol\sigma_k^{-2} \mathbf{I} + 
+# \mathbf{C}_{\boldsymbol\phi_k}^{-1} \right)^{-1} \mathbf{y}_k$
+# and $\boldsymbol\Sigma_k ^{-1}:=\boldsymbol\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldsymbol\phi_k}^{-1}$
+
+def fitting_state_observations(observations,hidden_states,SNR,time_points,cov,cov_obs,cov_func_obs,fig_shape=(10,8)):
+    
+    # determine variance of observations from SNR
+    obs_variance = (np.mean(observations.values,axis=0) / SNR)**2
+    
+    state_pred_mean = pd.DataFrame(0.*np.ones((len(time_points),len(hidden_states))),\
+                                          columns=map(str,hidden_states),index=time_points).rename_axis('time')
+    
+    for i,state in enumerate(list(observations.columns)):
+        cov_obs = cov_obs + np.diag([obs_variance[i]]*cov_obs.shape[1])
+        state_pred_mean[state] = np.dot(cov_func_obs,np.linalg.solve(cov_obs,observations[state]))
+       
+    state_pred_cov = cov - np.dot(cov_func_obs,np.linalg.solve(cov_obs,cov_func_obs.T))
+    state_pred_inv_cov = np.linalg.pinv(state_pred_cov)
+    state_pred_cov = np.repeat(state_pred_cov[:,:,np.newaxis],len(hidden_states),2)
+    
+    plot_states(state_pred_mean,observations,fig_shape,label=['GP fit','','observed'],color_idx=[0,0,1],traj_idx=2,sigma=state_pred_cov,plot_name='GP_fit')
+    
+    return state_pred_mean, state_pred_inv_cov
 
 # In[2]:
 
@@ -31,8 +66,8 @@ from plotting import *
 # and $\boldsymbol\Sigma_k ^{-1}:=\boldsymbol\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldsymbol\phi_k}^{-1}$
 
 
-def fitting_state_observations(observations,prior_inv_cov,hidden_states,\
-                               obs_to_state_relations,obs_variance,time_points):
+def fitting_state_observations_old(observations,prior_inv_cov,hidden_states,\
+                               obs_to_state_relations,obs_variance,time_points,C2,C2_star):
 
     '''Fits the observations of state trajectories by standard GP regression'''
     
@@ -69,8 +104,20 @@ def fitting_state_observations(observations,prior_inv_cov,hidden_states,\
     GP_post_mean = pd.DataFrame(GP_post_mean,columns=map(str,hidden_states),index=time_points).rename_axis('time')
     
     
+    
+#    from sklearn.gaussian_process import GaussianProcessRegressor
+#    from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
+#    kernel = C(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2))
+#    gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9)
+#    GP_post_mean2 = np.zeros((len(time_points),numb_hidden_states))
+#    for i in range(numb_hidden_states):
+#        gp.fit(np.array(observations.index).reshape(-1,1),np.array(observations.iloc[:,i]))
+#        GP_post_mean2[:,i] = gp.predict(time_points.reshape(-1,1))
+#    GP_post_mean2 = pd.DataFrame(GP_post_mean2,columns=map(str,hidden_states),index=time_points).rename_axis('time')  
+   
+
     ## Plotting GP_post_mean
-    plot_states(GP_post_mean,observations,['GP fit','','observed'],[0,0,1],2)
+    plot_states(GP_post_mean2,observations,['GP fit','','observed'],[0,0,1],2)
     
 #    traj = [GP_post_mean,observations]
 #    label = ['GP_fit','observed']
@@ -110,56 +157,166 @@ def fitting_state_observations(observations,prior_inv_cov,hidden_states,\
 # $\mathrm{cov}(\dot{x}_k(t), \dot{x}_k(t)) = \frac{\partial C_{\boldsymbol\phi_k}(t,t') }{\partial t \partial t'} =: 
 # C_{\boldsymbol\phi_k}''(t,t')$.
 
-def kernel_function(time_points,kernel_param=[10,0.2]):
+def kernel_function(time_points,time_points2,kernel_type='RQ',kernel_param=[0.1,2,5]):
     
-    '''Populates the GP covariance matrix and it's derivatives'''
+    '''Populates the GP covariance matrix and it's derivatives. 
+    Input time points (list of real numbers) and kernel parameters (list of real values of size 2)'''
     
     # error handeling
-    if len(kernel_param) != 2:
-        raise ValueError('kernel_param input requires two floats')
-    elif type(time_points) is not np.ndarray:
+#    if len(kernel_param) != 3:
+#        raise ValueError('kernel_param input requires two floats')
+    if type(time_points) is not np.ndarray:
         raise ValueError('time points is not a numpy array')
     elif len(time_points.shape) > 1:
         raise ValueError('time points must be a one dimensional numpy array')
 
-        
     
-    # radial basis function (RBF) kernel
     t = sym.var('t0,t1')
-    rbf_kernel = kernel_param[0] * sym.exp(- (t[0] - t[1])**2 / kernel_param[1]**2)
-    
+
+    if kernel_type == 'rbf':
+        # rbf kernel
+        dist = ((t[0] - t[1])/ kernel_param[0])**2
+        kernel = sym.exp(-.5 * dist)
+        #kernel = kernel_param[0] * sym.exp(- dist**2)
+    if kernel_type == 'periodic':
+        # periodic kernel
+        dist = (t[0] - t[1])/ kernel_param[1]
+        kernel = sym.exp(- 2*sym.sin(np.pi * sym.sqrt(dist**2) / kernel_param[1])**2 / kernel_param[0]**2) 
+    if kernel_type == 'locally_periodic':
+        # locally periodic kernel
+        dist = (t[0] - t[1])
+        kernel = sym.exp(- dist**2 / 2*kernel_param[1]**2) * sym.exp(- 2*sym.sin(np.pi * sym.sqrt((t[0] - t[1])**2) / kernel_param[2])**2 / kernel_param[1]**2) 
+    elif kernel_type == 'rbf+lin':
+         # rbf kernel + linear kernel
+        dist = (t[0] - t[1])
+        kernel = sym.exp(- dist**2 / kernel_param[1]**2) + kernel_param[2] + kernel_param[3] * (t[0]-kernel_param[4]) * (t[1]-kernel_param[4])
+    elif kernel_type == 'sigmoid':
+        # sigmoid kernel
+        kernel = sym.asin((kernel_param[1]+kernel_param[2]*t[0]*t[1])/sym.sqrt((kernel_param[1]+kernel_param[2]*t[0]**2+1)*(kernel_param[1]+kernel_param[2]*t[1]**2+1)));
+    elif kernel_type == 'sigmoid2':
+        # sigmoid kernel 2
+        kernel = sym.tanh(kernel_param[0] * t[0] * t[1] + kernel_param[1])    
+    elif kernel_type == 'exp_sin_squared':
+        # periodic kernel
+        dist = sym.sqrt((t[0] - t[1])**2)
+        arg = np.pi * dist / kernel_param[1]
+        sin_of_arg = sym.sin(arg)
+        kernel = sym.exp(- 2 * (sin_of_arg / kernel_param[0]) ** 2)
+    elif kernel_type == 'RQ':
+        dist = (t[0] - t[1])**2
+        tmp = dist / (2 * kernel_param[0] * kernel_param[1] ** 2)
+        base = (1 + tmp)
+        kernel = base ** -kernel_param[0]
+    elif kernel_type == 'matern':
+        # periodic kernel
+        #dist = sym.sqrt(((t[0] - t[1]) / kernel_param[0])**2)
+        dist = ((t[0] - t[1]) / kernel_param[0])**2
+        #kernel = dist * np.sqrt(3)
+        #kernel = (1. + kernel) * sym.exp(-kernel)
+        #kernel = kernel_param[1]**2 * (1 + kernel_param[2] * np.sqrt(3) * kernel_param[3] * dist) * sym.exp(-kernel_param[2] * np.sqrt(3) * kernel_param[3] * dist)
+        if kernel_param[1] == 0.5:
+            kernel = sym.exp(-dist)
+        elif kernel_param[1] == 1.5:
+            kernel = dist * np.sqrt(3)
+            kernel = (1. + kernel) * sym.exp(-kernel)
+        elif kernel_param[1] == 2.5:
+            kernel = dist * np.sqrt(5)
+            kernel = (1. + kernel + kernel ** 2 / 3.0) * sym.exp(-kernel)
+        else:  # general case; expensive to evaluate
+            kernel = dist
+            kernel[kernel == 0.0] += np.finfo(float).eps  # strict zeros result in nan
+            tmp = (sym.sqrt(2 * kernel_param[1]) * kernel)
+            kernel.fill((2 ** (1. - kernel_param[1])) / gamma(kernel_param[1]))
+            kernel *= tmp ** kernel_param[1]
+            kernel *= kv(kernel_param[1], tmp)
+    kernel *= kernel_param[-1]**2
+
+                                                  
     # kernel derivative functions
-    d = sym.var('d') 
-    rbf_kernel_diff = rbf_kernel.diff(t[0]).subs((t[0]-t[1]),d).factor().subs((t[0]-t[1]),d)
-    rbf_kernel = rbf_kernel.subs((t[0]-t[1]),d)
+    kernel_diff = kernel.diff(t[0])
+    kernel_diff_diff = kernel_diff.diff(t[1])
     
-    # make annonymous functions out of symbolic expressions
-    cov_func = sym.lambdify(d,rbf_kernel)
-    cov_func_diff = sym.lambdify(d,rbf_kernel_diff)
+    cov_func = sym.lambdify(t,kernel)
+    cov_func_diff = sym.lambdify(t,kernel_diff)
+    cov_func_diff_diff = sym.lambdify(t,kernel_diff_diff)
 
-    # difference between time points   
-    time_diff = time_points.reshape(-1,1) - time_points.reshape(1,-1)
-
-    # populate covariance matrices   
-    cov = np.array(map(cov_func,time_diff))
-    cov_diff = np.array(map(cov_func_diff,time_diff))
+    cov = np.zeros((len(time_points),len(time_points)))
+    cov_diff = np.zeros((len(time_points),len(time_points)))
+    cov_diff_diff = np.zeros((len(time_points),len(time_points)))
+    for i in range(len(time_points)):
+        for j in range(len(time_points)):
+            cov[i,j] = cov_func(time_points[i],time_points[j])
+            cov_diff[i,j] = cov_func_diff(time_points[i],time_points[j])
+            cov_diff_diff[i,j] = cov_func_diff_diff(time_points[i],time_points[j])
  
-    try:
-        inv_cov = np.linalg.inv(cov)
-    except:
-        ValueError('unable to compute the inverse of C')
+    cov_obs = np.zeros((len(time_points2),len(time_points2)))
+    for i in range(len(time_points2)):
+        for j in range(len(time_points2)):
+            cov_obs[i,j] = cov_func(time_points2[i],time_points2[j])
     
+    cov_state_obs = np.zeros((len(time_points),len(time_points2)))
+    for i in range(len(time_points)):
+        for j in range(len(time_points2)):
+            cov_state_obs[i,j] = cov_func(time_points[i],time_points2[j])
+
+
+
+#    # radial basis function (RBF) kernel
+#    kernel = kernel_param[0] * sym.exp(- (t[0] - t[1])**2 / kernel_param[1]**2)
+#    
+#    # kernel derivative functions
+#    kernel_diff = kernel.diff(t[0])
+#    kernel_diff_diff = kernel_diff.diff(t[1])
+#    
+#    # substitute time difference
+#    d = sym.var('d') 
+#    kernel = kernel.subs((t[0]-t[1]),d)
+#    kernel_diff = kernel_diff.subs((t[0]-t[1]),d).factor().subs((t[0]-t[1]),d)
+#        
+#    # make annonymous functions out of symbolic expressions
+#    cov_func = sym.lambdify(d,kernel)
+#    cov_func_diff = sym.lambdify(d,kernel_diff)
+#    cov_func_diff_diff = sym.lambdify(t,kernel_diff_diff)
+#
+#    # difference between time points  
+#    time_diff = time_points.reshape(-1,1) - time_points.reshape(1,-1)
+#    
+#    # populate covariance matrices   
+#    cov = np.array(list(map(cov_func,time_diff)))
+#    cov_diff = np.array(list(map(cov_func_diff,time_diff)))
+#    
+#    cov_diff_diff = np.zeros((len(time_points),len(time_points)))
+#    for i in range(len(time_points)):
+#        for j in range(len(time_points)):
+#            cov_diff_diff[i,j] = cov_func_diff_diff(time_points[i],time_points[j])
+# 
+#
+#    # for GP regression
+#    time_diff = np.array(time_points2).reshape(-1,1) - np.array(time_points2).reshape(1,-1)
+#    cov_obs = np.array(list(map(cov_func,time_diff)))
+#    # covariance between time points for estimation and time points for observations
+#    time_diff = time_points.reshape(-1,1) - np.array(time_points2).reshape(1,-1)
+#    # populate covariance matrices   
+#    cov_state_obs = np.array(list(map(cov_func,time_diff)))
+
+
+
+           
     # compute $\mathbf{C}_{\boldsymbol\phi_k}' ~ \mathbf{C}_{\boldsymbol\phi_k}^{-1}$
-    cov_diff_times_inv_cov= np.linalg.solve(cov.T,cov_diff.T).T
+    cov_diff_times_inv_cov = np.linalg.solve(cov.T,cov_diff.T).T
     
     # plot sample state trajectories from GP prior
     mean = np.zeros((cov.shape[0]))
-    prior_state_sample1 = np.random.multivariate_normal(mean,cov)
+    prior_state_sample1 = np.random.multivariate_normal(mean,cov_diff_diff)
     prior_state_sample2 = np.random.multivariate_normal(mean,cov)
     plot_trajectories(time_points,prior_state_sample1,prior_state_sample2)
    
     
-    return cov_diff_times_inv_cov,inv_cov
+    
+    
+    eps_cov = cov_diff_diff - cov_diff_times_inv_cov.dot(cov_diff.T)
+    
+    return cov_diff_times_inv_cov,eps_cov,cov,cov_obs,cov_state_obs
 
 # In[4]:
     

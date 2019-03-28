@@ -1,0 +1,237 @@
+\section{Mass Action Dynamical Systems}
+
+\begin{par}
+A deterministic dynamical system is represented by a set of $K$ ordinary differential equations (ODEs) with model parameters $\theta \in R^d$ that describe the evolution of $K$ states $\mathbf{x}(t) = [x_1(t),\ldots, x_K(t)]^T$ such that:
+\end{par} \vspace{1em}
+\begin{par}
+$\dot{\mathbf{x}}(t) = \frac{d \mathbf{x}(t)}{d t} = \mathbf{f}(\mathbf{x}(t),\theta) \qquad (1)$.
+\end{par} \vspace{1em}
+\begin{par}
+A sequence of observations, $\mathbf{y}(t)$, is usually contaminated by measurement error which we assume to be normally distributed with zero mean and variance for each of the $K$ states, i.e. $\mathbf{E}\sim \mathcal{N}(\mathbf{E};\mathbf{0},\mathbf{D})$, with $\mathbf{D}_{ik}=\sigma_k ^2 \delta_{ik}$. For $N$ distinct time points the overall system may therefore be summarized as:
+\end{par} \vspace{1em}
+\begin{par}
+$\mathbf{Y} = \mathbf{X} + \mathbf{E}$,
+\end{par} \vspace{1em}
+\begin{par}
+where
+\end{par} \vspace{1em}
+\begin{par}
+$\mathbf{X} = [\mathbf{x}(t_1),\ldots,\mathbf{x}(t_N)] = [\mathbf{x}_1,\ldots,\mathbf{x}_K]^T$,
+\end{par} \vspace{1em}
+\begin{par}
+$\mathbf{Y} = [\mathbf{y}(t_1),\ldots,\mathbf{y}(t_N)] = [\mathbf{y}_1,\ldots,\mathbf{y}_K]^T$,
+\end{par} \vspace{1em}
+\begin{par}
+and $\mathbf{x}_k = [x_k(t_1),\ldots,x_k(t_N)]^T$ is the $k$'th state sequence and $\mathbf{y}_k = [y_k(t_1),$ $\ldots,y_k(t_N)]^T$ are the observations. Given the observations $\mathbf{Y}$ and the description of the dynamical system (1), the aim is to estimate both state variables $\mathbf{X}$ and parameters $\theta$.
+\end{par} \vspace{1em}
+\begin{par}
+We consider only dynamical systems that are locally linear with respect to ODE parameters $\theta$ and individual states $\mathbf{x}_u$. Such ODEs include mass-action kinetics and are given by:
+\end{par} \vspace{1em}
+\begin{par}
+$f_{k}(\mathbf{x}(t),\theta) = \sum_{i=1} \theta_{ki} \prod_{j \in \mathcal{M}_{ki}} x_j \qquad (2)$,
+\end{par} \vspace{1em}
+\begin{par}
+with $\mathcal{M}_{ki} \subseteq \{ 1, \dots, K\}$ describing the state variables in each factor of the equation (i.e. the functions are linear in parameters and contain arbitrary large products of monomials of the states).
+\end{par} \vspace{1em}
+
+\section{Prior on States and State Derivatives}
+
+\begin{par}
+Gradient matching with Gaussian processes assumes a joint Gaussian process prior on states and their derivatives:
+\end{par} \vspace{1em}
+\begin{par}
+$\left(\begin{array}{c} \mathbf{X} \\ \dot{\mathbf{X}} \end{array}\right)  \sim \mathcal{N} \left( \begin{array}{c} \mathbf{X} \\ \dot{\mathbf{X}} \end{array}; \begin{array}{c}  \mathbf{0} \\ \mathbf{0}  \end{array}, \begin{array}{cc}  \mathbf{C}_{\phi} & \mathbf{C}_{\phi}' \\ '\mathbf{C}_{\phi} &  \mathbf{C}_{\phi}'' \end{array} \right) \qquad (3)$,
+\end{par} \vspace{1em}
+\begin{par}
+$\mathrm{cov}(x_k(t), x_k(t)) = C_{\phi_k}(t,t')$
+\end{par} \vspace{1em}
+\begin{par}
+$\mathrm{cov}(\dot{x}_k(t), x_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t} =: C_{\phi_k}'(t,t')$
+\end{par} \vspace{1em}
+\begin{par}
+$\mathrm{cov}(x_k(t), \dot{x}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t'} =: {'C_{\phi_k}(t,t')}$
+\end{par} \vspace{1em}
+\begin{par}
+$\mathrm{cov}(\dot{x}_k(t), \dot{x}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t \partial t'} =: C_{\phi_k}''(t,t')$.
+\end{par} \vspace{1em}
+
+\section{Matching Gradients}
+
+\begin{par}
+Given the joint distribution over states and their derivatives (3) as well as the ODEs (2), we therefore have two expressions for the state derivatives:
+\end{par} \vspace{1em}
+\begin{par}
+$\dot{\mathbf{X}} = \mathbf{F} + \epsilon_1, \epsilon_1 \sim \mathcal{N}\left(\epsilon_1;\mathbf{0}, \mathbf{I}\gamma \right)$
+\end{par} \vspace{1em}
+\begin{par}
+$\dot{\mathbf{X}} = {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} ~\mathbf{X} + \epsilon_2, \epsilon_2 \sim \mathcal{N}\left(\epsilon_2;\mathbf{0}, \mathbf{A} \right)$
+\end{par} \vspace{1em}
+\begin{par}
+where $\mathbf{F} := \mathbf{f}(\mathbf{X},\theta)$, $\mathbf{A} := \mathbf{C}_{\phi}'' -  {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} \mathbf{C}_{\phi}'$ and $\gamma$ is the error variance in the ODEs. Note that, in a deterministic system, the output of the ODEs $\mathbf{F}$ should equal the state derivatives $\dot{\mathbf{X}}$. However, in the first equation above we relax this contraint by adding stochasticity to the state derivatives $\dot{\mathbf{X}}$ in order to compensate for a potential model mismatch. The second equation above is obtained by deriving the conditional distribution for $\dot{\mathbf{X}}$ from the joint distribution in equation (3). Equating the two expressions in the equations above we can eliminate the unknown state derivatives $\dot{\mathbf{X}}$:
+\end{par} \vspace{1em}
+\begin{par}
+$\mathbf{F} = {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} ~\mathbf{X} + \epsilon_0 \qquad (4)$,
+\end{par} \vspace{1em}
+\begin{par}
+with $\epsilon_0 := \epsilon_2 - \epsilon_1$.
+\end{par} \vspace{1em}
+
+\section{Posterior over ODE Parameters}
+
+\begin{par}
+Inserting (5) into (4) and solving for $\theta$ yields:
+\end{par} \vspace{1em}
+\begin{par}
+$\theta = \mathbf{B}_{\theta}^+ \left( {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} \mathbf{X} - \mathbf{b}_{\theta} + \epsilon_0 \right)$,
+\end{par} \vspace{1em}
+\begin{par}
+where $\mathbf{B}_{\theta}^+$ denotes the pseudo-inverse of $\mathbf{B}_{\theta}$.
+\end{par} \vspace{1em}
+\begin{par}
+Since $\mathbf{C}_{\phi}$ is block diagonal we can rewrite the expression above as:
+\end{par} \vspace{1em}
+\begin{par}
+$\theta = \left( \mathbf{B}_{\theta}^T \mathbf{B}_{\theta} \right)^{-1} \mathbf{B}_{\theta}^T  \left( \sum_k {'\mathbf{C}_{\phi_k}} \mathbf{C}_{\boldmath\phi_k}^{-1} \mathbf{X}_k - \mathbf{b}_{\theta k} + \boldmath\epsilon_0^{(k)} \right)$,
+\end{par} \vspace{1em}
+\begin{par}
+$= \left( \mathbf{B}_{\theta}^T \mathbf{B}_{\theta} \right)^{-1} \left( \sum_k \mathbf{B}_{\theta k}^T \left( {'\mathbf{C}_{\phi_k}} \mathbf{C}_{\boldmath\phi_k}^{-1} \mathbf{X}_k - \mathbf{b}_{\theta k} + \boldmath\epsilon_0^{(k)} \right) \right)$,
+\end{par} \vspace{1em}
+\begin{par}
+where we subsitute the Moore-Penrose inverse for the pseudo-inverse (i.e. $\mathbf{B}_{\theta}^+ = \left( \mathbf{B}_{\theta}^T \mathbf{B}_{\theta} \right)^{-1} \mathbf{B}_{\theta}^T$).
+\end{par} \vspace{1em}
+\begin{par}
+We can therefore derive the posterior distribution over ODE parameters:
+\end{par} \vspace{1em}
+\begin{par}
+$p(\theta \mid \mathbf{X}, \phi, \gamma) = \mathcal{N}\left(\theta ; \mathbf{B}_{\theta}^+ ~ \left( {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} \mathbf{X} - \mathbf{b}_{\theta} \right), ~ \mathbf{B}_{\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\theta}^{+T} \right)$
+\end{par} \vspace{1em}
+\begin{par}
+$= \mathcal{N}\left(\theta ; \left( \mathbf{B}_{\theta}^T \mathbf{B}_{\theta} \right)^{-1} \left( \sum_k \mathbf{B}_{\theta k}^T ~ \left( {'\mathbf{C}_{\phi k}} \mathbf{C}_{\phi k}^{-1} \mathbf{X}_k - \mathbf{b}_{\theta k} \right) \right), ~ \mathbf{B}_{\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\theta}^{+T} \right)$
+\end{par} \vspace{1em}
+
+\section{Posterior over Individual States}
+
+\begin{par}
+Given the linear combination of the ODEs w.r.t. an individual state, we define the matrices $\mathbf{B}_u$ and $\mathbf{b}_u$ such that the expression $\mathbf{f}(\mathbf{X},\theta) - {'\mathbf{C}}_{\phi} \mathbf{C}_{\phi}^{-1} \mathbf{X}$ is rewritten as a linear combination in an individual state:
+\end{par} \vspace{1em}
+\begin{par}
+$\mathbf{B}_{u} \mathbf{x}_u + \mathbf{b}_{u} \stackrel{!}{=} \mathbf{f}(\mathbf{X},\theta) \qquad (7)$.
+\end{par} \vspace{1em}
+\begin{par}
+Inserting (7) into (4) and solving for $\mathbf{x}_u$ yields:
+\end{par} \vspace{1em}
+\begin{par}
+$\mathbf{x}_u = \mathbf{B}_{u}^+ \left( \epsilon_0 -\mathbf{b}_{u} \right)$,
+\end{par} \vspace{1em}
+\begin{par}
+Since $\mathbf{C}_{\phi}$ is block diagonal we can rewrite the expression above as:
+\end{par} \vspace{1em}
+\begin{par}
+$\mathbf{x}_u = \left( \mathbf{B}_{u} \mathbf{B}_{u}^T \right)^{-1} \mathbf{B}_{u}^T \sum_k \left(\epsilon_0^{(k)} -\mathbf{b}_{uk} \right)$
+\end{par} \vspace{1em}
+\begin{par}
+$= \left( \mathbf{B}_{u} \mathbf{B}_{u}^T \right)^{-1} \sum_k \mathbf{B}_{uk}^T \left(\epsilon_0^{(k)} -\mathbf{b}_{uk} \right)$,
+\end{par} \vspace{1em}
+\begin{par}
+where $\mathbf{B}_{u}^+$ denotes the pseudo-inverse of $\mathbf{B}_{u}$. We can therefore derive the posterior distribution over an individual state $\mathbf{x}_u$:
+\end{par} \vspace{1em}
+\begin{par}
+$p(\mathbf{x}_u \mid \mathbf{X}_{-u}, \phi, \gamma) = \mathcal{N}\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ \mathbf{b}_u, ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right)$
+\end{par} \vspace{1em}
+\begin{par}
+$= \mathcal{N}\left(\mathbf{x}_u ; \left( \mathbf{B}_{u} \mathbf{B}_{u}^T \right)^{-1} \left( - \sum_k \mathbf{B}_{uk}^T \mathbf{b}_{uk} \right), ~\mathbf{B}_{u}^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) \qquad (8)$,
+\end{par} \vspace{1em}
+\begin{par}
+with $\mathbf{X}_{-u}$ denoting the set of all states except state $\mathbf{x}_u$.
+\end{par} \vspace{1em}
+
+
+\section{Mean-field Variational Inference}
+
+\begin{par}
+To infer the parameters $\theta$, we want to find the maximum a posteriori estimate (MAP):
+\end{par} \vspace{1em}
+\begin{par}
+$\theta^* := arg \max_{\theta} ~ \ln p(\theta \mid \mathbf{Y},\phi,\gamma, \sigma)$
+\end{par} \vspace{1em}
+\begin{par}
+$= arg\max_{\theta} ~ \ln \int  p(\theta,\mathbf{X} \mid \mathbf{Y},\phi,\gamma,\boldmath\sigma) d\mathbf{X}$
+\end{par} \vspace{1em}
+\begin{par}
+$= arg\max_{\theta} ~ \ln \int p(\theta \mid \mathbf{X},\phi,\gamma) p(\mathbf{X} \mid \mathbf{Y}, \phi,\boldmath\sigma) d\mathbf{X} \qquad (9)$.
+\end{par} \vspace{1em}
+\begin{par}
+However, the integral above is intractable due to the strong couplings induced by the nonlinear ODEs $\mathbf{f}$ which appear in the term $p(\theta \mid \mathbf{X},\phi,\gamma)$.
+\end{par} \vspace{1em}
+\begin{par}
+We use mean-field variational inference to establish variational lower bounds that are analytically tractable by decoupling state variables from the ODE parameters as well as decoupling the state variables from each other. Note that, since the ODEs described by equation (2) are \textbf{locally linear}, both conditional distributions $p(\theta \mid \mathbf{X},\mathbf{Y},\phi,\gamma,\boldmath\sigma)$ (equation (6)) and $p(\mathbf{x}_u \mid \theta, \mathbf{X}_{-u},\mathbf{Y},\phi,\gamma,\boldmath\sigma)$ (equation (8)) are analytically tractable and Gaussian distributed as mentioned previously.
+\end{par} \vspace{1em}
+\begin{par}
+The decoupling is induced by designing a variational distribution $Q(\theta,\mathbf{X})$ which is restricted to the family of factorial distributions:
+\end{par} \vspace{1em}
+\begin{par}
+$\mathcal{Q} := \bigg{\{} Q : Q(\theta,\mathbf{X}) = q(\theta) \prod_u q(\mathbf{x}_u) \bigg{\}}$.
+\end{par} \vspace{1em}
+\begin{par}
+The particular form of $q(\theta)$ and $q(\mathbf{x}_u)$ are designed to be Gaussian distributed which places them in the same family as the true full conditional distributions. To find the optimal factorial distribution we minimize the Kullback-Leibler divergence between the variational and the true posterior distribution:
+\end{par} \vspace{1em}
+\begin{par}
+$\hat{Q} := arg \min_{Q(\theta,\mathbf{X}) \in \mathcal{Q}} \mathrm{KL} \left[ Q(\theta,\mathbf{X}) \mid \mid p(\theta,\mathbf{X} \mid \mathbf{Y},\phi, \gamma,\boldmath\sigma) \right] \qquad (10)$,
+\end{par} \vspace{1em}
+\begin{par}
+where $\hat{Q}$ is the proxy distribution. The proxy distribution that minimizes the KL-divergence (10) depends on the true full conditionals and is given by:
+\end{par} \vspace{1em}
+\begin{par}
+$\hat{q}({\theta}) \propto \exp \left(~ E_{Q_{-\theta}} \ln p(\theta \mid \mathbf{X},\mathbf{Y},\phi,\gamma,\boldmath\sigma) ~\right) \qquad (11)$
+\end{par} \vspace{1em}
+\begin{par}
+$\hat{q}(\mathbf{x}_u) \propto \exp\left( ~ E_{Q_{-u}} \ln p(\mathbf{x}_u \mid \theta, \mathbf{X}_{-u},\mathbf{Y},\phi,\gamma,\sigma) ~ \right) \qquad (12)$.
+\end{par} \vspace{1em}
+
+
+\section{Fitting observations of state trajectories}
+
+\begin{par}
+We fit the observations of state trajectories by standard GP regression. The data-informed distribution $p(\mathbf{X} \mid \mathbf{Y}, \phi,\boldmath\sigma)$ in euqation (9) can be determined analytically using Gaussian process regression with the GP prior $p(\mathbf{X} \mid \phi) = \prod_k \mathcal{N}(\mathbf{x}_k ; \mathbf{0},\mathbf{C}_{\phi})$:
+\end{par} \vspace{1em}
+\begin{par}
+$p(\mathbf{X} \mid \mathbf{Y}, \phi,\gamma) = \prod_k \mathcal{N}(\mathbf{x}_k ; \boldmath\mu_k(\mathbf{y}_k),\boldmath\Sigma_k)$,
+\end{par} \vspace{1em}
+\begin{par}
+where $\boldmath\mu_k(\mathbf{y}_k) := \sigma_k^{-2} \left(\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1} \right)^{-1} \mathbf{y}_k$ and $\boldmath\Sigma_k ^{-1}:=\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1}$.
+\end{par} \vspace{1em}
+
+
+\section{Proxy for ODE Parameters}
+\begin{par}
+Expanding the proxy distribution in equation (11) for $\theta$ yields:
+\end{par} \vspace{1em}
+\begin{par}
+$\hat{q}(\theta) \stackrel{(a)}{\propto} \exp \left( ~E_{Q_{-\theta}} \ln p(\theta \mid \mathbf{X},\mathbf{Y},\phi,\gamma,\sigma) ~ \right)$
+\end{par} \vspace{1em}
+\begin{par}
+$\stackrel{(b)}{\propto} \exp \left( ~E_{Q_{-\theta}}  \ln \mathcal{N} \left( \theta; \mathbf{B}_{\theta}^+ ~ \left( '\mathbf{C}_{\phi} \mathbf{C}_{\phi}^{-1} \mathbf{X} - \mathbf{b}_{\theta} \right), ~ \mathbf{B}_{\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\theta}^{+T} \right) ~\right)$
+\end{par} \vspace{1em}
+\begin{par}
+$= \exp \left( ~E_{Q_{-\theta}} \mathcal{N}\left(\theta ; \left( \mathbf{B}_{\theta}^T \mathbf{B}_{\theta} \right)^{-1} \left( \sum_k \mathbf{B}_{\theta k}^T ~ \left( {'\mathbf{C}_{\phi k}} \mathbf{C}_{\phi k}^{-1} \mathbf{X}_k - \mathbf{b}_{\theta k} \right) \right), ~ \mathbf{B}_{\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\theta}^{+T} \right) ~\right)$,
+\end{par} \vspace{1em}
+\begin{par}
+which can be normalized analytically due to its exponential quadratic form. In (a) we recall that the ODE parameters depend only indirectly on the observations $\mathbf{Y}$ through the states $\mathbf{X}$ and in (b) we substitute $p(\theta \mid \mathbf{X},\phi,\gamma)$ by its density given in equation (6).
+\end{par} \vspace{1em}
+
+\section{Proxy for Individual States}
+\begin{par}
+Expanding the proxy distribution in equation (12) over the individual state $\mathbf{x}_u$:
+\end{par} \vspace{1em}
+\begin{par}
+$\hat{q}(\mathbf{x}_u) \stackrel{(a)}{\propto} \exp \left( ~ E_{Q_{-u}}  \ln ( p(\mathbf{x}_u \mid \theta, \mathbf{X}_{-u},\phi,\gamma) p(\mathbf{x}_u \mid\mathbf{Y},\phi,\sigma) ) ~ \right)$
+\end{par} \vspace{1em}
+\begin{par}
+$\stackrel{(b)}{\propto} \exp\big( ~ E_{Q_{-u}} \ln \mathcal{N}\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ \mathbf{b}_u, ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) + E_{Q_{-u}} \ln \mathcal{N}\left(\mathbf{x}_u ; \boldmath\mu_u(\mathbf{Y}), \Sigma_u \right) \big)$
+\end{par} \vspace{1em}
+\begin{par}
+$= \exp\big( ~ E_{Q_{-u}} \ln \mathcal{N}\left(\mathbf{x}_u ; \left( \mathbf{B}_{u} \mathbf{B}_{u}^T \right)^{-1} \left( - \sum_k \mathbf{B}_{uk}^T \mathbf{b}_{uk} \right), ~\mathbf{B}_{u}^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) + E_{Q_{-u}} \ln \mathcal{N}\left(\mathbf{x}_u ; \boldmath\mu_u(\mathbf{Y}), \Sigma_u \right) \big)$,
+\end{par} \vspace{1em}
+\begin{par}
+which, once more, can be normalized analytically due to its exponential quadratic form. In (a) we decompose the full conditional into an ODE-informed distribution and a data-informed distribution and in (b) we substitute the ODE-informed distribution $p(\mathbf{x}_u \mid \theta, \mathbf{X}_{-u},\phi,\gamma)$ with its density given by equation (8).
+\end{par} 

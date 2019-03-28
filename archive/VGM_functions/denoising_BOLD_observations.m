@@ -7,7 +7,7 @@
 %
 % where $\boldmath\mu_k(\mathbf{y}_k) := \sigma_k^{-2} \left(\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1} \right)^{-1} \mathbf{y}_k$ and $\boldmath\Sigma_k ^{-1}:=\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1}$.
 
-function [mu,inv_sigma] = denoising_BOLD_observations(bold_response,inv_C,symbols,simulation)
+function [mu,inv_sigma] = denoising_BOLD_observations(bold_response,inv_C,symbols)
 
 inv_C_cell = num2cell(inv_C(:,:,ones(1,sum(cellfun(@(x) strcmp(x(1),'n'),symbols.state_string)))),[1,2]);
 inv_C_blkdiag = blkdiag(inv_C_cell{:});

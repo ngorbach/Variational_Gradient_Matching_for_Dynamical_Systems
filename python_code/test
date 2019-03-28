@@ -1,0 +1,300 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jul 19 13:55:58 2018
+
+@author: nico
+"""
+
+import numpy as np
+import sympy as sym
+import scipy.integrate as integrate
+from scipy.spatial.distance import cdist
+from scipy.optimize import linear_sum_assignment
+from scipy.linalg import block_diag
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+number_of_ascents = 1
+class simulation:
+    ode_param = None
+    final_time = None
+    state_obs_variance = None
+    interval_between_observations = None
+    observed_time_points = None
+    initial_states = [5,3]
+    integration_interval = 0.01
+    state = None
+    observations = None
+    observed_states = sym.symbols(['x','y'])
+    
+class kernel:
+    param = None
+    
+class state:
+    derivative_variance = None
+    
+class time:
+    estimation = None
+    true = np.arange(0.0, 2.0, 0.01)
+    observations = None
+    
+class symbols:
+    state = sym.symbols(['x','y','z'])
+    param = sym.symbols(['sigma','rho','alpha'])
+    
+class opt_settings:
+    pseudo_inv_type = 'Moore-Penrose'
+    coord_scent_numb_iter = 25
+    clamp_obs_to_GP_fit = 'true'
+    
+class lin_comb:
+    def ode_param(self):
+        pass
+        
+    def state(self):
+        pass
+        
+class proxy:
+    ode_param = None
+    state = None
+        
+
+def import_odes(symbols,odes_path):
+    with open(odes_path) as f:
+        odes_string = f.read().splitlines()
+        
+    odes_symbolic = [o.factor() for o in sym.sympify(odes_string)]
+    odes = sym.lambdify( [symbols.state,symbols.param],odes_symbolic)
+    
+    print('\n')
+    for k in range(len(odes_symbolic)):
+        print(odes_symbolic[k].factor())
+    
+   
+    return odes
+
+def find_state_couplings_in_odes(odes_string,symbols):
+    state_couplings = np.zeros((len(symbols.state),len(symbols.state)))
+    for i in len(symbols.state):
+        odes_sym = sym.sympify(odes_string[i])
+        mapping = filter(lambda v: v is not None,ismember(symbols.state,odes_sym.free_symbols))
+        idx = [j for (j,val) in enumerate(mapping) if np.not_equal(val,None)]
+        state_couplings[i,[idx]] = 1
+        
+    return state_couplings
+
+
+def integrand(state,t,odes,ode_param):
+        
+    return odes(state,ode_param)
+
+
+def simulate_state_trajectories(odes,t,init_val,param):
+    I = integrate.odeint(integrand, init_val, t, args=(odes,param))
+
+    return I
+
+
+def simulate_state_observations(simulation,time,symbols):
+    integration_time_points = np.arange(0,simulation.final_time,simulation.integration_interval);
+    observation_time_points = np.arange(0,simulation.final_time,simulation.interval_between_observations);
+
+    observed_time_idx = np.round(observation_time_points / simulation.integration_interval + 1);
+    
+    state_true = simulation.state[observed_time_idx.astype(int),:];
+    idx = [i for i in range(len(symbols.state)) if symbols.state[i] in simulation.observed_states]
+    state_true = state_true[:,idx]
+
+    observations = state_true + np.sqrt(simulation.state_obs_variance) * np.random.randn(observed_time_idx.shape[0],state_true.shape[1])
+    
+    observed_times = integration_time_points[observed_time_idx.astype(int)]
+    
+    return observations, observed_times
+
+
+def simulate_state_dynamics(simulation,time,symbols,odes):
+    
+    simulation.observed_time_points = np.arange(0,simulation.final_time,0.1)
+    
+    simulation.state = simulate_state_trajectories(odes,time.true,simulation.initial_states, \
+                                  simulation.ode_param)
+    simulation.observations, time.observations = simulate_state_observations(simulation,time,symbols)
+
+    cmap = plt.get_cmap("tab10")
+    fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
+    plt.subplots_adjust(hspace=0.5)
+    handle=[[] for i in range(len(symbols.state))]
+    for u in range(len(symbols.param)):
+        handle[u] = fig.add_subplot(len(symbols.param),1,u+1)
+        handle[u].plot(time.true, simulation.state[:,u],color=cmap(1))
+        plt.xlabel('time',fontsize=12), plt.title(symbols.state[u],position=(0.02,1))
+     
+    observed_state_idx = [u for u in range(len(symbols.state)) if symbols.state[u] in simulation.observed_states]    
+    u2=0
+    for u in observed_state_idx: 
+        handle[u].plot(time.observations, simulation.observations[:,u2],'*',markersize=4,color=cmap(1))
+        u2 += 1
+        
+    fig = plt.figure(num=None, figsize=(10, 8), dpi=80)
+    ax = fig.gca(projection='3d')
+    ax.plot(simulation.state[:,0],simulation.state[:,1],simulation.state[:,2],color=cmap(1))
+    ax.set_xlabel(symbols.state[0],fontsize=25)
+    ax.set_ylabel(symbols.state[1],fontsize=25)
+    ax.set_zlabel(symbols.state[2],fontsize=25)
+    ax.set_title('Phase Plot',fontsize=25)
+
+    dist = cdist(time.estimation.reshape(-1,1),time.observations.reshape(-1,1),'euclidean')
+    row_ind, col_ind = linear_sum_assignment(dist)
+    
+    obs_time_to_state_time_relations = np.zeros((len(time.observations),len(time.estimation)))
+    obs_time_to_state_time_relations[row_ind,col_ind] = 1
+    
+    
+    state_mat = np.zeros((len(symbols.state),len(symbols.state)))
+    state_mat[observed_state_idx,observed_state_idx] = 1
+    idx1 = [i for i in range(len(symbols.state)) if symbols.state[i] not in simulation.observed_states]
+    state_mat = np.delete(state_mat,idx1,0)
+    obs_to_state_relations = np.kron(state_mat,obs_time_to_state_time_relations)
+    
+    return simulation, time, obs_to_state_relations
+
+def fitting_state_observations(invC,obs_to_state_relations,simulation,symbols):
+    
+    invC_blockdiag = block_diag(*[invC]*len(symbols.state))
+    variance = simulation.state_obs_variance**(-1) * np.ones((invC.shape[0],len(simulation.observed_states)))
+    D = np.dot(np.diag(variance.reshape(1,-1)[0]),np.identity(variance.reshape(1,-1).shape[1]))
+    obs_to_state_relations_times_D = np.dot(obs_to_state_relations.transpose(),D)
+    A_times_D_times_A = np.dot(obs_to_state_relations_times_D,obs_to_state_relations)
+    inv_sigma = A_times_D_times_A + invC_blockdiag
+    
+    mu_flat = np.linalg.solve(inv_sigma,np.dot(obs_to_state_relations_times_D,simulation.observations.reshape(-1,1,order='F')))
+    
+    mu = mu_flat.reshape(1,-1).reshape(invC.shape[0],len(symbols.state),order='F')
+    #mu = mu_flat.reshape(invC.shape[0],len(symbols.state))
+    #mu = mu_flat.transpose().reshape(len(symbols.state),invC.shape[0]).transpose()
+#    mu = np.zeros((simulation.observations.shape[0],len(symbols.state)))
+#    numb_time_points = invC.shape[0]
+#    for u in range(len(symbols.state)):
+#        idx = np.asarray(range(u*numb_time_points,u*numb_time_points+numb_time_points))
+#        mu[:,u] = np.squeeze(mu_flat[idx])
+        
+    
+#    mu = np.zeros((simulation.observations.shape[0],len(symbols.state)))
+#    mu[:,0] = np.squeeze(mu_flat[0:200])
+#    mu[:,1] = np.squeeze(mu_flat[200:400])
+#    mu[:,2] = np.squeeze(mu_flat[400:600])
+    
+    cmap = plt.get_cmap("tab10")
+    plt.figure(num=None, figsize=(10, 8), dpi=80)
+    plt.subplots_adjust(hspace=0.5)
+    for i in range(len(symbols.param)):
+        plt.subplot(len(symbols.param),1,i+1)
+        plt.plot(time.observations, mu[:,i],color=cmap(1))
+        plt.xlabel('time',fontsize=12), plt.title(symbols.state[i],position=(0.02,1))
+        
+    return mu
+
+def kernel_function(time,kernel,state):
+
+    t = sym.symbols(['t0','t1'])
+    rbf_kernel = kernel.param[0] * sym.exp(- (t[0] - t[1])**2 / kernel.param[1]**2)
+    cov_func = sym.lambdify(t,rbf_kernel)
+    cov_func_d = sym.lambdify(t,rbf_kernel.diff(t[0]))
+    cov_func_dd = sym.lambdify(t,rbf_kernel.diff(t[0]).diff(t[1]))
+    
+    C = np.zeros((time.estimation.shape[0],time.estimation.shape[0]))
+    dC = np.zeros((time.estimation.shape[0],time.estimation.shape[0]))
+    Cd = np.zeros((time.estimation.shape[0],time.estimation.shape[0]))
+    ddC = np.zeros((time.estimation.shape[0],time.estimation.shape[0]))
+    for i in range(0,time.estimation.shape[0]):
+        C[i,:] = cov_func(time.estimation[i],time.estimation)
+        dC[i,:] = cov_func_d(time.estimation[i],time.estimation)
+        Cd[i,:] = cov_func_d(time.estimation,time.estimation[i])
+        ddC[i,:] = cov_func_dd(time.estimation[i],time.estimation)
+    
+    invC = np.linalg.inv(C)
+    dC_times_invC = np.dot(dC,invC)
+    A = ddC - dC_times_invC * Cd
+    A_plus_gamma = A + state.derivative_variance[1] * np.identity(A.shape[0])
+    A_plus_gamma = 0.5 * (A_plus_gamma+A_plus_gamma.transpose())  # ensure that A plus gamma is symmetric
+    A_plus_gamma_inv = np.linalg.inv(A_plus_gamma)
+
+    return dC_times_invC,invC,A_plus_gamma_inv
+
+def rewrite_odes_as_linear_combination_in_parameters(odes,symbols): 
+
+    symbolic_zero = sym.symbols('zero_vector')
+    symbols_temp = symbols.state[:]
+    symbols_temp.append(symbolic_zero)
+    
+    B=[[] for k in range(len(symbols.state))]
+    b=[[] for k in range(len(symbols.state))]
+    for k in range(len(symbols.state)):
+        expr_B,expr_b = sym.linear_eq_to_matrix([odes(symbols.state,symbols.param)[k]],symbols.param)
+        expr_b = -expr_b
+        
+        for i in range(len(expr_B)):
+            if len(expr_B[i].free_symbols) == 0: expr_B[i] = symbolic_zero
+        for i in range(len(expr_b)):
+            if len(expr_b[i].free_symbols) == 0: expr_b[i] = symbolic_zero
+           
+        B[k] = sym.lambdify(symbols_temp,expr_B)
+        b[k] = sym.lambdify(symbols_temp,expr_b)
+
+    
+    return B,b
+
+def rewrite_odes_as_linear_combination_in_states(odes,symbols): 
+    
+    symbolic_zero = sym.symbols('zero_vector')
+    symbols_temp = symbols.param[:]
+    symbols_temp.append(symbolic_zero)
+    
+    B=[[[],[],[]] for k in range(len(symbols.state))]
+    b=[[[],[],[]] for k in range(len(symbols.state))]
+    for k in range(len(symbols.state)):
+        for u in range(len(symbols.state)):
+            expr_B,expr_b = sym.linear_eq_to_matrix([odes(symbols.state,symbols.param)[k]],symbols.state[u])  
+            expr_b = -expr_b
+        
+            for i in range(len(expr_B)):
+                if len(expr_B[i].free_symbols) == 0: expr_B[i] = symbolic_zero
+            for i in range(len(expr_b)):
+                if len(expr_b[i].free_symbols) == 0: expr_b[i] = symbolic_zero
+            
+            B[k][u] = sym.lambdify(symbols_temp,expr_B)
+            b[k][u] = sym.lambdify(symbols_temp,expr_b)
+
+    return B,b
+
+def proxy_for_ode_parameters(proxy,lin_comb,dC_times_invC,symbols,ode_param_true):
+
+    local_mean = np.zeros((len(symbols.param),1))
+    local_scaling = np.zeros((len(symbols.param),len(symbols.param)))
+    for k in range(len(lin_comb.ode_param[0])):
+        B = lin_comb.ode_param[0][k](proxy.state[:,0],proxy.state[:,1],proxy.state[:,2],np.zeros((proxy.state.shape[0]))).transpose()
+        B = B.reshape(proxy.state.shape[0],-1)
+        b = lin_comb.ode_param[1][k](proxy.state[:,0],proxy.state[:,1],proxy.state[:,2],np.zeros((proxy.state.shape[0]))).transpose()
+        b = b.reshape(proxy.state.shape[0],-1)
+        local_mean += np.dot(B.transpose(),np.dot(dC_times_invC,proxy.state[:,k]).reshape(-1,1) - b)
+        local_scaling += np.dot(B.transpose(),B)
+        
+    global_mean = np.linalg.solve(local_scaling,local_mean)
+    
+    cmap = plt.get_cmap("tab10")
+    plt.figure(num=None, figsize=(7, 4), dpi=80)
+    ax = plt.subplot(111)
+    ax.bar(np.asarray(range(len(global_mean)))+0.12,ode_param_true,color=cmap(1),width=0.2)
+    ax.bar(np.asarray(range(len(global_mean)))-0.12,global_mean.transpose()[0].tolist(),color=cmap(0),width=0.2)
+    plt.title('ODE Parameters',fontsize=18), plt.xticks(range(len(global_mean)),symbols.param,fontsize=15)
+    plt.show()
+    
+    return global_mean
+                  
+def ismember(a, b):
+    bind = {}
+    for i, elt in enumerate(b):
+        if elt not in bind:
+            bind[elt] = 1
+    return [bind.get(itm, None) for itm in a]

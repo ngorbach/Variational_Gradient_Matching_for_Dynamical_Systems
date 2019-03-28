@@ -18,6 +18,7 @@ import sympy as sym
 # ## Object Class Declarations
 
 odes_path = 'Lotka_Volterra_ODEs.txt' 
+fig_shape = (10,8)
 
 class simulation:
     initial_states = [5,3]
@@ -34,8 +35,8 @@ class time_points:
     final_observed = 2.0
     
 class symbols:
-    state = sym.symbols(['x_1','x_2'])
-    param = sym.symbols(['theta_1','theta_2','theta_3','theta_4'])
+    state = sym.symbols(['_x_1','_x_2'])
+    param = sym.symbols(['_theta_1','_theta_2','_theta_3','_theta_4'])
     
 class opt_settings:
     number_of_ascending_steps = 50

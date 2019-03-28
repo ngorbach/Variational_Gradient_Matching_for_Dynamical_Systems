@@ -1,0 +1,2446 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Variational Gradient Matching for Dynamical Systems: Dynamic Causal Models</title><meta name="generator" content="MATLAB 9.2"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-04-13"><meta name="DC.source" content="dynamic_causal_models2.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Variational Gradient Matching for Dynamical Systems: Dynamic Causal Models</h1><!--introduction--><p><img vspace="5" hspace="5" src="cover_pic.png" alt=""> </p><p>Authors: <b>Nico Stephan Gorbach</b> and <b>Stefan Bauer</b>, email: <a href="mailto:nico.gorbach@gmail.com">nico.gorbach@gmail.com</a></p><p>Instructional code for the NIPS (2018) paper " <b>Scalable Variational Inference for Dynamical Systems</b> " by Nico S. Gorbach, Stefan Bauer and Joachim M. Buhmann. The paper is available at <a href="https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf">https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf</a>. Please cite our paper if you use our program for a further publication. Part of the derivation below is described in Wenk et al. (2018).</p><p>Example dynamical system used in this code: Lotka-Volterra system with <b>half</b> of the time points <b>unobserved</b>. The ODE parameters are also unobserved.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Advantages of Variational Gradient Matching</a></li><li><a href="#4">Simulation Settings</a></li><li><a href="#5">User Input</a></li><li><a href="#13">Import Candidate ODEs</a></li><li><a href="#15">Mass Action Dynamical Systems</a></li><li><a href="#16">Simulate Trajectory Observations</a></li><li><a href="#20">Prior on ODE parameters</a></li><li><a href="#21">Confounding effects</a></li><li><a href="#23">Prior on States and State Derivatives</a></li><li><a href="#24">Matching Gradients</a></li><li><a href="#25">State Couplings in ODEs</a></li><li><a href="#26">Rewrite ODEs as Linear Combination in Parameters</a></li><li><a href="#27">Posterior over ODE Parameters</a></li><li><a href="#30">Rewrite Hemodynamic ODEs as Linear Combination in (monotonic functions of) Individual Hemodynamic States</a></li><li><a href="#38">Rewrite Neuronal ODEs as Linear Combination in Individual Neuronal States</a></li><li><a href="#41">Posterior over Individual States</a></li><li><a href="#42">Mean-field Variational Inference</a></li><li><a href="#43">Denoising BOLD Observations</a></li><li><a href="#44">Fitting Observations of State Trajectories</a></li><li><a href="#45">Coordinate Ascent Variational Gradient Matching</a></li><li><a href="#47">Intercept due to Confounding Effects</a></li><li><a href="#51">Proxies for Hemodynamic States</a></li><li><a href="#61">Proxies for Neuronal States</a></li><li><a href="#64">Proxy for neuronal couplings (ODE parameters)</a></li><li><a href="#66">Numerical integration with parameters estimated by variational gradient matching</a></li><li><a href="#67">Final result</a></li><li><a href="#68">Time Taken</a></li><li><a href="#69">References</a></li><li><a href="#70">Subroutines</a></li></ul></div><h2 id="1">Advantages of Variational Gradient Matching</h2><p>The essential idea of gradient matching (Calderhead et al., 2002) is to match the gradient governed by the ODEs with that inferred from the observations. In contrast to previous approaches gradient matching introduces a prior over states instead of a prior over ODE parameters. The advantages of gradients matching is two-fold:</p><div><ol><li>A prior over the functional form of state dynamics as opposed to ODE parameters facilitates a more expert-aware estimation of ODE parameters since experts can provide a better <i>a priori</i> description of state dynamics than ODE parameters.</li><li>Gradient matching yields a global gradient as opposed to a local one which offers significant computational advantages and provides access to a rich source of sophisticated optimization tools.</li></ol></div><p>Clear workspace and close figures</p><pre class="codeinput">clear <span class="string">all</span>; close <span class="string">all</span>;
+</pre><h2 id="4">Simulation Settings</h2><pre class="codeinput">simulation.odes = <span class="string">'fwd_mod_driving'</span>;
+simulation.SNR = 5;                                                        <span class="comment">% signal-to-noise-ratio</span>
+simulation.ode_param = -0.8 + (0.8-(-0.8)) * rand(1,11);                   <span class="comment">% true non-selfinhibitory neuronal couplings (sampled uniformily in the interval [-0.8,0.8];</span>
+simulation.ode_param(end-4:end) = -1;                                      <span class="comment">% self-inhibotory neuronal couplings set to -1.</span>
+simulation.final_time = 359*3.22;                                          <span class="comment">% end time for integration</span>
+simulation.int_interval = 0.01;                                            <span class="comment">% integration interval</span>
+simulation.time_samp = 0:0.1:simulation.final_time;                        <span class="comment">% sample times for observations</span>
+simulation.observed_states = {};                                           <span class="comment">% indices of states that are directly observed (Boolean)</span>
+</pre><h2 id="5">User Input</h2><p><h4> Candidate mechanism </h4></p><pre class="codeinput">candidate_odes = <span class="string">'fwd_mod_driving'</span>;
+</pre><p><h4> Prior variance on non-selfinhibitory neuronal couplings </h4></p><pre class="codeinput">param_prior_variance = realmax;
+</pre><p><h4> Kernel </h4></p><p>Kernel parameters <img src="dynamic_causal_models2_eq06401276552089372917.png" alt="$\phi$" style="width:6px;height:10px;">:</p><pre class="codeinput">kernel.param = [10,0.2];                                                   <span class="comment">% set values of rbf kernel parameters</span>
+</pre><p>Error variance on state derivatives (i.e. <img src="dynamic_causal_models2_eq17096441642737911057.png" alt="$\gamma$" style="width:6px;height:8px;">):</p><pre class="codeinput">state.derivative_variance = 6.*ones(11-3,1);                             <span class="comment">% \gamma for gradient matching model</span>
+</pre><p><h4> Estimation times </h4></p><pre class="codeinput">time.est= 0:3.22:359*3.22;                                                 <span class="comment">% estimation times</span>
+</pre><p><h4> Optimization settings </h4></p><pre class="codeinput">opt_settings.pseudo_inv_type = <span class="string">'Moore-Penrose'</span>;                            <span class="comment">% type of pseudo inverse; options: 'Moore-Penrose' or 'modified Moore-Penrose'</span>
+opt_settings.coord_ascent_numb_iter = 200;                                 <span class="comment">% number of coordinate ascent iterations</span>
+opt_settings.clamp_obs_state_to_GP_regression = true;                      <span class="comment">% the observed state trajectories are clamped to the trajectories determined by standard GP regression (Boolean)</span>
+</pre><p><h4> Damping for Hemodynamic States </h4></p><pre class="codeinput">damping = 0.1;                                                             <span class="comment">% since the hemodynamic states are inferred locally w.r.t. the hemodynamic ODEs we add a damping in the inference.</span>
+</pre><p><h4> External input </h4></p><pre class="codeinput">state.ext_input = importdata(<span class="string">'dcm/external_input.txt'</span>);                    <span class="comment">% importing external inputs</span>
+time.samp = state.ext_input(:,1)';                                         <span class="comment">% unpack sampling time</span>
+</pre><h2 id="13">Import Candidate ODEs</h2><pre class="codeinput">symbols = importdata([<span class="string">'dcm/ODEs/'</span> candidate_odes <span class="string">'_symbols.mat'</span>]);         <span class="comment">% symbols of parameters and states and in 'ODEs.txt' file</span>
+ode = import_odes(symbols,candidate_odes);
+ode = write_ODEs_as_symbolic_expression(symbols,ode);
+</pre><pre class="codeinput">disp(<span class="string">'candidate ODEs:'</span>); disp(ode.raw)
+</pre><pre class="codeoutput">candidate ODEs:
+    '-(5.*exp((17.*[v_{1}])./8))./8-(25.*exp(-[q_{1}]).*exp([f_{1}]).*((3./5).^exp(-[f_{1}])-1))./16'
+    '-(5.*exp((17.*[v_{3}])./8))./8-(25.*exp(-[q_{3}]).*exp([f_{3}]).*((3./5).^exp(-[f_{3}])-1))./16'
+    '-(5.*exp((17.*[v_{2}])./8))./8-(25.*exp(-[q_{2}]).*exp([f_{2}]).*((3./5).^exp(-[f_{2}])-1))./16'
+    '(5.*exp(-[v_{1}]).*exp([f_{1}]))./8-(5.*exp((17.*[v_{1}])./8))./8'
+    '(5.*exp(-[v_{3}]).*exp([f_{3}]))./8-(5.*exp((17.*[v_{3}])./8))./8'
+    '(5.*exp(-[v_{2}]).*exp([f_{2}]))./8-(5.*exp((17.*[v_{2}])./8))./8'
+    '[s_{1}].*exp(-[f_{1}])'
+    '[s_{3}].*exp(-[f_{3}])'
+    '[s_{2}].*exp(-[f_{2}])'
+    '[n_1]-(3.*[s_{1}])./5-(8.*exp([f_{1}]))./25+8./25'
+    '[n_3]-(3.*[s_{3}])./5-(8.*exp([f_{3}]))./25+8./25'
+    '[n_2]-(3.*[s_{2}])./5-(8.*exp([f_{2}]))./25+8./25'
+    '[a_{11}].*[n_1]+[a_{12}].*[n_2]+[c_{11}].*[u_{1}]'
+    '[a_{32}].*[n_2]+[a_{33}].*[n_3]+[c_{33}].*[u_{3}]'
+    '[a_{22}].*[n_2]+[a_{23}].*[n_3]+[n_1].*([a_{21}]+[b_{212}].*[u_{2}]+[b_{213}].*[u_{3}])'
+
+</pre><h2 id="15">Mass Action Dynamical Systems</h2><p>A deterministic dynamical system is represented by a set of <img src="dynamic_causal_models2_eq03845174387838694102.png" alt="$K$" style="width:10px;height:8px;"> ordinary differential equations (ODEs) with model parameters <img src="dynamic_causal_models2_eq06597877416883810229.png" alt="$\theta \in R^d$" style="width:32px;height:10px;"> that describe the evolution of <img src="dynamic_causal_models2_eq03845174387838694102.png" alt="$K$" style="width:10px;height:8px;"> states <img src="dynamic_causal_models2_eq16690292594929342180.png" alt="$\mathbf{x}(t) = [x_1(t),\ldots, x_K(t)]^T$" style="width:120px;height:13px;"> such that:</p><p><img src="dynamic_causal_models2_eq14568623149868123203.png" alt="$\dot{\mathbf{x}}(t) = \frac{d \mathbf{x}(t)}{d t} = \mathbf{f}(\mathbf{x}(t),\theta) \qquad (1)$" style="width:147px;height:16px;">.</p><p>A sequence of observations, <img src="dynamic_causal_models2_eq17565748849429239454.png" alt="$\mathbf{y}(t)$" style="width:19px;height:11px;">, is usually contaminated by measurement error which we assume to be normally distributed with zero mean and variance for each of the <img src="dynamic_causal_models2_eq03845174387838694102.png" alt="$K$" style="width:10px;height:8px;"> states, i.e. <img src="dynamic_causal_models2_eq17794898362272225160.png" alt="$\mathbf{E}\sim \mathcal{X}(\mathbf{E};\mathbf{0},\mathbf{D})$" style="width:74px;height:11px;">, with <img src="dynamic_causal_models2_eq02125912780065424198.png" alt="$\mathbf{D}_{ik}=\sigma_k ^2 \delta_{ik}$" style="width:55px;height:13px;">. For <img src="dynamic_causal_models2_eq12362013959998143435.png" alt="$X$" style="width:10px;height:8px;"> distinct time points the overall system may therefore be summarized as:</p><p><img src="dynamic_causal_models2_eq05988414051423361030.png" alt="$\mathbf{Y} = \mathbf{X} + \mathbf{E}$" style="width:56px;height:9px;">,</p><p>where</p><p><img src="dynamic_causal_models2_eq15195809455161680973.png" alt="$\mathbf{X} = [\mathbf{x}(t_1),\ldots,\mathbf{x}(t_N)] = [\mathbf{x}_1,\ldots,\mathbf{x}_K]^T$" style="width:181px;height:13px;">,</p><p><img src="dynamic_causal_models2_eq07638385370877036024.png" alt="$\mathbf{Y} = [\mathbf{y}(t_1),\ldots,\mathbf{y}(t_N)] = [\mathbf{y}_1,\ldots,\mathbf{y}_K]^T$" style="width:182px;height:13px;">,</p><p>and <img src="dynamic_causal_models2_eq15380491105506292187.png" alt="$\mathbf{x}_k = [x_k(t_1),\ldots,x_k(t_N)]^T$" style="width:122px;height:13px;"> is the <img src="dynamic_causal_models2_eq15636846968047188835.png" alt="$k$" style="width:6px;height:8px;">'th state sequence and <img src="dynamic_causal_models2_eq10667114650506665719.png" alt="$\mathbf{y}_k = [y_k(t_1),$" style="width:59px;height:11px;"> <img src="dynamic_causal_models2_eq11698417834938640281.png" alt="$\ldots,y_k(t_N)]^T$" style="width:58px;height:13px;"> are the observations. Given the observations <img src="dynamic_causal_models2_eq00013651220649516337.png" alt="$\mathbf{Y}$" style="width:10px;height:8px;"> and the description of the dynamical system (1), the aim is to estimate both state variables <img src="dynamic_causal_models2_eq03397130480831257552.png" alt="$\mathbf{X}$" style="width:9px;height:8px;"> and parameters <img src="dynamic_causal_models2_eq08288499342375314727.png" alt="$\theta$" style="width:5px;height:8px;">.</p><p>We consider only dynamical systems that are locally linear with respect to ODE parameters <img src="dynamic_causal_models2_eq07852716426910655037.png" alt="$\boldmath\theta$" style="width:5px;height:8px;"> and individual states <img src="dynamic_causal_models2_eq09666309242948754915.png" alt="$\mathbf{n}_u$" style="width:11px;height:7px;">. Such ODEs include mass-action kinetics and are given by:</p><p><img src="dynamic_causal_models2_eq14747913945217368606.png" alt="$f_{k}(\mathbf{x}(t),\boldmath\theta) = \sum_{i=1} \theta_{ki} \prod_{j \in \mathcal{M}_{ki}} x_j \qquad (2)$" style="width:185px;height:13px;">,</p><p>with <img src="dynamic_causal_models2_eq10975547451157895511.png" alt="$\mathcal{M}_{ki} \subseteq \{ 1, \dots, K\}$" style="width:86px;height:11px;"> describing the state variables in each factor of the equation (i.e. the functions are linear in parameters and contain arbitrary large products of monomials of the states).</p><h2 id="16">Simulate Trajectory Observations</h2><p><h4> Simulate state trajectories by numerical integration </h4></p><pre class="codeinput">non_diverging_trajectories = false;
+<span class="keyword">while</span> ~non_diverging_trajectories
+
+symbols_simulation = importdata([<span class="string">'dcm/ODEs/'</span> simulation.odes <span class="string">'_symbols.mat'</span>]);         <span class="comment">% symbols of parameters and states and in 'ODEs.txt' file</span>
+ode_simulation = import_odes(symbols_simulation,simulation.odes);
+
+simulation.ode_param = -0.8 + (0.8-(-0.8)) * rand(1,length(symbols_simulation.param));<span class="comment">% true non-selfinhibitory neuronal couplings (sampled uniformily in the interval [-0.8,0.8];</span>
+simulation.ode_param(end-2:end) = -1;                                      <span class="comment">% self-inhibitory neuronal couplings set to -1.</span>
+
+state_orig = state;
+[state,time,ode_simulation,bold_response] = simulate_dynamics_by_numerical_integration(state,time,ode_simulation,simulation,symbols_simulation);
+
+<span class="keyword">if</span> ~any(any(isnan(state.true))) &amp;&amp; time.samp(end) &gt; 1000; non_diverging_trajectories = 1; <span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p><h4> Generate state observations </h4></p><pre class="codeinput">[state,time,obs_to_state_relation] = generate_state_observations(state,time,simulation,symbols);
+
+<span class="comment">% mean correction</span>
+bold_response.obs = bsxfun(@minus,bold_response.obs,mean(bold_response.obs,1));
+</pre><p><h4> Symbols </h4></p><pre class="codeinput">state.sym.mean = sym(<span class="string">'n%d%d'</span>,[length(time.est),length(ode.system)]);
+state.sym.variance = sym(<span class="string">'sigma%d%d'</span>,[length(time.est),length(ode.system)]);
+ode_param.sym.mean = sym(<span class="string">'param%d'</span>,[length(symbols.param),1]); assume(ode_param.sym.mean,<span class="string">'real'</span>);
+</pre><p><h4> Setup plots </h4></p><pre class="codeinput">h_bold = setup_plots_for_bold_response_and_ext_input(state,bold_response,time,symbols);
+[h_states,h_param,p] = setup_plots_for_states(state,time,symbols);
+</pre><img vspace="5" hspace="5" src="dynamic_causal_models2_02.png" style="width:1600px;height:800px;" alt=""> <h2 id="20">Prior on ODE parameters</h2><p>Constuct prior on ODE parameters.</p><pre class="codeinput">ode_param = prior_on_ODE_param(ode_param,param_prior_variance,symbols.param);<span class="comment">% prior on ODE parameters</span>
+</pre><h2 id="21">Confounding effects</h2><p>BOLD response observations are given by the signal change equation plus an intercept due to confounding effects:</p><p><img src="dynamic_causal_models2_eq04123592213349863648.png" alt="$$\mathbf{y} = \lambda(\mathbf{q},\mathbf{v},\mathbf{u}) + \mathbf{X} \beta + \epsilon$$" style="width:114px;height:11px;"></p><pre class="codeinput">bold_response = confounding_effects(bold_response);
+
+tic; <span class="comment">%start timer</span>
+</pre><h2 id="23">Prior on States and State Derivatives</h2><p>Gradient matching with Gaussian processes assumes a joint Gaussian process prior on states and their derivatives:</p><p><img src="dynamic_causal_models2_eq04414546171455482387.png" alt="$\left(\begin{array}{c} \mathbf{X} \\ \dot{\mathbf{X}} \end{array}\right)  \sim p \left( \begin{array}{c} \mathbf{X} \\ \dot{\mathbf{X}} \end{array}; \begin{array}{c}  \mathbf{0} \\ \mathbf{0}  \end{array}, \begin{array}{cc}  \mathbf{C}_{\phi} &amp; \mathbf{C}_{\phi}' \\  '\mathbf{C}_{\phi} &amp; \mathbf{C}_{\phi}''  \end{array}  \right) \qquad (3)$" style="width:211px;height:28px;">,</p><p><img src="dynamic_causal_models2_eq15132385546029468189.png" alt="$\mathrm{cov}(x_k(t), x_k(t)) = C_{\phi_k}(t,t')$" style="width:131px;height:12px;"></p><p><img src="dynamic_causal_models2_eq07220470326809685719.png" alt="$\mathrm{cov}(\dot{n}_k(t), x_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t} =: C_{\phi_k}'(t,t')$" style="width:185px;height:18px;"></p><p><img src="dynamic_causal_models2_eq13658027029328175797.png" alt="$\mathrm{cov}(x_k(t), \dot{n}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t'} =: {'C_{\phi_k}(t,t')}$" style="width:188px;height:17px;"></p><p><img src="dynamic_causal_models2_eq01230316698409260732.png" alt="$\mathrm{cov}(\dot{n}_k(t), \dot{n}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t \partial t'} =: C_{\phi_k}''(t,t')$" style="width:185px;height:18px;">.</p><h2 id="24">Matching Gradients</h2><p>Given the joint distribution over states and their derivatives (3) as well as the ODEs (2), we therefore have two expressions for the state derivatives:</p><p><img src="dynamic_causal_models2_eq08053039033921574521.png" alt="$\dot{\mathbf{X}} = \mathbf{F} + \epsilon_1, \epsilon_1 \sim \mathcal{X}\left(\epsilon_1;\mathbf{0}, \mathbf{I}\gamma \right)$" style="width:138px;height:13px;"></p><p><img src="dynamic_causal_models2_eq11137284319896198903.png" alt="$\dot{\mathbf{X}} = {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} ~\mathbf{X} + \epsilon_2, \epsilon_2 \sim \mathcal{X}\left(\epsilon_2;\mathbf{0}, \mathbf{A} \right)$" style="width:178px;height:16px;"></p><p>where <img src="dynamic_causal_models2_eq15438906814634469781.png" alt="$\mathbf{F} := \mathbf{f}(\mathbf{X},\theta)$" style="width:58px;height:11px;">, <img src="dynamic_causal_models2_eq02616189247499740046.png" alt="$\mathbf{A} := \mathbf{C}_{\phi}'' -  {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} \mathbf{C}_{\phi}'$" style="width:105px;height:15px;"> and <img src="dynamic_causal_models2_eq17096441642737911057.png" alt="$\gamma$" style="width:6px;height:8px;"> is the error variance in the ODEs. Note that, in a deterministic system, the output of the ODEs <img src="dynamic_causal_models2_eq10805855639155619100.png" alt="$\mathbf{F}$" style="width:8px;height:8px;"> should equal the state derivatives <img src="dynamic_causal_models2_eq07315144976585928416.png" alt="$\dot{\mathbf{X}}$" style="width:9px;height:11px;">. However, in the first equation above we relax this contraint by adding stochasticity to the state derivatives <img src="dynamic_causal_models2_eq07315144976585928416.png" alt="$\dot{\mathbf{X}}$" style="width:9px;height:11px;"> in order to compensate for a potential model mismatch. The second equation above is obtained by deriving the conditional distribution for <img src="dynamic_causal_models2_eq07315144976585928416.png" alt="$\dot{\mathbf{X}}$" style="width:9px;height:11px;"> from the joint distribution in equation (3). Equating the two expressions in the equations above we can eliminate the unknown state derivatives <img src="dynamic_causal_models2_eq07315144976585928416.png" alt="$\dot{\mathbf{X}}$" style="width:9px;height:11px;">:</p><p><img src="dynamic_causal_models2_eq16675609090530047740.png" alt="$\mathbf{F} = {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} ~\mathbf{X} + \epsilon_0 \qquad (4)$" style="width:130px;height:15px;">,</p><p>with <img src="dynamic_causal_models2_eq08944609086354323641.png" alt="$\epsilon_0 := \epsilon_2 - \epsilon_1$" style="width:57px;height:7px;">.</p><pre class="codeinput">[dC_times_invC,inv_C,A_plus_gamma_inv] = kernel_function(kernel,state,time.est);
+</pre><img vspace="5" hspace="5" src="dynamic_causal_models2_03.png" style="width:560px;height:420px;" alt=""> <h2 id="25">State Couplings in ODEs</h2><pre class="codeinput">coupling_idx = state_couplings_in_odes(ode,symbols);
+</pre><h2 id="26">Rewrite ODEs as Linear Combination in Parameters</h2><p>We rewrite the ODEs in equation (2) as a linear combination in the parameters:</p><p><img src="dynamic_causal_models2_eq00386987092348617262.png" alt="$\mathbf{B}_{\boldmath\theta} \boldmath\theta + \mathbf{b}_{\boldmath\theta} \stackrel{!}{=} \mathbf{f}(\mathbf{X},\boldmath\theta) \qquad (5)$" style="width:139px;height:15px;">,</p><p>where matrices <img src="dynamic_causal_models2_eq12395521263852684086.png" alt="$\mathbf{B}_{\boldmath\theta}$" style="width:13px;height:10px;"> and <img src="dynamic_causal_models2_eq14370145166438995955.png" alt="$\mathbf{b}_{\boldmath\theta}$" style="width:11px;height:10px;"> are defined such that the ODEs <img src="dynamic_causal_models2_eq12466937249580769582.png" alt="$\mathbf{f}(\mathbf{X},\boldmath\theta)$" style="width:33px;height:11px;"> are expressed as a linear combination in <img src="dynamic_causal_models2_eq07852716426910655037.png" alt="$\boldmath\theta$" style="width:5px;height:8px;">.</p><pre class="codeinput">[ode_param.lin_comb.B,ode_param.lin_comb.b] = rewrite_odes_as_linear_combination_in_parameters(ode,symbols);
+</pre><h2 id="27">Posterior over ODE Parameters</h2><p>Inserting (5) into (4) and solving for <img src="dynamic_causal_models2_eq07852716426910655037.png" alt="$\boldmath\theta$" style="width:5px;height:8px;"> yields:</p><p><img src="dynamic_causal_models2_eq12167863208124688271.png" alt="$\boldmath\theta = \mathbf{B}_{\boldmath\theta}^+ \left( {'\mathbf{C}_{\boldmath\phi}} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X} - \mathbf{b}_{\boldmath\theta} + \boldmath\epsilon_0 \right)$" style="width:156px;height:20px;">,</p><p>where <img src="dynamic_causal_models2_eq03085143088627778722.png" alt="$\mathbf{B}_{\boldmath\theta}^+$" style="width:15px;height:13px;"> denotes the pseudo-inverse of <img src="dynamic_causal_models2_eq12395521263852684086.png" alt="$\mathbf{B}_{\boldmath\theta}$" style="width:13px;height:10px;">. We can therefore derive the posterior distribution over ODE parameters:</p><p><img src="dynamic_causal_models2_eq10919077995531484323.png" alt="$p(\boldmath\theta \mid \mathbf{X}, \boldmath\phi, \gamma) = \mathcal{X}\left(\boldmath\theta ; \mathbf{B}_{\boldmath\theta}^+ ~ \left( {'\mathbf{C}_{\boldmath\phi}} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X} - \mathbf{b}_{\boldmath\theta} \right), ~ \mathbf{B}_{\boldmath\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\boldmath\theta}^{+T} \right) \qquad (6)$" style="width:380px;height:20px;">.</p><pre class="codeinput">state_enumeration = {<span class="string">'q'</span>,<span class="string">'v'</span>,<span class="string">'f'</span>,<span class="string">'s'</span>,<span class="string">'n'</span>};
+<span class="keyword">for</span> u = 1:length(state_enumeration)
+</pre><h2 id="30">Rewrite Hemodynamic ODEs as Linear Combination in (monotonic functions of) Individual Hemodynamic States</h2><p>We rewrite the ODE(s) <img src="dynamic_causal_models2_eq02236554863665022337.png" alt="$\mathbf{f}_k(\mathbf{X},\boldmath\theta)$" style="width:36px;height:11px;"> as a linear combination in the individual state <img src="dynamic_causal_models2_eq00398522576481313565.png" alt="$\mathbf{x}_u$" style="width:11px;height:7px;">:</p><p><img src="dynamic_causal_models2_eq10008959294740639969.png" alt="$\mathbf{R}_{uk} \mathbf{x}_u + \mathbf{r}_{uk} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\boldmath\theta)$" style="width:109px;height:15px;">.</p><p>where matrices <img src="dynamic_causal_models2_eq06228382002088498691.png" alt="$\mathbf{R}_{uk}$" style="width:18px;height:10px;"> and <img src="dynamic_causal_models2_eq15497740768629090093.png" alt="$\mathbf{r}_{uk}k$" style="width:20px;height:10px;"> are defined such that the ODE <img src="dynamic_causal_models2_eq02236554863665022337.png" alt="$\mathbf{f}_k(\mathbf{X},\boldmath\theta)$" style="width:36px;height:11px;"> is expressed as a linear combination in the individual state <img src="dynamic_causal_models2_eq00398522576481313565.png" alt="$\mathbf{x}_u$" style="width:11px;height:7px;">.</p><pre class="codeinput">    <span class="keyword">if</span> strcmp(state_enumeration{u},<span class="string">'q'</span>)
+</pre><p><h4> Deoxyhemoglobin content </h4></p><p>Rewrite the BOLD signal change equation as a linear combination in a monotonic function of the deoxyhemoglobin content <img src="dynamic_causal_models2_eq15217872410698573505.png" alt="$e^q$" style="width:9px;height:8px;">.</p><p><img src="dynamic_causal_models2_eq17890802133788904477.png" alt="$\mathbf{R}_{q\lambda} e^{\mathbf{q}} + \mathbf{r}_{v\lambda} \stackrel{!}{=} \lambda(q,v)$" style="width:101px;height:15px;">.</p><pre class="codeinput">       [state.deoxyhemo.R,state.deoxyhemo.r] = rewrite_bold_signal_eqn_as_linear_combination_in_deoxyhemo(symbols);
+</pre><pre class="codeinput">    <span class="keyword">elseif</span> strcmp(state_enumeration{u},<span class="string">'v'</span>)
+</pre><p><h4> Blood volume </h4></p><p>Rewrite the deoxyhemoglobin content ODE as a linear combination in a monotonic function of the blood volume <img src="dynamic_causal_models2_eq15202732336999919368.png" alt="$e^v$" style="width:9px;height:8px;">.</p><p><img src="dynamic_causal_models2_eq03289784807679022539.png" alt="$\mathbf{R}_{v\dot{q}} e^{\mathbf{v}} + \mathbf{r}_{v\dot{q}} \stackrel{!}{=} \mathbf{f}_{\dot{q}}(\mathbf{X},\boldmath\theta)$" style="width:106px;height:15px;">.</p><pre class="codeinput">        [state.vol.R,state.vol.r] = rewrite_deoxyhemo_ODE_as_linear_combination_in_vol(ode,symbols);
+</pre><pre class="codeinput">    <span class="keyword">elseif</span> strcmp(state_enumeration{u},<span class="string">'f'</span>)
+</pre><p><h4> Blood flow </h4></p><p>Rewrite the blood volume ODE as a linear combination in a monotonic function of the blood flow <img src="dynamic_causal_models2_eq17134950733176770533.png" alt="$e^f$" style="width:10px;height:10px;">.</p><p><img src="dynamic_causal_models2_eq12058956987167768962.png" alt="$\mathbf{R}_{f\dot{v}} e^{\mathbf{f}} + \mathbf{r}_{f\dot{v}} \stackrel{!}{=} \mathbf{f}_{\dot{v}}(\mathbf{X},\boldmath\theta)$" style="width:106px;height:16px;"></p><pre class="codeinput">        [state.flow.R,state.flow.r] = rewrite_vol_ODE_as_linear_combination_in_flow(ode,symbols);
+</pre><pre class="codeinput">    <span class="keyword">elseif</span> strcmp(state_enumeration{u},<span class="string">'s'</span>)
+</pre><p><h4> Vasosignalling </h4></p><p>Rewrite the blood flow and vasoginalling ODEs as a linear combination in vasosignalling <img src="dynamic_causal_models2_eq17157792396909321071.png" alt="$s$" style="width:5px;height:6px;">.</p><p><img src="dynamic_causal_models2_eq14046572683196155086.png" alt="$\mathbf{R}_{s\dot{f}} \mathbf{s} + \mathbf{r}_{s\dot{f}} \stackrel{!}{=} \mathbf{f}_{\dot{f}}(\mathbf{X},\boldmath\theta)$" style="width:102px;height:17px;"></p><p><img src="dynamic_causal_models2_eq16716909192583438325.png" alt="$\mathbf{R}_{s\dot{s}} \mathbf{s} + \mathbf{r}_{s\dot{s}} \stackrel{!}{=} \mathbf{f}_{\dot{s}}(\mathbf{X},\boldmath\theta)$" style="width:99px;height:15px;"></p><pre class="codeinput">        [state.vaso.R,state.vaso.r] = rewrite_vaso_and_flow_odes_as_linear_combination_in_vaso(ode,symbols);
+</pre><h2 id="38">Rewrite Neuronal ODEs as Linear Combination in Individual Neuronal States</h2><p>We rewrite the ODE(s) <img src="dynamic_causal_models2_eq02236554863665022337.png" alt="$\mathbf{f}_k(\mathbf{X},\boldmath\theta)$" style="width:36px;height:11px;"> as a linear combination in the individual state <img src="dynamic_causal_models2_eq00398522576481313565.png" alt="$\mathbf{x}_u$" style="width:11px;height:7px;">:</p><p><img src="dynamic_causal_models2_eq16413963706642269532.png" alt="$\mathbf{R}_{uk} \mathbf{x} + \mathbf{r}_{uk} \stackrel{!}{=} \mathbf{f}_{k}(\mathbf{X},\boldmath\theta)$" style="width:104px;height:15px;"></p><p>where matrices <img src="dynamic_causal_models2_eq06228382002088498691.png" alt="$\mathbf{R}_{uk}$" style="width:18px;height:10px;"> and <img src="dynamic_causal_models2_eq15497740768629090093.png" alt="$\mathbf{r}_{uk}k$" style="width:20px;height:10px;"> are defined such that the expression <img src="dynamic_causal_models2_eq02236554863665022337.png" alt="$\mathbf{f}_k(\mathbf{X},\boldmath\theta)$" style="width:36px;height:11px;"> is expressed as a linear combination in the individual state <img src="dynamic_causal_models2_eq00398522576481313565.png" alt="$\mathbf{x}_u$" style="width:11px;height:7px;">.</p><pre class="codeinput">    <span class="keyword">elseif</span> strcmp(state_enumeration{u},<span class="string">'n'</span>)
+        [state.neuronal.R,state.neuronal.r] = rewrite_odes_as_linear_combination_in_ind_neuronal_states(ode,symbols,coupling_idx.states);
+    <span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
+</pre><h2 id="41">Posterior over Individual States</h2><p>Inserting (7) into (4) and solving for <img src="dynamic_causal_models2_eq09666309242948754915.png" alt="$\mathbf{n}_u$" style="width:11px;height:7px;"> yields:</p><p><img src="dynamic_causal_models2_eq03984175207751185199.png" alt="$\mathbf{x}_u = \mathbf{B}_{u}^+ \left( \boldmath\epsilon_0 -\mathbf{b}_{u} \right)$" style="width:86px;height:12px;">,</p><p>where <img src="dynamic_causal_models2_eq03266229480980241917.png" alt="$\mathbf{B}_{u}^+$" style="width:15px;height:12px;"> denotes the pseudo-inverse of <img src="dynamic_causal_models2_eq11755194738169897586.png" alt="$\mathbf{B}_{u}$" style="width:13px;height:10px;">. We can therefore derive the posterior distribution over an individual state <img src="dynamic_causal_models2_eq09666309242948754915.png" alt="$\mathbf{n}_u$" style="width:11px;height:7px;">:</p><p><img src="dynamic_causal_models2_eq13783830209833507698.png" alt="$p(\mathbf{x}_u \mid \mathbf{X}_{-u}, \boldmath\phi, \gamma) = p\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ \mathbf{b}_u, ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) \qquad (8)$" style="width:295px;height:14px;">,</p><p>with <img src="dynamic_causal_models2_eq11492802563980187967.png" alt="$\mathbf{X}_{-u}$" style="width:20px;height:10px;"> denoting the set of all states except state <img src="dynamic_causal_models2_eq09666309242948754915.png" alt="$\mathbf{n}_u$" style="width:11px;height:7px;">.</p><h2 id="42">Mean-field Variational Inference</h2><p>To infer the parameters <img src="dynamic_causal_models2_eq07852716426910655037.png" alt="$\boldmath\theta$" style="width:5px;height:8px;">, we want to find the maximum a posteriori estimate (MAP):</p><p><img src="dynamic_causal_models2_eq02662686890869235014.png" alt="$\theta^* := arg \max_{\theta} ~ \ln p(\theta \mid \mathbf{Y},\phi,\gamma, \sigma)$" style="width:161px;height:11px;"></p><p><img src="dynamic_causal_models2_eq14040861108369768609.png" alt="$= arg\max_{\boldmath\theta} ~ \ln \int  p(\boldmath\theta,\mathbf{X} \mid \mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma) d\mathbf{X}$" style="width:185px;height:13px;"></p><p><img src="dynamic_causal_models2_eq11858686225046084718.png" alt="$= arg\max_{\boldmath\theta} ~ \ln \int p(\boldmath\theta \mid \mathbf{X},\boldmath\phi,\boldmath\gamma) p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\boldmath\sigma) d\mathbf{X} \qquad (9)$" style="width:259px;height:13px;">.</p><p>However, the integral above is intractable due to the strong couplings induced by the nonlinear ODEs <img src="dynamic_causal_models2_eq15427371409597902919.png" alt="$\mathbf{f}$" style="width:5px;height:8px;"> which appear in the term <img src="dynamic_causal_models2_eq07315403459475000172.png" alt="$p(\boldmath\theta \mid \mathbf{X},\boldmath\phi,\boldmath\gamma)$" style="width:60px;height:11px;">.</p><p>We use mean-field variational inference to establish variational lower bounds that are analytically tractable by decoupling state variables from the ODE parameters as well as decoupling the state variables from each other. Note that, since the ODEs described by equation (2) are <b>locally linear</b>, both conditional distributions <img src="dynamic_causal_models2_eq03019155322140654594.png" alt="$p(\boldmath\theta \mid \mathbf{X},\mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma)$" style="width:87px;height:11px;"> (equation (6)) and <img src="dynamic_causal_models2_eq09892269297795857638.png" alt="$p(\mathbf{n}_u \mid \boldmath\theta, \mathbf{X}_{-u},\mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma)$" style="width:115px;height:11px;"> (equation (8)) are analytically tractable and Gaussian distributed as mentioned previously.</p><p>The decoupling is induced by designing a variational distribution <img src="dynamic_causal_models2_eq14500435956303858789.png" alt="$Q(\boldmath\theta,\mathbf{X})$" style="width:36px;height:11px;"> which is restricted to the family of factorial distributions:</p><p><img src="dynamic_causal_models2_eq14853321791698272408.png" alt="$\mathcal{Q} := \bigg{\{} Q : Q(\boldmath\theta,\mathbf{X}) = q(\boldmath\theta) \prod_u q(\mathbf{n}_u) \bigg{\}}$" style="width:195px;height:27px;">.</p><p>The particular form of <img src="dynamic_causal_models2_eq00738086801338514421.png" alt="$q(\boldmath\theta)$" style="width:19px;height:11px;"> and <img src="dynamic_causal_models2_eq13901743588673482071.png" alt="$q(\mathbf{n}_u)$" style="width:25px;height:11px;"> are designed to be Gaussian distributed which places them in the same family as the true full conditional distributions. To find the optimal factorial distribution we minimize the Kullback-Leibler divergence between the variational and the true posterior distribution:</p><p><img src="dynamic_causal_models2_eq07214799316343190862.png" alt="$\hat{Q} := arg \min_{Q(\boldmath\theta,\mathbf{X}) \in \mathcal{Q}} \mathrm{KL} \left[ Q(\theta,\mathbf{X}) \mid \mid p(\boldmath\theta,\mathbf{X} \mid \mathbf{Y},\boldmath\phi, \boldmath\gamma,\boldmath\sigma) \right] \qquad (10)$" style="width:304px;height:15px;">,</p><p>where <img src="dynamic_causal_models2_eq03753133506936905529.png" alt="$\hat{Q}$" style="width:8px;height:13px;"> is the proxy distribution. The proxy distribution that minimizes the KL-divergence (10) depends on the true full conditionals and is given by:</p><p><img src="dynamic_causal_models2_eq08024912143204138115.png" alt="$\hat{q}({\boldmath\theta}) \propto \exp \left(~ E_{Q_{-\theta}} \ln p(\boldmath\theta \mid \mathbf{X},\mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma) ~\right) \qquad (11)$" style="width:234px;height:12px;"></p><p><img src="dynamic_causal_models2_eq15201239789065099146.png" alt="$\hat{q}(\mathbf{n}_u) \propto \exp\left( ~ E_{Q_{-u}} \ln p(\mathbf{n}_u \mid \theta, \mathbf{X}_{-u},\mathbf{Y},\phi,\gamma,\sigma) ~ \right) \qquad (12)$" style="width:268px;height:12px;">.</p><h2 id="43">Denoising BOLD Observations</h2><p>We denoise the BOLD observation by standard GP regression.</p><pre class="codeinput">bold_response.denoised_obs = denoising_BOLD_observations(bold_response,inv_C,symbols,simulation.SNR);
+</pre><h2 id="44">Fitting Observations of State Trajectories</h2><p>We fit the observations of state trajectories by standard GP regression. The data-informed distribution <img src="dynamic_causal_models2_eq13980762633675004648.png" alt="$p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\boldmath\sigma)$" style="width:65px;height:11px;"> in euqation (9) can be determined analytically using Gaussian process regression with the GP prior <img src="dynamic_causal_models2_eq11503618869587734051.png" alt="$p(\mathbf{X} \mid \boldmath\phi) = \prod_k \mathcal{X}(\mathbf{n}_k ; \mathbf{0},\mathbf{C}_{\boldmath\phi})$" style="width:144px;height:12px;">:</p><p><img src="dynamic_causal_models2_eq14467608745354596719.png" alt="$p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\gamma) = \prod_k \mathcal{X}(\mathbf{n}_k ; \boldmath\mu_k(\mathbf{y}_k),\boldmath\Sigma_k)$" style="width:180px;height:12px;">,</p><p>where <img src="dynamic_causal_models2_eq06586455063503371300.png" alt="$\boldmath\mu_k(\mathbf{y}_k) := \sigma_k^{-2} \left(\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1} \right)^{-1} \mathbf{y}_k$" style="width:177px;height:23px;"> and <img src="dynamic_causal_models2_eq05050976928104673176.png" alt="$\boldmath\Sigma_k ^{-1}:=\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1}$" style="width:101px;height:15px;">.</p><pre class="codeinput">[mu,inv_sigma] = fitting_state_observations(state,inv_C,obs_to_state_relation,symbols,simulation.SNR);
+</pre><h2 id="45">Coordinate Ascent Variational Gradient Matching</h2><p>We <b>locally</b> minimize the KL-divergence in equation (10) by coordinate descent (where each step is analytically tractable) by iterating between determining the proxy for the distribution over ODE parameters <img src="dynamic_causal_models2_eq14367149541941707627.png" alt="$\hat{q}(\boldmath\theta)$" style="width:19px;height:11px;"> and the proxies for the distribution over individual states <img src="dynamic_causal_models2_eq14812016187262652574.png" alt="$\hat{q}(\mathbf{n}_u)$" style="width:25px;height:11px;">.</p><pre class="codeinput">bold_response.obs_old = bold_response.denoised_obs;
+
+state_enumeration = {<span class="string">'q'</span>,<span class="string">'v'</span>,<span class="string">'f'</span>,<span class="string">'s'</span>,<span class="string">'n'</span>};
+state_enumeration(find(ismember(state_enumeration,simulation.observed_states))) = [];
+
+ode_param.proxy.mean = zeros(length(symbols.param),1);
+state.proxy.mean = mu;
+
+<span class="keyword">for</span> i=1:opt_settings.coord_ascent_numb_iter
+</pre><h2 id="47">Intercept due to Confounding Effects</h2><p>The intercept is determined by a minimum least squares estimator:</p><p><img src="dynamic_causal_models2_eq12823108120156408141.png" alt="$$\mathbf{X} \hat{\beta} := \mathbf{X} ( \mathbf{X}^T \mathbf{X} )^{-1} \mathbf{X}^T (\mathbf{y} - \mathbf{h}(\mathbf{q},\mathbf{v},\mathbf{u}))$$" style="width:177px;height:14px;"></p><pre class="codeinput">    vol_idx = cellfun(@(n) strcmp(n(2),<span class="string">'v'</span>),symbols.state);
+    deoxyhemo_idx = cellfun(@(n) strcmp(n(2),<span class="string">'q'</span>),symbols.state);
+
+    bold_response_signal_change = bold_signal_change_eqn(state.proxy.mean(:,vol_idx),state.proxy.mean(:,deoxyhemo_idx));
+    bold_response.confounding_effects.intercept = determine_intercept(bold_response.obs_old-bold_response_signal_change,<span class="keyword">...</span>
+        bold_response.confounding_effects.X0,bold_response.confounding_effects.X0_penrose_inv);
+
+    bold_response.confounding_effects.intercept = zeros(size(bold_response.obs,1),size(bold_response.obs,2));
+    bold_response.denoised_obs = bold_response.obs_old - bold_response.confounding_effects.intercept;
+</pre><pre class="codeinput">    <span class="keyword">for</span> j = 1:length(state_enumeration)
+</pre><h2 id="51">Proxies for Hemodynamic States</h2><p>Determine the proxies for the states, starting with deoxyhemoglobin followed by blood volume, blood flow and finally vasosignalling.</p><p>The information flow in the hemodynamic system is shown in its factor graph below:</p><p><img vspace="5" hspace="5" src="hemodynamic_factor_graph.png" alt=""> </p><p>The model inversion in the hemodynmic factor graph above occurs locally w.r.t. individual states. Given the expression for the BOLD signal change equation, we invert the BOLD signal change equation analytically to determine the deoxyhemoglobin content <img src="dynamic_causal_models2_eq15226540192103580117.png" alt="$q$" style="width:5px;height:8px;"> (1). The newly inferred deoxyhemoglobin content <img src="dynamic_causal_models2_eq15226540192103580117.png" alt="$q$" style="width:5px;height:8px;"> influences the expression for the factor associated with the change in deoxyhemoglobin content <img src="dynamic_causal_models2_eq15049230055051001546.png" alt="$h_{\dot{q}}$" style="width:10px;height:11px;">, which we subsequently invert analytically to infer the blood volume <img src="dynamic_causal_models2_eq03158747792916826732.png" alt="$v$" style="width:5px;height:6px;"> (2). Thereafter, we infer the blood flow <img src="dynamic_causal_models2_eq18096895394918367257.png" alt="$f$" style="width:6px;height:10px;"> (3) by inverting the factors associated with the change in blood volume <img src="dynamic_causal_models2_eq00461212083428680855.png" alt="$h_{\dot{v}}$" style="width:10px;height:10px;"> as well as vasosignalling <img src="dynamic_causal_models2_eq11103552182593789085.png" alt="$h_{\dot{s}}$" style="width:9px;height:10px;">, followed by inferring vasosignalling <img src="dynamic_causal_models2_eq17157792396909321071.png" alt="$s$" style="width:5px;height:6px;"> (4) by inverting the factors associated with blood flow induction <img src="dynamic_causal_models2_eq11865161021066098390.png" alt="$h_{\dot{f}}$" style="width:11px;height:13px;"> and vasosignalling <img src="dynamic_causal_models2_eq11103552182593789085.png" alt="$h_{\dot{s}}$" style="width:9px;height:10px;">. Finally, the neuronal dynamics (5) are learned, in part, by inverting the factor associated with vasosignalling <img src="dynamic_causal_models2_eq11103552182593789085.png" alt="$h_{\dot{s}}$" style="width:9px;height:10px;">. The typical trajectories of each of the states are shown (red) together with their iterative approximation (grey lines) obtained by graphical DCM.</p><pre class="codeinput">        <span class="keyword">if</span> strcmp(state_enumeration{j},<span class="string">'q'</span>)
+</pre><p><h4> Proxy for deoxyhemolgobin content </h4></p><pre class="codeinput">            state_idx = cellfun(@(n) strcmp(n(2),<span class="string">'q'</span>),symbols.state);
+            state_tmp = proxy_for_deoxyhemoglobin_content(state.deoxyhemo,state.proxy.mean,<span class="keyword">...</span>
+                bold_response.denoised_obs,symbols,A_plus_gamma_inv,opt_settings);
+            state.proxy.mean(:,state_idx) = (1-damping) * state.proxy.mean(:,state_idx) + damping * state_tmp;
+</pre><pre class="codeinput">        <span class="keyword">elseif</span> strcmp(state_enumeration{j},<span class="string">'v'</span>)
+</pre><p><h4> Proxy for blood volume </h4></p><pre class="codeinput">            state_idx = cellfun(@(n) strcmp(n(2),<span class="string">'v'</span>),symbols.state);
+            state_tmp = proxy_for_blood_volume(state.vol,dC_times_invC,state.proxy.mean,<span class="keyword">...</span>
+                ode_param.proxy.mean,symbols,A_plus_gamma_inv,opt_settings);
+            state.proxy.mean(:,state_idx) = (1-damping) * state.proxy.mean(:,state_idx) + damping * state_tmp;
+</pre><pre class="codeinput">        <span class="keyword">elseif</span> strcmp(state_enumeration{j},<span class="string">'f'</span>)
+</pre><p><h4> Proxy for blood flow </h4></p><pre class="codeinput">            state_idx = cellfun(@(n) strcmp(n(2),<span class="string">'f'</span>),symbols.state);
+            state_tmp = proxy_for_blood_flow(state.flow,dC_times_invC,state.proxy.mean,<span class="keyword">...</span>
+                ode_param.proxy.mean,symbols,A_plus_gamma_inv,opt_settings);
+            state.proxy.mean(:,state_idx) = (1-damping) * state.proxy.mean(:,state_idx) + damping * state_tmp;
+</pre><pre class="codeinput">        <span class="keyword">elseif</span> strcmp(state_enumeration{j},<span class="string">'s'</span>)
+</pre><p><h4> Proxy for vasosignalling </h4></p><pre class="codeinput">            state_idx = cellfun(@(n) strcmp(n(2),<span class="string">'s'</span>),symbols.state);
+            state.proxy.mean(:,state_idx) = proxy_for_vasosignalling(state.vaso,dC_times_invC,<span class="keyword">...</span>
+                state.proxy.mean,ode_param.proxy.mean,symbols,A_plus_gamma_inv,opt_settings);
+</pre><pre class="codeinput">        <span class="keyword">elseif</span> strcmp(state_enumeration{j},<span class="string">'n'</span>)
+</pre><h2 id="61">Proxies for Neuronal States</h2><p>Determine the proxies for the neuronal states. An example of the information flow in the neuronal part of the nonlinear forward modulating (nonlin_fwd_mod) is shown in its factor graph below:</p><p><img vspace="5" hspace="5" src="neuronal_factor_graph.png" alt=""> </p><p>In the neuronal factor graph (for the nonlinear forwad modulation) above each individual state appears linear in every factor in the neuronal model. We can therefore analytically invert every factor to determine the neuronal state. The typical trajectories of each of the states are shown (red) together with their iterative approximation (grey lines) obtained by variational gradient matching.</p><pre class="codeinput">            state_idx = cellfun(@(n) strcmp(n(2),<span class="string">'n'</span>),symbols.state);
+            state.proxy.mean(:,state_idx) = proxy_for_neuronal_populations(state.neuronal,<span class="keyword">...</span>
+                state.proxy.mean,ode_param.proxy.mean',dC_times_invC,coupling_idx.states,symbols,<span class="keyword">...</span>
+                A_plus_gamma_inv,opt_settings);
+</pre><pre class="codeinput">        <span class="keyword">end</span>
+        state.proxy.mean(:,1:15) = bsxfun(@minus,state.proxy.mean(:,1:15),state.proxy.mean(1,1:15));
+</pre><pre class="codeinput">    <span class="keyword">end</span>
+
+    <span class="keyword">if</span> i==1 || ~mod(i,20); plot_results_for_states(h_states,h_param,state,time,simulation,ode_param.proxy.mean,symbols,candidate_odes,p); <span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="dynamic_causal_models2_04.png" style="width:1600px;height:800px;" alt=""> <img vspace="5" hspace="5" src="dynamic_causal_models2_05.png" style="width:1600px;height:800px;" alt=""> <img vspace="5" hspace="5" src="dynamic_causal_models2_06.png" style="width:1600px;height:800px;" alt=""> <img vspace="5" hspace="5" src="dynamic_causal_models2_07.png" style="width:1600px;height:800px;" alt=""> <img vspace="5" hspace="5" src="dynamic_causal_models2_08.png" style="width:1600px;height:800px;" alt=""> <img vspace="5" hspace="5" src="dynamic_causal_models2_09.png" style="width:1600px;height:800px;" alt=""> <img vspace="5" hspace="5" src="dynamic_causal_models2_10.png" style="width:1600px;height:800px;" alt=""> <img vspace="5" hspace="5" src="dynamic_causal_models2_11.png" style="width:1600px;height:800px;" alt=""> <img vspace="5" hspace="5" src="dynamic_causal_models2_12.png" style="width:1600px;height:800px;" alt=""> <img vspace="5" hspace="5" src="dynamic_causal_models2_13.png" style="width:1600px;height:800px;" alt=""> <img vspace="5" hspace="5" src="dynamic_causal_models2_14.png" style="width:1600px;height:800px;" alt=""> <h2 id="64">Proxy for neuronal couplings (ODE parameters)</h2><pre class="codeinput">    <span class="keyword">if</span> i&gt;200 || i==opt_settings.coord_ascent_numb_iter
+        [ode_param.proxy.mean,ode_param.proxy.inv_cov] = proxy_for_ode_parameters(state.proxy.mean,<span class="keyword">...</span>
+            dC_times_invC,ode_param.lin_comb,symbols,ode_param,A_plus_gamma_inv,opt_settings);
+    <span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
+</pre><h2 id="66">Numerical integration with parameters estimated by variational gradient matching</h2><p>See whether we actually fit the BOLD response well. Curves are shown in black.</p><pre class="codeinput">[state,bold_response] = simulate_trajectory_with_vgm_param_est(ode_param,state,state_orig,bold_response,simulation,time,ode,symbols);
+</pre><h2 id="67">Final result</h2><pre class="codeinput">plot_results_for_bold_response(h_bold,bold_response,time);
+plot_results_for_states(h_states,h_param,state,time,simulation,ode_param.proxy.mean,symbols,candidate_odes,p);
+</pre><img vspace="5" hspace="5" src="dynamic_causal_models2_15.png" style="width:1600px;height:800px;" alt=""> <h2 id="68">Time Taken</h2><pre class="codeinput">disp([<span class="string">'time taken: '</span> num2str(toc) <span class="string">' seconds'</span>])
+</pre><pre class="codeoutput">time taken: 158.1715 seconds
+</pre><h2 id="69">References</h2><div><ul><li><b>Gorbach, X.S.</b> , <b>Bauer, S.</b> and Buhmann, J.M., Scalable Variational Inference for Dynamical Systems. 2017a. Neural Information Processing Systems (NIPS). <a href="https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf">https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf</a>, arxiv: <a href="https://arxiv.org/abs/1705.07079">https://arxiv.org/abs/1705.07079</a>.</li><li><b>Bauer, S.</b> , <b>Gorbach, X.S.</b> and Buhmann, J.M., Efficient and Flexible Inference for Stochastic Differential Equations. 2017b. Neural Information Processing Systems (NIPS). <a href="https://papers.nips.cc/paper/7274-efficient-and-flexible-inference-for-stochastic-systems.pdf">https://papers.nips.cc/paper/7274-efficient-and-flexible-inference-for-stochastic-systems.pdf</a></li><li>Wenk, P., Gotovos, A., Bauer, S., Gorbach, X.S., Krause, A. and Buhmann, J.M., Fast Gaussian Process Based Gradient Matching for Parameters Identification in Systems of Nonlinear ODEs. 2018. In submission to Conference on Uncertainty in Artificial Intelligence (UAI).</li><li>Calderhead, B., Girolami, M. and Lawrence. X.D., 2002. Accelerating Bayesian inference over nonlinear differential equation models. <i>In Advances in Neural Information Processing Systems (NIPS)</i> . 22.</li></ul></div><p>The authors in bold font have contributed equally to their respective papers.</p><h2 id="70">Subroutines</h2><p><h4> Kernel function </h4></p><p>Gradient matching with Gaussian processes assumes a joint Gaussian process prior on states and their derivatives:</p><p><img src="dynamic_causal_models2_eq02461482612461014284.png" alt="$\left(\begin{array}{c} \mathbf{X} \\ \dot{\mathbf{X}} \end{array}\right)  \sim p \left( \begin{array}{c} \mathbf{X} \\ \dot{\mathbf{X}} \end{array}; \begin{array}{c}  \mathbf{0} \\ \mathbf{0}  \end{array}, \begin{array}{cc}  \mathbf{C}_{\phi} &amp; \mathbf{C}_{\phi}' \\  '\mathbf{C}_{\phi} &amp; \mathbf{C}_{\phi}''  \end{array}  \right)$" style="width:172px;height:28px;">,</p><p><img src="dynamic_causal_models2_eq15132385546029468189.png" alt="$\mathrm{cov}(x_k(t), x_k(t)) = C_{\phi_k}(t,t')$" style="width:131px;height:12px;"></p><p><img src="dynamic_causal_models2_eq07220470326809685719.png" alt="$\mathrm{cov}(\dot{n}_k(t), x_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t} =: C_{\phi_k}'(t,t')$" style="width:185px;height:18px;"></p><p><img src="dynamic_causal_models2_eq13658027029328175797.png" alt="$\mathrm{cov}(x_k(t), \dot{n}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t'} =: {'C_{\phi_k}(t,t')}$" style="width:188px;height:17px;"></p><p><img src="dynamic_causal_models2_eq01230316698409260732.png" alt="$\mathrm{cov}(\dot{n}_k(t), \dot{n}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t \partial t'} =: C_{\phi_k}''(t,t')$" style="width:185px;height:18px;">.</p><pre class="codeinput"><span class="keyword">function</span> [dC_times_invC,inv_C,A_plus_gamma_inv] = kernel_function(kernel,state,time_est)
+
+kernel.param_sym = sym(<span class="string">'rbf_param%d'</span>,[1,2]); assume(kernel.param_sym,<span class="string">'real'</span>);
+kernel.time1 = sym(<span class="string">'time1'</span>); assume(kernel.time1,<span class="string">'real'</span>); kernel.time2 = sym(<span class="string">'time2'</span>); assume(kernel.time2,<span class="string">'real'</span>);
+kernel.func = kernel.param_sym(1).*exp(-(kernel.time1-kernel.time2).^2./(kernel.param_sym(2).^2));                      <span class="comment">% RBF kernel</span>
+kernel.name = <span class="string">'rbf'</span>;
+
+<span class="comment">% kernel derivatives</span>
+<span class="keyword">for</span> i = 1:length(kernel)
+    kernel.func_d = diff(kernel.func,kernel.time1);
+    kernel.func_dd = diff(kernel.func_d,kernel.time2);
+    GP.fun = matlabFunction(kernel.func,<span class="string">'Vars'</span>,{kernel.time1,kernel.time2,kernel.param_sym});
+    GP.fun_d = matlabFunction(kernel.func_d,<span class="string">'Vars'</span>,{kernel.time1,kernel.time2,kernel.param_sym});
+    GP.fun_dd = matlabFunction(kernel.func_dd,<span class="string">'Vars'</span>,{kernel.time1,kernel.time2,kernel.param_sym});
+<span class="keyword">end</span>
+
+<span class="comment">% populate GP covariance matrix</span>
+<span class="keyword">for</span> t=1:length(time_est)
+    C(t,:)=GP.fun(time_est(t),time_est,kernel.param);
+    dC(t,:)=GP.fun_d(time_est(t),time_est,kernel.param);
+    Cd(t,:)=GP.fun_d(time_est,time_est(t),kernel.param);
+    ddC(t,:)=GP.fun_dd(time_est(t),time_est,kernel.param);
+<span class="keyword">end</span>
+
+<span class="comment">% GP covariance scaling</span>
+[~,D] = eig(C); perturb = abs(max(diag(D))-min(diag(D))) / 10000;
+<span class="keyword">if</span> any(diag(D)&lt;1e-6); C(logical(eye(size(C,1)))) = C(logical(eye(size(C,1)))) + perturb.*rand(size(C,1),1); <span class="keyword">end</span>
+[~,D] = eig(C);
+<span class="keyword">if</span> any(diag(D)&lt;0); error(<span class="string">'C has negative eigenvalues!'</span>); <span class="keyword">elseif</span> any(diag(D)&lt;1e-6); warning(<span class="string">'C is badly scaled'</span>); <span class="keyword">end</span>
+inv_C = inv_chol(chol(C,<span class="string">'lower'</span>));
+
+dC_times_invC = dC * inv_C;
+
+<span class="comment">% plot GP prior samples</span>
+figure(3);
+hold <span class="string">on</span>; plot(time_est,mvnrnd(zeros(1,length(time_est)),C(:,:,1),3),<span class="string">'LineWidth'</span>,2);
+h1 = gca; h1.FontSize = 20; h1.XLabel.String = <span class="string">'time (s)'</span>; h1.YLabel.String = <span class="string">'state value'</span>;
+h1.Title.String = [kernel.name <span class="string">' kernel'</span>];
+
+<span class="comment">% determine A_plus_gamma:</span>
+A = ddC - dC_times_invC * Cd;
+A_plus_gamma = A + state.derivative_variance(1) .* eye(size(A));
+A_plus_gamma = 0.5.*(A_plus_gamma+A_plus_gamma');      <span class="comment">% ensure that A plus gamma is symmetric</span>
+A_plus_gamma_inv = inv_chol(chol(A_plus_gamma,<span class="string">'lower'</span>));
+
+<span class="keyword">end</span>
+</pre><p><h4> Denoising BOLD observations </h4></p><p>We denoise the BOLD observation by standard GP regression.</p><p><img src="dynamic_causal_models2_eq14467608745354596719.png" alt="$p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\gamma) = \prod_k \mathcal{X}(\mathbf{n}_k ; \boldmath\mu_k(\mathbf{y}_k),\boldmath\Sigma_k)$" style="width:180px;height:12px;">,</p><p>where <img src="dynamic_causal_models2_eq06586455063503371300.png" alt="$\boldmath\mu_k(\mathbf{y}_k) := \sigma_k^{-2} \left(\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1} \right)^{-1} \mathbf{y}_k$" style="width:177px;height:23px;"> and <img src="dynamic_causal_models2_eq05050976928104673176.png" alt="$\boldmath\Sigma_k ^{-1}:=\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1}$" style="width:101px;height:15px;">.</p><pre class="codeinput"><span class="keyword">function</span> [mu,inv_sigma] = denoising_BOLD_observations(bold_response,inv_Cxx,symbols,SNR)
+
+inv_Cxx_cell = num2cell(inv_Cxx(:,:,ones(1,sum(cellfun(@(n) strcmp(n(2),<span class="string">'n'</span>),symbols.state)))),[1,2]);
+inv_Cxx_blkdiag = blkdiag(inv_Cxx_cell{:});
+
+b = repmat(var(bold_response.obs)./SNR,size(bold_response.obs,1),1);
+dim = size(inv_Cxx_blkdiag,1);
+D = spdiags(reshape(b.^(-1),[],1),0,dim,dim) * speye(dim); <span class="comment">% covariance matrix of error term (big E)</span>
+inv_sigma = D + inv_Cxx_blkdiag;
+
+mu = inv_sigma \ D * reshape(bold_response.obs,[],1);
+mu = reshape(mu,[],size(bold_response.obs,2));
+
+<span class="keyword">end</span>
+</pre><p><h4> Fitting state observations </h4></p><p>We fit the observations of state trajectories by standard GP regression.</p><pre class="codeinput"><span class="keyword">function</span> [mu_u,inv_sigma_u] = fitting_state_observations(state,inv_C,obs_to_state_relation,symbols,SNR)
+
+state_obs_variance = 1e0*repmat(var(state.obs) ./ SNR,size(state.obs,1),1);
+
+numb_states = size(state.sym.mean,2);
+numb_time_points = size(state.sym.mean,1);
+
+inv_Cxx_tmp = num2cell(inv_C(:,:,ones(1,numb_states)),[1,2]);
+inv_Cxx_blkdiag = sparse(blkdiag(inv_Cxx_tmp{:}));
+
+dim = size(state_obs_variance,1)*size(state_obs_variance,2);
+D = spdiags(reshape(state_obs_variance.^(-1),[],1),0,dim,dim) * speye(dim); <span class="comment">% covariance matrix of error term (big E)</span>
+A_times_D_times_A = obs_to_state_relation' * D * obs_to_state_relation;
+inv_sigma = A_times_D_times_A + inv_Cxx_blkdiag;
+
+mu = inv_sigma \ obs_to_state_relation' * D * reshape(state.obs,[],1);
+
+mu_u = zeros(numb_time_points,numb_states);
+<span class="keyword">for</span> u = 1:numb_states
+    idx = (u-1)*numb_time_points+1:(u-1)*numb_time_points+numb_time_points;
+    mu_u(:,u) = mu(idx);
+<span class="keyword">end</span>
+
+inv_sigma_u = zeros(numb_time_points,numb_time_points,numb_states);
+<span class="keyword">for</span> i = 1:numb_states
+    idx = [(i-1)*numb_time_points+1:(i-1)*numb_time_points+numb_time_points];
+    inv_sigma_u(:,:,i) = inv_sigma(idx,idx);
+<span class="keyword">end</span>
+
+<span class="comment">% external_input</span>
+ext_input_idx = cellfun(@(n) strcmp(n(2),<span class="string">'u'</span>),symbols.state);
+mu_u(:,ext_input_idx) = state.ext_input(state.ext_input_to_bold_response_mapping_idx,2:end);
+
+<span class="keyword">end</span>
+</pre><p><h4> State couplings in ODEs </h4></p><pre class="codeinput"><span class="keyword">function</span> coupling_idx = state_couplings_in_odes(ode,symbols)
+
+state_sym = sym(<span class="string">'state%d'</span>,[1,length(ode.system)]); assume(state_sym,<span class="string">'real'</span>);
+<span class="keyword">for</span> k = 1:length(ode.system)
+    tmp_idx = ismember(state_sym,symvar(ode.system_sym(k))); tmp_idx(:,k) = 1;
+    ode_couplings_states(k,tmp_idx) = 1;
+<span class="keyword">end</span>
+
+<span class="keyword">for</span> u = find(cellfun(@(x) ~strcmp(x(2),<span class="string">'u'</span>),symbols.state))
+    coupling_idx.states{u} = find(ode_couplings_states(:,u));
+<span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p><h4> Rewrite ODEs as linear combination in ODE parameters </h4></p><p><img src="dynamic_causal_models2_eq10575569337757673449.png" alt="$\mathbf{B}_{\boldmath\theta} \boldmath\theta + \mathbf{b}_{\boldmath\theta} \stackrel{!}{=} \mathbf{f}(\mathbf{X},\boldmath\theta)$" style="width:101px;height:15px;">,</p><p>where matrices <img src="dynamic_causal_models2_eq12395521263852684086.png" alt="$\mathbf{B}_{\boldmath\theta}$" style="width:13px;height:10px;"> and <img src="dynamic_causal_models2_eq14370145166438995955.png" alt="$\mathbf{b}_{\boldmath\theta}$" style="width:11px;height:10px;"> are defined such that the ODEs <img src="dynamic_causal_models2_eq12466937249580769582.png" alt="$\mathbf{f}(\mathbf{X},\boldmath\theta)$" style="width:33px;height:11px;"> are expressed as a linear combination in <img src="dynamic_causal_models2_eq07852716426910655037.png" alt="$\boldmath\theta$" style="width:5px;height:8px;">.</p><pre class="codeinput"><span class="keyword">function</span> [B,b] = rewrite_odes_as_linear_combination_in_parameters(ode,symbols)
+
+param_sym = sym(<span class="string">'param%d'</span>,[1,length(symbols.param)]); assume(param_sym,<span class="string">'real'</span>);
+state_sym = sym(<span class="string">'state%d'</span>,[1,length(symbols.state)]); assume(state_sym,<span class="string">'real'</span>);
+state0_sym = sym(<span class="string">'state0'</span>); assume(state0_sym,<span class="string">'real'</span>);
+state_const_sym = sym(<span class="string">'state_const'</span>); assume(state_const_sym,<span class="string">'real'</span>);
+
+<span class="comment">% Rewrite ODEs as linear combinations in parameters</span>
+[B_sym,b_sym] = equationsToMatrix(ode.system_sym,param_sym);
+b_sym = -b_sym; <span class="comment">% See the documentation of the function "equationsToMatrix"</span>
+
+<span class="comment">% Product of ODE factors (product of Gaussians)</span>
+<span class="keyword">for</span> k = 1:length(ode.system)
+    B_sym(k,B_sym(k,:)==<span class="string">'0'</span>) = state0_sym;
+    <span class="keyword">for</span> i = 1:length(B_sym(k,:))
+        sym_var = symvar(B_sym(k,i));
+        <span class="keyword">if</span> isempty(sym_var)
+            B_sym(k,i) = B_sym(k,i) + state0_sym;
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+    B{k} = matlabFunction(B_sym(k,:),<span class="string">'Vars'</span>,{state_sym,state0_sym,state_const_sym});
+    b{k} = matlabFunction(b_sym(k,:),<span class="string">'Vars'</span>,{state_sym,state0_sym,state_const_sym});
+<span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p><h4> Rewrite ODEs as linear combination in monotonic function of deoxyhemoglobin content e^q </h4></p><p><img src="dynamic_causal_models2_eq17890802133788904477.png" alt="$\mathbf{R}_{q\lambda} e^{\mathbf{q}} + \mathbf{r}_{v\lambda} \stackrel{!}{=} \lambda(q,v)$" style="width:101px;height:15px;">.</p><pre class="codeinput"><span class="keyword">function</span> [R,r] = rewrite_bold_signal_eqn_as_linear_combination_in_deoxyhemo(symbols)
+
+<span class="comment">% define symbolic variables</span>
+param_sym = sym(<span class="string">'param%d'</span>,[1,length(symbols.param)]); assume(param_sym,<span class="string">'real'</span>);
+state_sym = sym(<span class="string">'state%d'</span>,[1,length(symbols.state)]); assume(state_sym,<span class="string">'real'</span>);
+v = sym(<span class="string">'v'</span>); assume(v,<span class="string">'real'</span>);
+q = sym(<span class="string">'q'</span>); assume(q,<span class="string">'real'</span>);
+exp_q = sym(<span class="string">'exp_q'</span>); assume(exp_q,<span class="string">'real'</span>);
+
+<span class="comment">% bold signal change equation</span>
+bold_signal_change = bold_signal_change_eqn(v,q);
+[R_sym,r_sym] = equationsToMatrix(subs(bold_signal_change,exp(q),exp_q),exp_q);
+r_sym = -r_sym; <span class="comment">% See the documentation of the function "equationsToMatrix"</span>
+
+R = matlabFunction(R_sym,<span class="string">'Vars'</span>,{v,q});
+r = matlabFunction(r_sym,<span class="string">'Vars'</span>,{v,q});
+
+<span class="keyword">end</span>
+</pre><p><h4> Rewrite ODEs as linear combination in monotonic function of blood volume e^v </h4></p><p><img src="dynamic_causal_models2_eq03289784807679022539.png" alt="$\mathbf{R}_{v\dot{q}} e^{\mathbf{v}} + \mathbf{r}_{v\dot{q}} \stackrel{!}{=} \mathbf{f}_{\dot{q}}(\mathbf{X},\boldmath\theta)$" style="width:106px;height:15px;">.</p><pre class="codeinput"><span class="keyword">function</span> [R,r] = rewrite_deoxyhemo_ODE_as_linear_combination_in_vol(ode,symbols)
+
+<span class="comment">% define symbolic variables</span>
+param_sym = sym(<span class="string">'param%d'</span>,[1,length(symbols.param)]); assume(param_sym,<span class="string">'real'</span>);
+state_sym = sym(<span class="string">'state%d'</span>,[1,length(symbols.state)]); assume(state_sym,<span class="string">'real'</span>);
+exp_v = sym(<span class="string">'exp_v'</span>); assume(exp_v,<span class="string">'real'</span>);
+
+state_idx = find(cellfun(@(n) strcmp(n(2),<span class="string">'v'</span>),symbols.state));
+
+<span class="comment">% deoxyhemoglobin ODE</span>
+ode_idx = find(cellfun(@(n) strcmp(n(2),<span class="string">'q'</span>),symbols.state));
+j = 0;
+<span class="keyword">for</span> u = state_idx
+    j = j+1;
+    [R_sym,r_sym] = equationsToMatrix(subs(ode.system{ode_idx(j)}(state_sym,param_sym),exp((17*state_sym(u)/8)),exp_v),exp_v);
+    r_sym = -r_sym; <span class="comment">% See the documentation of the function "equationsToMatrix"</span>
+
+    R{u} = matlabFunction(R_sym,<span class="string">'Vars'</span>,{state_sym,param_sym});
+    r{u} = matlabFunction(r_sym,<span class="string">'Vars'</span>,{state_sym,param_sym});
+<span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p><h4> Rewrite ODEs as linear combination in monotonic function of blood flow e^f </h4></p><p><img src="dynamic_causal_models2_eq12058956987167768962.png" alt="$\mathbf{R}_{f\dot{v}} e^{\mathbf{f}} + \mathbf{r}_{f\dot{v}} \stackrel{!}{=} \mathbf{f}_{\dot{v}}(\mathbf{X},\boldmath\theta)$" style="width:106px;height:16px;"></p><pre class="codeinput"><span class="keyword">function</span> [R,r] = rewrite_vol_ODE_as_linear_combination_in_flow(ode,symbols)
+
+<span class="comment">% define symbolic variables</span>
+param_sym = sym(<span class="string">'param%d'</span>,[1,length(symbols.param)]); assume(param_sym,<span class="string">'real'</span>);
+state_sym = sym(<span class="string">'state%d'</span>,[1,length(symbols.state)]); assume(state_sym,<span class="string">'real'</span>);
+exp_f = sym(<span class="string">'exp_f'</span>); assume(exp_f,<span class="string">'real'</span>);
+
+state_idx = find(cellfun(@(n) strcmp(n(2),<span class="string">'f'</span>),symbols.state));
+
+<span class="comment">% blood volume ODE</span>
+ode_idx = find(cellfun(@(n) strcmp(n(2),<span class="string">'v'</span>),symbols.state));
+
+j = 0;
+<span class="keyword">for</span> u = state_idx
+    j = j+1;
+    [R_sym,r_sym] = equationsToMatrix(subs(ode.system{ode_idx(j)}(state_sym,param_sym),exp(state_sym(u)),exp_f),exp_f);
+    r_sym = -r_sym; <span class="comment">% See the documentation of the function "equationsToMatrix"</span>
+
+    R{u} = matlabFunction(R_sym,<span class="string">'Vars'</span>,{state_sym,param_sym});
+    r{u} = matlabFunction(r_sym,<span class="string">'Vars'</span>,{state_sym,param_sym});
+<span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p><h4> Rewrite ODEs as linear combination in vasosignalling s </h4></p><p><img src="dynamic_causal_models2_eq16716909192583438325.png" alt="$\mathbf{R}_{s\dot{s}} \mathbf{s} + \mathbf{r}_{s\dot{s}} \stackrel{!}{=} \mathbf{f}_{\dot{s}}(\mathbf{X},\boldmath\theta)$" style="width:99px;height:15px;"></p><p><img src="dynamic_causal_models2_eq14046572683196155086.png" alt="$\mathbf{R}_{s\dot{f}} \mathbf{s} + \mathbf{r}_{s\dot{f}} \stackrel{!}{=} \mathbf{f}_{\dot{f}}(\mathbf{X},\boldmath\theta)$" style="width:102px;height:17px;"></p><pre class="codeinput"><span class="keyword">function</span> [R,r] = rewrite_vaso_and_flow_odes_as_linear_combination_in_vaso(ode,symbols)
+
+<span class="comment">% define symbolic variables</span>
+param_sym = sym(<span class="string">'param%d'</span>,[1,length(symbols.param)]); assume(param_sym,<span class="string">'real'</span>);
+state_sym = sym(<span class="string">'state%d'</span>,[1,length(symbols.state)]); assume(state_sym,<span class="string">'real'</span>);
+
+state_idx = find(cellfun(@(n) strcmp(n(2),<span class="string">'s'</span>),symbols.state));
+
+<span class="comment">% vasosignaling ODE</span>
+ode_idx = find(cellfun(@(n) strcmp(n(2),<span class="string">'s'</span>),symbols.state));
+j = 0;
+<span class="keyword">for</span> u = state_idx
+    j = j+1;
+    [R_sym,r_sym] = equationsToMatrix(ode.system{ode_idx(j)}(state_sym,param_sym),state_sym(u));
+    r_sym = -r_sym; <span class="comment">% See the documentation of the function "equationsToMatrix"</span>
+
+    R{u}.vaso = matlabFunction(R_sym,<span class="string">'Vars'</span>,{state_sym,param_sym});
+    r{u}.vaso = matlabFunction(r_sym,<span class="string">'Vars'</span>,{state_sym,param_sym});
+<span class="keyword">end</span>
+
+<span class="comment">% blood flow ODE</span>
+ode_idx = find(cellfun(@(n) strcmp(n(2),<span class="string">'f'</span>),symbols.state));
+j = 0;
+<span class="keyword">for</span> u = state_idx
+    j = j+1;
+    [R_sym,r_sym] = equationsToMatrix(ode.system{ode_idx(j)}(state_sym,param_sym),state_sym(u));
+    r_sym = -r_sym; <span class="comment">% See the documentation of the function "equationsToMatrix"</span>
+
+    R{u}.flow = matlabFunction(R_sym,<span class="string">'Vars'</span>,{state_sym,param_sym});
+    r{u}.flow = matlabFunction(r_sym,<span class="string">'Vars'</span>,{state_sym,param_sym});
+<span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p><h4> Rewrite ODEs as linear combination in neuronal states n </h4></p><p><img src="dynamic_causal_models2_eq16413963706642269532.png" alt="$\mathbf{R}_{uk} \mathbf{x} + \mathbf{r}_{uk} \stackrel{!}{=} \mathbf{f}_{k}(\mathbf{X},\boldmath\theta)$" style="width:104px;height:15px;"></p><pre class="codeinput"><span class="keyword">function</span> [R,r]= rewrite_odes_as_linear_combination_in_ind_neuronal_states(ode,symbols,coupling_idx)
+
+state_sym = sym(<span class="string">'state%d'</span>,[1,length(symbols.state)]); assume(state_sym,<span class="string">'real'</span>);
+param_sym = sym(<span class="string">'param%d'</span>,[1,length(symbols.param)]); assume(param_sym,<span class="string">'real'</span>);
+
+state_idx = find(cellfun(@(n) strcmp(n(2),<span class="string">'n'</span>),symbols.state));
+
+<span class="keyword">for</span> u = state_idx
+    <span class="keyword">for</span> k = coupling_idx{u}'
+        [R_sym,r_sym] = equationsToMatrix(ode.system{k}(state_sym,param_sym'),state_sym(:,u));
+        r_sym = -r_sym; <span class="comment">% See the documentation of the function "equationsToMatrix"</span>
+
+        R{u,k} = matlabFunction(R_sym,<span class="string">'Vars'</span>,{state_sym,param_sym});
+        r{u,k} = matlabFunction(r_sym,<span class="string">'Vars'</span>,{state_sym,param_sym});
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p><h4> Proxy for ODE parameters </h4></p><p><img src="dynamic_causal_models2_eq04495799769296002122.png" alt="$\hat{q}(\theta) {\propto} \exp \left( ~E_{Q_{-\theta}}  \ln \mathcal{X} \left( \theta; \mathbf{B}_{\theta}^+ ~ \left( '\mathbf{C}_{\phi} \mathbf{C}_{\phi}^{-1} \mathbf{X} - \mathbf{b}_{\theta} \right), ~ \mathbf{B}_{\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\theta}^{+T} \right) ~\right)$" style="width:341px;height:20px;">,</p><pre class="codeinput"><span class="keyword">function</span> [param_proxy_mean,param_proxy_inv_cov] = proxy_for_ode_parameters(state_proxy_mean,<span class="keyword">...</span>
+    dC_times_invC,lin_comb,symbols,ode_param,A_plus_gamma_inv,opt_settings)
+
+<span class="comment">% Initialize</span>
+state0 = zeros(size(dC_times_invC,1),1);
+param_proxy_inv_cov = zeros(length(symbols.param));
+global_scaling = zeros(length(symbols.param));
+global_mean = zeros(length(symbols.param),1);
+
+<span class="comment">% Iteratate through ODEs</span>
+<span class="keyword">for</span> k = 1: 1:sum(cellfun(@(n) ~strcmp(n(2),<span class="string">'u'</span>),symbols.state))
+    B = lin_comb.B{k}(state_proxy_mean,state0,ones(size(state_proxy_mean,1),1));
+    b = lin_comb.b{k}(state_proxy_mean,state0,ones(size(state_proxy_mean,1),1));
+
+    <span class="comment">% local</span>
+    <span class="keyword">if</span> strcmp(opt_settings.pseudo_inv_type,<span class="string">'Moore-Penrose'</span>)
+        local_mean = B' * (dC_times_invC * state_proxy_mean(:,k) - b);
+        local_scaling = B' * B;
+        local_inv_cov = B' * A_plus_gamma_inv * B;
+    <span class="keyword">elseif</span> strcmp(opt_settings.pseudo_inv_type,<span class="string">'modified Moore-Penrose'</span>)
+        local_mean = B' * A_plus_gamma_inv * (dC_times_invC * state_proxy_mean(:,k) - b);
+        local_scaling = B' * A_plus_gamma_inv * B;
+        local_inv_cov = local_scaling;
+    <span class="keyword">end</span>
+
+    <span class="comment">% global</span>
+    global_mean = global_mean + local_mean;
+    global_scaling = global_scaling + local_scaling;
+
+    <span class="comment">% Inverse covariance for ODE param proxy distribution</span>
+    param_proxy_inv_cov = param_proxy_inv_cov + local_inv_cov;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> isfield(ode_param,<span class="string">'prior'</span>)
+    global_mean = global_mean + ode_param.prior.inv_cov*ode_param.prior.mean;
+    global_scaling = global_scaling + ode_param.prior.inv_cov;
+    param_proxy_inv_cov = param_proxy_inv_cov + ode_param.prior.inv_cov;
+<span class="keyword">end</span>
+
+<span class="comment">% Check consistency of covariance matrix</span>
+[~,D] = eig(param_proxy_inv_cov);
+<span class="keyword">if</span> any(diag(D)&lt;0)
+    warning(<span class="string">'ode_param.proxy.inv_cov has negative eigenvalues!'</span>);
+<span class="keyword">elseif</span> any(diag(D)&lt;1e-3)
+    warning(<span class="string">'ode_param.proxy.inv_cov is badly scaled'</span>)
+    disp(<span class="string">'perturbing diagonal of ode_param.proxy.inv_cov'</span>)
+    perturb = abs(max(diag(D))-min(diag(D))) / 10000;
+    param_proxy_inv_cov(logical(eye(size(param_proxy_inv_cov,1)))) = param_proxy_inv_cov(logical(eye(size(param_proxy_inv_cov,1)))) <span class="keyword">...</span>
+        + perturb.*rand(size(param_proxy_inv_cov,1),1);
+<span class="keyword">end</span>
+
+<span class="comment">% Mean of parameter proxy distribution</span>
+param_proxy_mean = global_scaling \ global_mean;
+
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">Warning: ode_param.proxy.inv_cov is badly scaled 
+perturbing diagonal of ode_param.proxy.inv_cov
+</pre><p><h4> Proxy for deoxyhemoglobin content </h4></p><pre class="codeinput"><span class="keyword">function</span> deoxyhemo_proxy_mean = proxy_for_deoxyhemoglobin_content(deoxyhemo,state,<span class="keyword">...</span>
+    bold_response_obs,symbols,A_plus_gamma_inv,opt_settings)
+
+state_idx = find(cellfun(@(x) strcmp(x(2),<span class="string">'q'</span>),symbols.state));
+state_partner_idx = find(cellfun(@(x) strcmp(x(2),<span class="string">'v'</span>),symbols.state));
+
+j = 0;
+<span class="comment">% Iterate through states</span>
+<span class="keyword">for</span> u = state_idx
+
+    <span class="comment">% unpack matrices B and b</span>
+    j = j+1;
+    R = diag(deoxyhemo.R(state(:,state_partner_idx(j))));
+    r = deoxyhemo.r(state(:,state_partner_idx(j)));
+
+    B = R;
+    b = r - bold_response_obs(:,u);
+
+    <span class="keyword">if</span> strcmp(opt_settings.pseudo_inv_type,<span class="string">'Moore-Penrose'</span>)
+        local_mean =  -B' * b;
+        local_scaling = B' * B;
+        local_inv_cov = B' * A_plus_gamma_inv * B;
+    <span class="keyword">elseif</span> strcmp(opt_settings.pseudo_inv_type,<span class="string">'modified Moore-Penrose'</span>)
+        local_mean =  -B' * A_plus_gamma_inv * b;
+        local_scaling = B' * A_plus_gamma_inv * B;
+        local_inv_cov = local_scaling;
+    <span class="keyword">end</span>
+
+    deoxyhemo_proxy_mean(:,u) = log(local_scaling \ local_mean);
+    <span class="comment">% Check if deoxyhemoglobin content is positive</span>
+    <span class="keyword">if</span> any(~isreal(deoxyhemo_proxy_mean(:,u)))
+        disp(<span class="string">'warning: deoxyhemoglobin content is not positive'</span>)
+        deoxyhemo_proxy_mean(:,u) = real(deoxyhemo_proxy_mean(:,u));
+    <span class="keyword">end</span>
+
+<span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p><h4> Proxy for blood volume </h4></p><pre class="codeinput"><span class="keyword">function</span> vol_proxy_mean = proxy_for_blood_volume(vol,dC_times_invC,state_proxy_mean,ode_param,symbols,<span class="keyword">...</span>
+    A_plus_gamma_inv,opt_settings)
+
+state_idx = find(cellfun(@(x) strcmp(x(2),<span class="string">'v'</span>),symbols.state));
+state_partner_idx = find(cellfun(@(x) strcmp(x(2),<span class="string">'q'</span>),symbols.state));
+
+j = 0;
+<span class="comment">% Iteratate through states</span>
+<span class="keyword">for</span> u = state_idx
+</pre><pre class="codeinput">    <span class="comment">% unpack matrices B and b</span>
+    j = j+1;
+    R = diag(vol.R{u}(state_proxy_mean,ode_param'));
+    r = vol.r{u}(state_proxy_mean,ode_param);
+    <span class="keyword">if</span> size(R,1) == 1; R = R.*eye(size(dC_times_invC,1)); <span class="keyword">end</span>
+</pre><p>Define matrices B and b such that <img src="dynamic_causal_models2_eq08290100855359277958.png" alt="$\mathbf{B}_{uk} \mathbf{x}_u + \mathbf{b}_{uk} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\phi_{k}} \mathbf{C}_{\phi_{k}}^{-1} \mathbf{X}$" style="width:174px;height:17px;"></p><pre class="codeinput">    B = R;
+    b = r - dC_times_invC * state_proxy_mean(:,state_partner_idx(j));
+
+    <span class="keyword">if</span> strcmp(opt_settings.pseudo_inv_type,<span class="string">'Moore-Penrose'</span>)
+        local_mean = -B' * b;
+        local_scaling = B' * B;
+        local_inv_cov = B' * A_plus_gamma_inv * B;
+    <span class="keyword">elseif</span> strcmp(opt_settings.pseudo_inv_type,<span class="string">'modified Moore-Penrose'</span>)
+        local_mean = -B' * A_plus_gamma_inv * b;
+        local_scaling = B' * A_plus_gamma_inv * B;
+        local_inv_cov = local_scaling;
+    <span class="keyword">end</span>
+
+    vol_proxy_mean(:,j) = (8/17) * log(local_scaling \ local_mean);
+    <span class="comment">% Check if blood volume is positive</span>
+    <span class="keyword">if</span> any(~isreal(vol_proxy_mean(:,j)))
+        disp(<span class="string">'warning: blood volume is not positive'</span>)
+        vol_proxy_mean(:,j) = real(vol_proxy_mean(:,j));
+    <span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p><h4> Proxy for blood flow </h4></p><pre class="codeinput"><span class="keyword">function</span> flow_proxy_mean = proxy_for_blood_flow(flow,dC_times_invC,<span class="keyword">...</span>
+    state_proxy_mean,ode_param,symbols,A_plus_gamma_inv,opt_settings)
+
+state_idx = find(cellfun(@(x) strcmp(x(2),<span class="string">'f'</span>),symbols.state));
+state_partner_idx = find(cellfun(@(x) strcmp(x(2),<span class="string">'s'</span>),symbols.state));
+
+j = 0;
+<span class="keyword">for</span> u = state_idx
+</pre><pre class="codeinput">    <span class="comment">% unpack matrices B and b</span>
+    j = j+1;
+    R = diag(flow.R{u}(state_proxy_mean,ode_param'));
+    r = flow.r{u}(state_proxy_mean,ode_param);
+    <span class="keyword">if</span> size(R,1) == 1; R = R.*eye(size(dC_times_invC,1)); <span class="keyword">end</span>
+</pre><p>Define matrices B and b such that <img src="dynamic_causal_models2_eq08290100855359277958.png" alt="$\mathbf{B}_{uk} \mathbf{x}_u + \mathbf{b}_{uk} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\phi_{k}} \mathbf{C}_{\phi_{k}}^{-1} \mathbf{X}$" style="width:174px;height:17px;"></p><pre class="codeinput">    B = R;
+    b = r - dC_times_invC * state_proxy_mean(:,state_partner_idx(j));
+
+    <span class="keyword">if</span> strcmp(opt_settings.pseudo_inv_type,<span class="string">'Moore-Penrose'</span>)
+        local_mean = -B' * b;
+        local_scaling = B' * B;
+        local_inv_cov = B' * A_plus_gamma_inv * B;
+    <span class="keyword">elseif</span> strcmp(opt_settings.pseudo_inv_type,<span class="string">'modified Moore-Penrose'</span>)
+        local_mean = -B' * A_plus_gamma_inv * b;
+        local_scaling = B' * A_plus_gamma_inv * B;
+        local_inv_cov = local_scaling;
+    <span class="keyword">end</span>
+
+    flow_proxy_mean(:,j) = log(local_scaling \ local_mean);
+    <span class="comment">% Check if the blood flow is positive</span>
+    <span class="keyword">if</span> any(~isreal(flow_proxy_mean))
+        disp(<span class="string">'warning: blood flow is not positive'</span>)
+        flow_proxy_mean(:,j) = real(flow_proxy_mean(:,j));
+    <span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p><h4> Proxy for vasosignalling </h4></p><pre class="codeinput"><span class="keyword">function</span> [vaso_proxy_mean,vaso_proxy_inv_cov] = proxy_for_vasosignalling(vaso,dC_times_invC,<span class="keyword">...</span>
+    state_proxy_mean,ode_param,symbols,A_plus_gamma_inv,opt_settings)
+
+state_idx = find(cellfun(@(x) strcmp(x(2),<span class="string">'s'</span>),symbols.state));
+state_partner_idx = find(cellfun(@(x) strcmp(x(2),<span class="string">'f'</span>),symbols.state));
+
+j = 0;
+<span class="keyword">for</span> u = state_idx
+</pre><pre class="codeinput">    j = j+1;
+
+    <span class="comment">% Initialize</span>
+    global_scaling = zeros(size(dC_times_invC,1),1);
+    global_mean = zeros(size(dC_times_invC,1),1);
+
+    <span class="comment">% local</span>
+    <span class="comment">% unpack matrices B and b for vasosignalling ODE</span>
+    R = diag(vaso.R{u}.vaso(state_proxy_mean,ode_param'));
+    r = vaso.r{u}.vaso(state_proxy_mean,ode_param);
+    <span class="keyword">if</span> size(R,1) == 1; R = R.*eye(size(dC_times_invC,1)); <span class="keyword">end</span>
+    <span class="keyword">if</span> size(r,1) == 1; r = r.*zeros(size(dC_times_invC,1),1); <span class="keyword">end</span>
+</pre><p>Define matrices B and b such that <img src="dynamic_causal_models2_eq08290100855359277958.png" alt="$\mathbf{B}_{uk} \mathbf{x}_u + \mathbf{b}_{uk} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\phi_{k}} \mathbf{C}_{\phi_{k}}^{-1} \mathbf{X}$" style="width:174px;height:17px;"></p><pre class="codeinput">    B = R - dC_times_invC;
+    b = r;
+</pre><pre class="codeinput">    <span class="keyword">if</span> strcmp(opt_settings.pseudo_inv_type,<span class="string">'Moore-Penrose'</span>)
+        local_mean.vaso = -B' * b;
+        local_scaling.vaso = B' * B;
+        local_inv_cov.vaso = B' * A_plus_gamma_inv * B;
+    <span class="keyword">elseif</span> strcmp(opt_settings.pseudo_inv_type,<span class="string">'modified Moore-Penrose'</span>)
+        local_mean.vaso = -B' * b;
+        local_scaling.vaso = B' * A_plus_gamma_inv * B;
+        local_inv_cov.vaso = local_scaling.vaso;
+    <span class="keyword">end</span>
+
+    <span class="comment">% local</span>
+    <span class="comment">% unpack matrices B and b for blood flow ODE</span>
+    R = diag(vaso.R{u}.flow(state_proxy_mean,ode_param'));
+    r = vaso.r{u}.flow(state_proxy_mean,ode_param);
+    <span class="keyword">if</span> size(R,1) == 1; R = R.*eye(size(dC_times_invC,1)); <span class="keyword">end</span>
+    <span class="keyword">if</span> size(r,1) == 1; r = r.*zeros(size(dC_times_invC,1),1); <span class="keyword">end</span>
+</pre><p>Define matrices B and b such that <img src="dynamic_causal_models2_eq08290100855359277958.png" alt="$\mathbf{B}_{uk} \mathbf{x}_u + \mathbf{b}_{uk} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\phi_{k}} \mathbf{C}_{\phi_{k}}^{-1} \mathbf{X}$" style="width:174px;height:17px;"></p><pre class="codeinput">    B = R;
+    b = r - dC_times_invC * state_proxy_mean(:,state_partner_idx(j));
+</pre><pre class="codeinput">    <span class="keyword">if</span> strcmp(opt_settings.pseudo_inv_type,<span class="string">'Moore-Penrose'</span>)
+        local_mean.flow = -B' * b;
+        local_scaling.flow = B' * B;
+        local_inv_cov.flow = B' * A_plus_gamma_inv * B;
+    <span class="keyword">elseif</span> strcmp(opt_settings.pseudo_inv_type,<span class="string">'modified Moore-Penrose'</span>)
+        local_mean.flow = -B' * A_plus_gamma_inv * b;
+        local_scaling.flow = B' * A_plus_gamma_inv * B;
+        local_inv_cov.flow = local_scaling.flow;
+    <span class="keyword">end</span>
+
+    <span class="comment">% global</span>
+    global_mean = local_mean.vaso + local_mean.flow;
+    global_scaling = local_scaling.vaso + local_scaling.flow;
+
+    <span class="comment">% Mean of state proxy distribution</span>
+    vaso_proxy_mean(:,j) = global_scaling \ global_mean;
+
+    <span class="comment">% Inverse covariance for state proxy distribution</span>
+    vaso_proxy_inv_cov(:,:,u) = local_inv_cov.vaso + local_inv_cov.flow;
+</pre><pre class="codeinput"><span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p><h4> Proxy for neuronal populations </h4></p><pre class="codeinput"><span class="keyword">function</span> [neuronal_proxy_mean,neuronal_proxy_inv_cov] = proxy_for_neuronal_populations(neuronal,<span class="keyword">...</span>
+state_proxy_mean,ode_param,dC_times_invC,coupling_idx,symbols,A_plus_gamma_inv,opt_settings)
+
+state_idx = find(cellfun(@(x) strcmp(x(2),<span class="string">'n'</span>),symbols.state));
+j = 0;
+<span class="keyword">for</span> u = state_idx
+
+    j = j+1;
+
+    <span class="comment">% Initialize</span>
+    neuronal_proxy_inv_cov(:,:,u) = zeros(size(dC_times_invC));
+    global_scaling = zeros(size(dC_times_invC,1),1);
+    global_mean = zeros(size(dC_times_invC,1),1);
+
+    <span class="keyword">for</span> k = coupling_idx{u}'
+</pre><pre class="codeinput">        <span class="comment">% unpack matrices B and b</span>
+        R = diag(neuronal.R{u,k}(state_proxy_mean,ode_param));
+        r = neuronal.r{u,k}(state_proxy_mean,ode_param);
+        <span class="keyword">if</span> size(R,1) == 1; R = R.*eye(size(dC_times_invC,1)); <span class="keyword">end</span>
+</pre><p>Define matrices B and b such that <img src="dynamic_causal_models2_eq15846153083102770245.png" alt="$\mathbf{B}_{uk} \mathbf{x}_u + \mathbf{b}_{uk} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\boldmath\theta)  - {'\mathbf{C}}_{\phi_{k}} \mathbf{C}_{\phi_{k}}^{-1} \mathbf{X}$" style="width:174px;height:17px;"></p><pre class="codeinput">        <span class="keyword">if</span> k~=u
+            B = R;
+            b = r - dC_times_invC * state_proxy_mean(:,k);
+        <span class="keyword">else</span>
+            B = R - dC_times_invC;
+            b = r;
+        <span class="keyword">end</span>
+
+        <span class="comment">% local</span>
+        <span class="keyword">if</span> strcmp(opt_settings.pseudo_inv_type,<span class="string">'Moore-Penrose'</span>)
+            local_mean = -B' * b;
+            local_scaling = B' * B;
+            local_inv_cov = B' * A_plus_gamma_inv * B;
+        <span class="keyword">elseif</span> strcmp(opt_settings.pseudo_inv_type,<span class="string">'modified Moore-Penrose'</span>)
+            local_mean = -B' * A_plus_gamma_inv * b;
+            local_scaling = B' * A_plus_gamma_inv * B;
+            local_inv_cov = local_scaling;
+        <span class="keyword">end</span>
+
+        <span class="comment">% global</span>
+        global_mean = global_mean + local_mean;
+        global_scaling = global_scaling + local_scaling;
+
+        <span class="comment">% Inverse covariance for state proxy distribution</span>
+        neuronal_proxy_inv_cov(:,:,u) = neuronal_proxy_inv_cov(:,:,u) + local_inv_cov;
+</pre><pre class="codeinput">    <span class="keyword">end</span>
+
+    <span class="comment">% Mean of state proxy distribution</span>
+    neuronal_proxy_mean(:,j) = global_scaling \ global_mean;
+<span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p><h4> Prior on neuronal couplings </h4></p><p>The prior variance on all non-selfinhibitory neuronal couplings is infinity.</p><pre class="codeinput"><span class="keyword">function</span> ode_param = prior_on_ODE_param(ode_param,param_prior,param_symbols)
+
+numb_states = 3;
+ode_param.prior.mean = zeros(length(param_symbols),1);
+ode_param.prior.mean(end-numb_states+1:end) = -1;
+tmp = param_prior*ones(1,length(param_symbols));
+tmp(end-numb_states+1:end) = 1e-9;
+ode_param.prior.inv_cov = diag(tmp.^(-1));
+
+<span class="keyword">end</span>
+</pre><p><h4> Confounding effects </h4></p><pre class="codeinput"><span class="keyword">function</span> bold_response = confounding_effects(bold_response)
+
+bold_response.confounding_effects.X0 = importdata(<span class="string">'dcm/confounding_effects_X0.txt'</span>);
+bold_response.confounding_effects.beta = importdata(<span class="string">'dcm/confounding_effects_beta.txt'</span>);
+
+bold_response.confounding_effects.X0_penrose_inv = (bold_response.confounding_effects.X0' * <span class="keyword">...</span>
+    bold_response.confounding_effects.X0)^(-1) * bold_response.confounding_effects.X0';
+
+bold_response.confounding_effects.intercept = ones(size(bold_response.obs));
+
+<span class="keyword">end</span>
+</pre><p><h4> Import ODEs </h4></p><pre class="codeinput"><span class="keyword">function</span> ode = import_odes(symbols,candidate_odes)
+
+path_ode = [<span class="string">'./dcm/ODEs/'</span> candidate_odes <span class="string">'.txt'</span>];                          <span class="comment">% path to candidtae system of ODEs</span>
+
+ode.raw = importdata(path_ode);
+ode.refined = ode.raw;
+
+<span class="keyword">for</span> k = 1:length(ode.refined)
+<span class="keyword">for</span> u = 1:length(symbols.state); ode.refined{k} = strrep(ode.refined{k},[symbols.state{u}],[<span class="string">'state(:,'</span> num2str(u) <span class="string">')'</span>]); <span class="keyword">end</span>
+<span class="keyword">for</span> j = 1:length(symbols.param); ode.refined{k} = strrep(ode.refined{k},symbols.param{j},[<span class="string">'param('</span> num2str(j) <span class="string">')'</span>]); <span class="keyword">end</span>
+<span class="keyword">end</span>
+<span class="keyword">for</span> k = 1:length(ode.refined); ode.system{k} = str2func([<span class="string">'@(state,param)('</span> ode.refined{k} <span class="string">')'</span>]); <span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p><h4> Simulate state trajectories by numerical integration </h4></p><pre class="codeinput"><span class="keyword">function</span> [state,time,ode,bold_response] = simulate_dynamics_by_numerical_integration(state,time,ode,simulation,symbols)
+
+param_sym = sym(<span class="string">'param%d'</span>,[1,length(symbols.param)]); assume(param_sym,<span class="string">'real'</span>);
+state_sym = sym(<span class="string">'state%d'</span>,[1,length(symbols.state)]); assume(state_sym,<span class="string">'real'</span>);
+<span class="keyword">for</span> i = 1:length(ode.system)
+    ode.system_sym(i) = ode.system{i}(state_sym,param_sym);
+<span class="keyword">end</span>
+
+idx0 = cellfun(@(n) ~strcmp(n(2),<span class="string">'u'</span>),symbols.state);
+learn_method.state(idx0) = {<span class="string">'Laplace mean-field'</span>};
+learn_method.state(~idx0) = {<span class="string">'external input'</span>};
+
+state.obs_idx = zeros(1,sum(idx0));
+state.init_val = zeros(1,sum(idx0));
+<span class="comment">%</span>
+init_val = 0.01*ones(1,sum(idx0));
+
+<span class="comment">%</span>
+dt = state.ext_input(end,1) - state.ext_input(end-1,1);
+ode_system_mat = matlabFunction(ode.system_sym',<span class="string">'Vars'</span>,{state_sym(~strcmp(learn_method.state,<span class="string">'external input'</span>))',<span class="keyword">...</span>
+        param_sym',state_sym(strcmp(learn_method.state,<span class="string">'external input'</span>))'});
+
+ode_param_true = simulation.ode_param';
+
+<span class="comment">% warning ('off','all');</span>
+[ToutX,OutX_solver] = ode113(@(t,n) ode_function(t,n,ode_system_mat,ode_param_true,state.ext_input(:,2:end),state.ext_input(:,1)),<span class="keyword">...</span>
+    state.ext_input(:,1), init_val);
+<span class="comment">% warning ('on','all');</span>
+
+[~,idx] = min(pdist2(ToutX,state.ext_input(:,1)),[],1);
+ToutX = ToutX(idx); OutX_solver = OutX_solver(idx,:);
+
+<span class="comment">% pack</span>
+[~,state.ext_input_to_bold_response_mapping_idx] = min(pdist2(state.ext_input(:,1),time.est'),[],1);
+state.true = OutX_solver(state.ext_input_to_bold_response_mapping_idx,:);
+state.true(1:5,:) = 0;
+
+time.true = ToutX';
+time.samp = time.true(state.ext_input_to_bold_response_mapping_idx);
+
+<span class="comment">% true bold responses</span>
+bold_response.true = bold_signal_change_eqn(state.true(:,cellfun(@(n) strcmp(n(2),<span class="string">'v'</span>),symbols.state)),state.true(:,cellfun(@(n) strcmp(n(2),<span class="string">'q'</span>),symbols.state)));
+<span class="comment">% mean correction</span>
+<span class="comment">% bold_response.confounding_effects.intercept = mean(bold_response.true,1);</span>
+<span class="comment">% bold_response.true = bsxfun(@minus,bold_response.true,mean(bold_response.true,1));</span>
+<span class="comment">% % bold_response.confounding_effects.X0 = ones(size(bold_response.true));</span>
+
+<span class="comment">% observed bold responses</span>
+bold_response.obs = bold_response.true + bsxfun(@times,sqrt(var(bold_response.true) ./ simulation.SNR),randn(size(bold_response.true)));
+bold_response.confounding_effects.intercept = mean(bold_response.obs,1);
+bold_response.variance = (repmat(max(bold_response.obs,[],1),size(bold_response.obs,1),1)./simulation.SNR).^2;
+
+<span class="comment">% pack</span>
+state.obs = state.true(:,find(state.obs_idx));
+
+<span class="comment">% align externel input with observations</span>
+shift_num = 1;
+e = state.ext_input;
+e(shift_num+1:end,2:end) = state.ext_input(1:end-shift_num,2:end);
+e(1:shift_num,2:end) = zeros(shift_num,size(state.ext_input,2)-1);
+state.ext_input = e;
+
+<span class="keyword">end</span>
+</pre><p><h4> Simulate state trajectories by numerical integration with parameters estimated by variational gradient matching </h4></p><pre class="codeinput"><span class="keyword">function</span> [state,bold_response] = simulate_trajectory_with_vgm_param_est(ode_param,state,state_orig,bold_response,simulation,time,ode,symbols)
+
+bold_response.prediction.num_int_with_gm_param_est = [];
+
+state_orig.init_val = state.proxy.mean(1,cellfun(@(x) ~strcmp(x(2),<span class="string">'u'</span>),symbols.state));
+
+simulation.ode_param = ode_param.proxy.mean';
+
+state_sim = simulate_dynamics_by_numerical_integration(state_orig,time,ode,simulation,symbols);
+
+state.num_int_with_gm_param_est = state_sim.true;
+
+<span class="comment">%</span>
+bold_response_signal_change = bold_signal_change_eqn(state.num_int_with_gm_param_est(:,cellfun(@(n) strcmp(n(2),<span class="string">'v'</span>),symbols.state)),<span class="keyword">...</span>
+    state.num_int_with_gm_param_est(:,cellfun(@(n) strcmp(n(2),<span class="string">'q'</span>),symbols.state)));
+bold_response.confounding_effects.intercept = determine_intercept(bold_response.obs_old-bold_response_signal_change,<span class="keyword">...</span>
+    bold_response.confounding_effects.X0,bold_response.confounding_effects.X0_penrose_inv);
+bold_response.prediction.num_int_with_gm_param_est = bold_response_signal_change + bold_response.confounding_effects.intercept;
+
+<span class="comment">%</span>
+state.num_int_with_gm_param_est(1,:) = [];
+state.num_int_with_gm_param_est(end+1,:) = zeros(1,size(state.num_int_with_gm_param_est,2));
+bold_response.prediction.num_int_with_gm_param_est(1,:) = [];
+bold_response.prediction.num_int_with_gm_param_est(end+1,:) = zeros(1,size(bold_response.prediction.num_int_with_gm_param_est,2));
+
+<span class="keyword">end</span>
+</pre><p><h4> Generate observations of states </h4></p><pre class="codeinput"><span class="keyword">function</span> [state,time,obs_to_state_relation] = generate_state_observations(state,time,simulation,symbols)
+
+<span class="comment">% State observations</span>
+tmp = cellfun(@(x) {strcmp(x(2),simulation.observed_states)},symbols.state);
+state.obs_idx = cellfun(@(x) any(x),tmp);
+state.obs_idx(cellfun(@(x) strcmp(x(2),<span class="string">'u'</span>),symbols.state)) = [];
+state.obs = state.true(:,state.obs_idx) +  sqrt(var(state.true(:,state.obs_idx)) ./ simulation.SNR) .* randn(size(state.true(:,state.obs_idx)));
+
+<span class="comment">% Relationship between states and observations</span>
+<span class="keyword">if</span> length(simulation.time_samp) &lt; length(time.est)
+    time.idx = munkres(pdist2(time.samp',time.est'));
+    time.ind = sub2ind([length(time.samp),length(time.est)],1:length(time.samp),time.idx);
+<span class="keyword">else</span>
+    time.idx = munkres(pdist2(time.est',time.samp'));
+    time.ind = sub2ind([length(time.est),length(time.samp)],1:length(time.est),time.idx);
+<span class="keyword">end</span>
+
+time.obs_time_to_state_time_relation = zeros(length(time.samp),length(time.est)); time.obs_time_to_state_time_relation(time.ind) = 1;
+state_mat = eye(size(state.true,2)); state_mat(~logical(state.obs_idx),:) = [];
+obs_to_state_relation = sparse(kron(state_mat,time.obs_time_to_state_time_relation));
+
+<span class="keyword">end</span>
+</pre><p><h4> ODE function </h4></p><pre class="codeinput"><span class="keyword">function</span> state_derivatives = ode_function(time,states,ode_system_mat,ode_param,ext_input,time_lst)
+
+[~,idx] = min(pdist2(time,time_lst));
+u = ext_input(idx,:);
+
+state_derivatives = ode_system_mat(states,ode_param,u');
+
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">Warning: Failure at t=4.002695e+01.  Unable to meet integration tolerances
+without reducing the step size below the smallest value allowed (1.136868e-13)
+at time t. 
+Warning: Failure at t=1.027589e+02.  Unable to meet integration tolerances
+without reducing the step size below the smallest value allowed (2.273737e-13)
+at time t. 
+Warning: Failure at t=3.630023e+01.  Unable to meet integration tolerances
+without reducing the step size below the smallest value allowed (1.136868e-13)
+at time t. 
+Warning: Failure at t=3.712324e+01.  Unable to meet integration tolerances
+without reducing the step size below the smallest value allowed (1.136868e-13)
+at time t. 
+Warning: Failure at t=3.634972e+01.  Unable to meet integration tolerances
+without reducing the step size below the smallest value allowed (1.136868e-13)
+at time t. 
+Warning: Failure at t=3.663225e+01.  Unable to meet integration tolerances
+without reducing the step size below the smallest value allowed (1.136868e-13)
+at time t. 
+Warning: Failure at t=3.833641e+01.  Unable to meet integration tolerances
+without reducing the step size below the smallest value allowed (1.136868e-13)
+at time t. 
+</pre><p><h4> Determine intercept </h4></p><pre class="codeinput"><span class="keyword">function</span> intercept = determine_intercept(bold_response_diff,X0,X0_penrose_inv)
+
+intercept = X0 * X0_penrose_inv * bold_response_diff;
+
+<span class="keyword">end</span>
+</pre><p><h4> Write ODEs as a symbolic expression </h4></p><pre class="codeinput"><span class="keyword">function</span> [ode,state_sym,param_sym] = write_ODEs_as_symbolic_expression(symbols,ode)
+
+param_sym = sym(<span class="string">'param%d'</span>,[1,length(symbols.param)]); assume(param_sym,<span class="string">'real'</span>);
+state_sym = sym(<span class="string">'state%d'</span>,[1,length(symbols.state)]); assume(state_sym,<span class="string">'real'</span>);
+<span class="keyword">for</span> k = 1:length(ode.system)
+    ode.system_sym(k) = ode.system{k}(state_sym,param_sym);
+<span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="dynamic_causal_models2_01.png" style="width:1600px;height:800px;" alt=""> <p><h4> Setup plots for states </h4></p><pre class="codeinput"><span class="keyword">function</span> [h_states,h_param,p] = setup_plots_for_states(state,time,symbols)
+
+<span class="keyword">for</span> i = 1:length(symbols.param); symbols.param{i} = symbols.param{i}(2:end-1); <span class="keyword">end</span>
+
+figure(1); set(1, <span class="string">'Position'</span>, [0, 200, 1600, 800]);
+
+h_param = subplot(3,2,1); h_param.FontSize = 20; h_param.Title.String = <span class="string">'ODE parameters'</span>;
+set(gca,<span class="string">'XTick'</span>,[1:length(symbols.param)]); set(gca,<span class="string">'XTickLabel'</span>,symbols.param);
+hold <span class="string">on</span>;
+
+i = 0;
+<span class="keyword">for</span> u = [3,6,9,12,15]
+    i = i+1;
+    h_states{u} = subplot(3,2,i+1); cla; p.true = plot(time.samp,state.true(:,u),<span class="string">'LineWidth'</span>,2,<span class="string">'Color'</span>,[217,95,2]./255);
+    <span class="keyword">try</span>; hold <span class="string">on</span>; p.obs = plot(time.samp,state.obs(:,u),<span class="string">'*'</span>,<span class="string">'Color'</span>,[217,95,2]./255,<span class="string">'MarkerSize'</span>,1);<span class="keyword">end</span>
+    h_states{u}.FontSize = 20; h_states{u}.Title.String = symbols.state{u}(2:end-1); h_states{u}.XLim = [min(time.est),max(time.est)];
+    h_states{u}.XLabel.String = <span class="string">'time (s)'</span>; hold <span class="string">on</span>;
+<span class="keyword">end</span>
+drawnow
+
+<span class="keyword">end</span>
+</pre><p><h4> Setup plots for BOLD response </h4></p><pre class="codeinput"><span class="keyword">function</span> [h_bold,h_ext_input] = setup_plots_for_bold_response_and_ext_input(state,bold_response,time,symbols)
+
+<span class="keyword">for</span> i = 1:length(symbols.param); symbols.param{i} = symbols.param{i}(2:end-1); <span class="keyword">end</span>
+
+figure(2); set(2, <span class="string">'Position'</span>, [0, 200, 1600, 800]);
+
+plot_titles_idx = find(cellfun(@(x) strcmp(x(2),<span class="string">'n'</span>),symbols.state));
+plot_idx = [1:2:3*2];
+<span class="keyword">for</span> u = 1:3
+    h_bold{u} = subplot(3,2,plot_idx(u)); cla;
+    plot(h_bold{u},time.samp,bold_response.obs(:,u),<span class="string">'LineWidth'</span>,2,<span class="string">'Color'</span>,[217,95,2]./255);
+    h_bold{u}.FontSize = 20; h_bold{u}.Title.String = [symbols.state{plot_titles_idx(u)}(2:end-1) <span class="string">' BOLD response'</span>];
+    h_bold{u}.XLim = [min(time.est),max(time.est)];
+    h_bold{u}.XLabel.String = <span class="string">'time (s)'</span>; hold <span class="string">on</span>;
+<span class="keyword">end</span>
+
+plot_titles_idx = flipdim(find(cellfun(@(x) strcmp(x(2),<span class="string">'u'</span>),symbols.state)),2);
+plot_idx = [2:2:3*2];
+<span class="keyword">for</span> i = 1:sum(cellfun(@(x) strcmp(x(2),<span class="string">'u'</span>),symbols.state))
+    h_ext_input{i} = subplot(3,2,plot_idx(i));
+    plot(h_ext_input{i},time.true,state.ext_input(:,i+1),<span class="string">'LineWidth'</span>,2,<span class="string">'Color'</span>,[217,95,2]./255); hold <span class="string">on</span>;
+    h_ext_input{i}.FontSize = 20; h_ext_input{i}.Title.String = symbols.state{plot_titles_idx(i)}(2:end-1);;
+    h_ext_input{i}.XLim = [min(time.est),max(time.est)];
+    h_ext_input{i}.XLabel.String = <span class="string">'time (s)'</span>; hold <span class="string">on</span>;
+<span class="keyword">end</span>
+drawnow
+
+<span class="keyword">end</span>
+</pre><p><h4> Plot results for states </h4></p><pre class="codeinput"><span class="keyword">function</span> plot_results_for_states(h_states,h_param,state,time,simulation,param_proxy_mean,symbols,candidate_odes,p)
+
+<span class="keyword">for</span> u = [3,6,9,12,15]
+    hold <span class="string">on</span>; p.vgm = plot(h_states{u},time.samp,state.proxy.mean(:,u),<span class="string">'LineWidth'</span>,0.1,<span class="string">'Color'</span>,[0.4,0.4,0.4]);
+    <span class="keyword">try</span>; p.num_int = plot(h_states{u},time.samp(1,:),state.num_int_with_gm_param_est(:,u),<span class="string">'Color'</span>,[0,0,0],<span class="string">'LineWidth'</span>,1); <span class="keyword">end</span>
+
+    <span class="keyword">if</span> any(cellfun(@(x) ~strcmp(x,symbols.state{u}(2)),simulation.observed_states))
+        legend(h_states{u},{<span class="string">'true'</span>,<span class="string">'observed'</span>,<span class="string">'estimate'</span>},<span class="string">'Location'</span>,<span class="string">'northwest'</span>,<span class="string">'FontSize'</span>,10);
+    <span class="keyword">else</span>
+        <span class="keyword">try</span>
+            legend(h_states{u},[p.true,p.vgm,p.num_int],{<span class="string">'true'</span>,<span class="string">'estimate'</span>,<span class="string">'numerical int. with est. param.'</span>},<span class="string">'Location'</span>,<span class="string">'southwest'</span>,<span class="string">'FontSize'</span>,10);
+        <span class="keyword">catch</span>
+            legend(h_states{u},[p.true,p.vgm],{<span class="string">'true'</span>,<span class="string">'estimate'</span>},<span class="string">'Location'</span>,<span class="string">'southwest'</span>,<span class="string">'FontSize'</span>,10);
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+cla(h_param);
+<span class="keyword">if</span> strcmp(simulation.odes,candidate_odes)
+    b = bar(h_param,1:length(param_proxy_mean),[simulation.ode_param',param_proxy_mean]);
+    b(1).FaceColor = [217,95,2]./255; b(2).FaceColor = [117,112,179]./255;
+    legend(h_param,{<span class="string">'true'</span>,<span class="string">'estimate'</span>},<span class="string">'Location'</span>,<span class="string">'northeast'</span>,<span class="string">'FontSize'</span>,12);
+<span class="keyword">else</span>
+    b = bar(h_param,1:length(param_proxy_mean),param_proxy_mean);
+    b.FaceColor = [117,112,179]./255;
+    legend(h_param,{<span class="string">'estimated'</span>},<span class="string">'Location'</span>,<span class="string">'northeast'</span>,<span class="string">'FontSize'</span>,12);
+<span class="keyword">end</span>
+h_param.XLim = [0.5,length(param_proxy_mean)+0.5]; h_param.YLimMode = <span class="string">'auto'</span>;
+drawnow
+
+<span class="keyword">end</span>
+</pre><p><h4> Plot results for BOLD response </h4></p><pre class="codeinput"><span class="keyword">function</span> plot_results_for_bold_response(h_bold,bold_response,time)
+
+<span class="keyword">for</span> u = 1:3
+    plot(h_bold{u},time.est,bold_response.prediction.num_int_with_gm_param_est(:,u),<span class="string">'LineWidth'</span>,1,<span class="string">'Color'</span>,[0,0,0]); hold <span class="string">on</span>;
+    legend(h_bold{u},{<span class="string">'observed BOLD response'</span>,<span class="string">'numerical int. with est. param.'</span>},<span class="string">'Location'</span>,<span class="string">'southwest'</span>,<span class="string">'FontSize'</span>,10);
+<span class="keyword">end</span>
+drawnow
+
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Variational Gradient Matching for Dynamical Systems: Dynamic Causal Models
+%
+% <<cover_pic.png>>
+%
+% Authors: *Nico Stephan Gorbach* and *Stefan Bauer*, email: nico.gorbach@gmail.com
+%
+% Instructional code for the NIPS (2018) paper " *Scalable Variational Inference for Dynamical Systems* "
+% by Nico S. Gorbach, Stefan Bauer and Joachim M. Buhmann.
+% The paper is available at <https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf>.
+% Please cite our paper if you use our program for a further publication.
+% Part of the derivation below is described in Wenk et al. (2018).
+%
+% Example dynamical system used in this code: Lotka-Volterra system with *half* of the time points *unobserved*. The ODE parameters are also unobserved.
+
+%% Advantages of Variational Gradient Matching
+% The essential idea of gradient matching (Calderhead et al., 2002) is to match the gradient
+% governed by the ODEs with that inferred from the observations. In contrast
+% to previous approaches gradient matching introduces a prior over states
+% instead of a prior over ODE parameters. The advantages of gradients
+% matching is two-fold:
+%%
+%
+% # A prior over the functional form of state dynamics as opposed to ODE parameters facilitates a
+% more expert-aware estimation of ODE parameters since experts can provide
+% a better _a priori_ description of state dynamics than ODE parameters.
+% # Gradient matching yields a global gradient as opposed to a local one which
+% offers significant computational advantages and provides access to a rich
+% source of sophisticated optimization tools.
+%
+
+%%
+% Clear workspace and close figures
+clear all; close all;
+
+%% Simulation Settings
+
+simulation.odes = 'fwd_mod_driving';                                       
+simulation.SNR = 5;                                                        % signal-to-noise-ratio
+simulation.ode_param = -0.8 + (0.8-(-0.8)) * rand(1,11);                   % true non-selfinhibitory neuronal couplings (sampled uniformily in the interval [-0.8,0.8];
+simulation.ode_param(end-4:end) = -1;                                      % self-inhibotory neuronal couplings set to -1.
+simulation.final_time = 359*3.22;                                          % end time for integration
+simulation.int_interval = 0.01;                                            % integration interval
+simulation.time_samp = 0:0.1:simulation.final_time;                        % sample times for observations
+simulation.observed_states = {};                                           % indices of states that are directly observed (Boolean)
+
+%% User Input
+%
+% <html><h4> Candidate mechanism </h4></html>
+candidate_odes = 'fwd_mod_driving';  
+%%
+% <html><h4> Prior variance on non-selfinhibitory neuronal couplings </h4></html>
+param_prior_variance = realmax;                                            
+%%
+% <html><h4> Kernel </h4></html>
+%
+% Kernel parameters $\phi$:
+kernel.param = [10,0.2];                                                   % set values of rbf kernel parameters
+%%
+% Error variance on state derivatives (i.e. $\gamma$):
+state.derivative_variance = 6.*ones(11-3,1);                             % \gamma for gradient matching model                                   
+%%
+% <html><h4> Estimation times </h4></html>
+time.est= 0:3.22:359*3.22;                                                 % estimation times
+%%
+% <html><h4> Optimization settings </h4></html>
+opt_settings.pseudo_inv_type = 'Moore-Penrose';                            % type of pseudo inverse; options: 'Moore-Penrose' or 'modified Moore-Penrose'
+opt_settings.coord_ascent_numb_iter = 200;                                 % number of coordinate ascent iterations
+opt_settings.clamp_obs_state_to_GP_regression = true;                      % the observed state trajectories are clamped to the trajectories determined by standard GP regression (Boolean)
+%%
+% <html><h4> Damping for Hemodynamic States </h4></html>
+damping = 0.1;                                                             % since the hemodynamic states are inferred locally w.r.t. the hemodynamic ODEs we add a damping in the inference.
+%%
+% <html><h4> External input </h4></html>
+state.ext_input = importdata('dcm/external_input.txt');                    % importing external inputs
+time.samp = state.ext_input(:,1)';                                         % unpack sampling time        
+
+%% Import Candidate ODEs
+
+symbols = importdata(['dcm/ODEs/' candidate_odes '_symbols.mat']);         % symbols of parameters and states and in 'ODEs.txt' file
+ode = import_odes(symbols,candidate_odes);
+ode = write_ODEs_as_symbolic_expression(symbols,ode);
+
+%%
+disp('candidate ODEs:'); disp(ode.raw)
+
+%% Mass Action Dynamical Systems
+%
+% A deterministic dynamical system is represented by a set of $K$ ordinary differential equations (ODEs) with model parameters $\theta \in R^d$ that describe the evolution of $K$ states $\mathbf{x}(t) = [x_1(t),\ldots, x_K(t)]^T$ such that:
+% 
+% $\dot{\mathbf{x}}(t) = \frac{d \mathbf{x}(t)}{d t} = \mathbf{f}(\mathbf{x}(t),\theta) \qquad (1)$.
+% 
+% A sequence of observations, $\mathbf{y}(t)$, is usually contaminated by measurement error which we assume to be normally distributed with zero mean and variance for each of the $K$ states, i.e. $\mathbf{E}\sim \mathcal{X}(\mathbf{E};\mathbf{0},\mathbf{D})$, with $\mathbf{D}_{ik}=\sigma_k ^2 \delta_{ik}$. For $X$ distinct time points the overall system may therefore be summarized as:
+% 
+% $\mathbf{Y} = \mathbf{X} + \mathbf{E}$,
+% 
+% where 
+%
+% $\mathbf{X} = [\mathbf{x}(t_1),\ldots,\mathbf{x}(t_N)] = [\mathbf{x}_1,\ldots,\mathbf{x}_K]^T$,
+%
+% $\mathbf{Y} = [\mathbf{y}(t_1),\ldots,\mathbf{y}(t_N)] = [\mathbf{y}_1,\ldots,\mathbf{y}_K]^T$,
+% 
+% and $\mathbf{x}_k = [x_k(t_1),\ldots,x_k(t_N)]^T$ is the $k$'th state sequence and $\mathbf{y}_k = [y_k(t_1),$ $\ldots,y_k(t_N)]^T$ are the observations. Given the observations $\mathbf{Y}$ and the description of the dynamical system (1), the aim is to estimate both state variables $\mathbf{X}$ and parameters $\theta$.
+% 
+% We consider only dynamical systems that are locally linear with respect to ODE parameters $\boldmath\theta$ and individual states $\mathbf{n}_u$. Such ODEs include mass-action kinetics and are given by: 
+%
+% $f_{k}(\mathbf{x}(t),\boldmath\theta) = \sum_{i=1} \theta_{ki} \prod_{j \in \mathcal{M}_{ki}} x_j \qquad (2)$,
+%
+% with $\mathcal{M}_{ki} \subseteq \{ 1, \dots, K\}$ describing the state variables in each factor of the equation (i.e. the functions are linear in parameters and contain arbitrary large products of monomials of the states).
+
+%% Simulate Trajectory Observations
+%
+% <html><h4> Simulate state trajectories by numerical integration </h4></html>
+non_diverging_trajectories = false;
+while ~non_diverging_trajectories
+    
+symbols_simulation = importdata(['dcm/ODEs/' simulation.odes '_symbols.mat']);         % symbols of parameters and states and in 'ODEs.txt' file
+ode_simulation = import_odes(symbols_simulation,simulation.odes);
+
+simulation.ode_param = -0.8 + (0.8-(-0.8)) * rand(1,length(symbols_simulation.param));% true non-selfinhibitory neuronal couplings (sampled uniformily in the interval [-0.8,0.8];
+simulation.ode_param(end-2:end) = -1;                                      % self-inhibitory neuronal couplings set to -1.
+
+state_orig = state;
+[state,time,ode_simulation,bold_response] = simulate_dynamics_by_numerical_integration(state,time,ode_simulation,simulation,symbols_simulation);
+
+if ~any(any(isnan(state.true))) && time.samp(end) > 1000; non_diverging_trajectories = 1; end
+
+end
+%%
+% <html><h4> Generate state observations </h4></html>
+[state,time,obs_to_state_relation] = generate_state_observations(state,time,simulation,symbols);
+
+% mean correction
+bold_response.obs = bsxfun(@minus,bold_response.obs,mean(bold_response.obs,1));
+
+%%
+% <html><h4> Symbols </h4></html>
+state.sym.mean = sym('n%d%d',[length(time.est),length(ode.system)]);
+state.sym.variance = sym('sigma%d%d',[length(time.est),length(ode.system)]);
+ode_param.sym.mean = sym('param%d',[length(symbols.param),1]); assume(ode_param.sym.mean,'real');
+
+%%
+% <html><h4> Setup plots </h4></html>
+h_bold = setup_plots_for_bold_response_and_ext_input(state,bold_response,time,symbols);
+[h_states,h_param,p] = setup_plots_for_states(state,time,symbols);
+
+%% Prior on ODE parameters
+% Constuct prior on ODE parameters.
+ode_param = prior_on_ODE_param(ode_param,param_prior_variance,symbols.param);% prior on ODE parameters
+
+%% Confounding effects
+% BOLD response observations are given by the signal change equation plus
+% an intercept due to confounding effects:
+%%
+%
+% $$\mathbf{y} = \lambda(\mathbf{q},\mathbf{v},\mathbf{u}) + \mathbf{X} \beta + \epsilon$$
+%
+bold_response = confounding_effects(bold_response);
+                
+tic; %start timer
+
+%% Prior on States and State Derivatives
+%
+% Gradient matching with Gaussian processes assumes a joint Gaussian process prior on states and their derivatives:
+%
+% $\left(\begin{array}{c}
+% \mathbf{X} \\ \dot{\mathbf{X}}
+% \end{array}\right)
+%  \sim p \left(
+% \begin{array}{c}
+% \mathbf{X} \\ \dot{\mathbf{X}}
+% \end{array}; 
+% \begin{array}{c}
+%  \mathbf{0} \\ 
+% \mathbf{0}
+%  \end{array},
+% \begin{array}{cc}
+%  \mathbf{C}_{\phi} & \mathbf{C}_{\phi}' \\
+%  '\mathbf{C}_{\phi} & \mathbf{C}_{\phi}'' 
+%  \end{array}
+%  \right) \qquad (3)$,
+%
+% $\mathrm{cov}(x_k(t), x_k(t)) = C_{\phi_k}(t,t')$
+%
+% $\mathrm{cov}(\dot{n}_k(t), x_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t} =: C_{\phi_k}'(t,t')$
+%
+% $\mathrm{cov}(x_k(t), \dot{n}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t'} =: {'C_{\phi_k}(t,t')}$
+%
+% $\mathrm{cov}(\dot{n}_k(t), \dot{n}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t \partial t'} =: C_{\phi_k}''(t,t')$.
+
+%% Matching Gradients
+%
+% Given the joint distribution over states and their derivatives (3) as well as the ODEs (2), we therefore have two expressions for the state derivatives:
+%
+% $\dot{\mathbf{X}} = \mathbf{F} + \epsilon_1, \epsilon_1 \sim \mathcal{X}\left(\epsilon_1;\mathbf{0}, \mathbf{I}\gamma \right)$
+%
+% $\dot{\mathbf{X}} = {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} ~\mathbf{X} + \epsilon_2, \epsilon_2 \sim \mathcal{X}\left(\epsilon_2;\mathbf{0}, \mathbf{A} \right)$
+%
+% where $\mathbf{F} := \mathbf{f}(\mathbf{X},\theta)$, $\mathbf{A} := \mathbf{C}_{\phi}'' -  {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} \mathbf{C}_{\phi}'$ and $\gamma$ is the error variance in the ODEs. Note that, in a deterministic system, the output of the ODEs $\mathbf{F}$ should equal the state derivatives $\dot{\mathbf{X}}$. However, in the first equation above we relax this contraint by adding stochasticity to the state derivatives $\dot{\mathbf{X}}$ in order to compensate for a potential model mismatch. The second equation above is obtained by deriving the conditional distribution for $\dot{\mathbf{X}}$ from the joint distribution in equation (3). Equating the two expressions in the equations above we can eliminate the unknown state derivatives $\dot{\mathbf{X}}$:
+%
+% $\mathbf{F} = {'\mathbf{C}_{\phi}} \mathbf{C}_{\phi}^{-1} ~\mathbf{X} + \epsilon_0 \qquad (4)$,
+%
+% with $\epsilon_0 := \epsilon_2 - \epsilon_1$.
+
+[dC_times_invC,inv_C,A_plus_gamma_inv] = kernel_function(kernel,state,time.est);
+
+%% State Couplings in ODEs
+
+coupling_idx = state_couplings_in_odes(ode,symbols);
+
+%% Rewrite ODEs as Linear Combination in Parameters
+%
+% We rewrite the ODEs in equation (2) as a linear combination in the parameters:
+%
+% $\mathbf{B}_{\boldmath\theta} \boldmath\theta + \mathbf{b}_{\boldmath\theta} \stackrel{!}{=} \mathbf{f}(\mathbf{X},\boldmath\theta) \qquad (5)$,
+%
+% where matrices $\mathbf{B}_{\boldmath\theta}$ and $\mathbf{b}_{\boldmath\theta}$ are defined such that the ODEs $\mathbf{f}(\mathbf{X},\boldmath\theta)$ are expressed as a linear combination in $\boldmath\theta$.
+
+[ode_param.lin_comb.B,ode_param.lin_comb.b] = rewrite_odes_as_linear_combination_in_parameters(ode,symbols);
+
+%% Posterior over ODE Parameters
+%
+% Inserting (5) into (4) and solving for $\boldmath\theta$ yields:
+%
+% $\boldmath\theta = \mathbf{B}_{\boldmath\theta}^+ \left( {'\mathbf{C}_{\boldmath\phi}} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X} - \mathbf{b}_{\boldmath\theta} + \boldmath\epsilon_0 \right)$,
+% 
+% where $\mathbf{B}_{\boldmath\theta}^+$ denotes the pseudo-inverse of $\mathbf{B}_{\boldmath\theta}$. We can therefore derive the posterior distribution over ODE parameters:
+%
+% $p(\boldmath\theta \mid \mathbf{X}, \boldmath\phi, \gamma) = \mathcal{X}\left(\boldmath\theta ; \mathbf{B}_{\boldmath\theta}^+ ~ \left( {'\mathbf{C}_{\boldmath\phi}} \mathbf{C}_{\boldmath\phi}^{-1} \mathbf{X} - \mathbf{b}_{\boldmath\theta} \right), ~ \mathbf{B}_{\boldmath\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\boldmath\theta}^{+T} \right) \qquad (6)$.
+% 
+%%
+state_enumeration = {'q','v','f','s','n'};
+for u = 1:length(state_enumeration)
+    
+    %% Rewrite Hemodynamic ODEs as Linear Combination in (monotonic functions of) Individual Hemodynamic States
+    %
+    % We rewrite the ODE(s) $\mathbf{f}_k(\mathbf{X},\boldmath\theta)$ as a linear combination in the individual state $\mathbf{x}_u$:
+    %
+    % $\mathbf{R}_{uk} \mathbf{x}_u + \mathbf{r}_{uk} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\boldmath\theta)$.
+    %
+    % where matrices $\mathbf{R}_{uk}$ and $\mathbf{r}_{uk}k$ are defined such that the ODE $\mathbf{f}_k(\mathbf{X},\boldmath\theta)$ is expressed as a linear combination in the individual state $\mathbf{x}_u$.
+
+    if strcmp(state_enumeration{u},'q')
+        %%
+        % <html><h4> Deoxyhemoglobin content </h4></html>
+        %
+        % Rewrite the BOLD signal change equation as a linear combination in a monotonic function of the deoxyhemoglobin content $e^q$.
+        %
+        % $\mathbf{R}_{q\lambda} e^{\mathbf{q}} + \mathbf{r}_{v\lambda} \stackrel{!}{=} \lambda(q,v)$.
+
+       [state.deoxyhemo.R,state.deoxyhemo.r] = rewrite_bold_signal_eqn_as_linear_combination_in_deoxyhemo(symbols);
+    elseif strcmp(state_enumeration{u},'v')
+        %%
+        % <html><h4> Blood volume </h4></html>
+        %
+        % Rewrite the deoxyhemoglobin content ODE as a linear combination in a monotonic function of the blood volume $e^v$.
+        %
+        % $\mathbf{R}_{v\dot{q}} e^{\mathbf{v}} + \mathbf{r}_{v\dot{q}} \stackrel{!}{=} \mathbf{f}_{\dot{q}}(\mathbf{X},\boldmath\theta)$.
+        
+        [state.vol.R,state.vol.r] = rewrite_deoxyhemo_ODE_as_linear_combination_in_vol(ode,symbols);
+    elseif strcmp(state_enumeration{u},'f')
+        %%
+        % <html><h4> Blood flow </h4></html>
+        %
+        % Rewrite the blood volume ODE as a linear combination in a monotonic function of the blood flow $e^f$.
+        %
+        % $\mathbf{R}_{f\dot{v}} e^{\mathbf{f}} + \mathbf{r}_{f\dot{v}} \stackrel{!}{=} \mathbf{f}_{\dot{v}}(\mathbf{X},\boldmath\theta)$
+        
+        [state.flow.R,state.flow.r] = rewrite_vol_ODE_as_linear_combination_in_flow(ode,symbols);
+    elseif strcmp(state_enumeration{u},'s')
+        %%
+        % <html><h4> Vasosignalling </h4></html>
+        %
+        % Rewrite the blood flow and vasoginalling ODEs as a linear combination in vasosignalling $s$.
+        %
+        % $\mathbf{R}_{s\dot{f}} \mathbf{s} + \mathbf{r}_{s\dot{f}} \stackrel{!}{=} \mathbf{f}_{\dot{f}}(\mathbf{X},\boldmath\theta)$
+        %
+        % $\mathbf{R}_{s\dot{s}} \mathbf{s} + \mathbf{r}_{s\dot{s}} \stackrel{!}{=} \mathbf{f}_{\dot{s}}(\mathbf{X},\boldmath\theta)$
+
+        [state.vaso.R,state.vaso.r] = rewrite_vaso_and_flow_odes_as_linear_combination_in_vaso(ode,symbols);
+        
+        %% Rewrite Neuronal ODEs as Linear Combination in Individual Neuronal States
+        %
+        % We rewrite the ODE(s) $\mathbf{f}_k(\mathbf{X},\boldmath\theta)$ as a linear combination in the individual state $\mathbf{x}_u$:
+        %
+        % $\mathbf{R}_{uk} \mathbf{x} + \mathbf{r}_{uk} \stackrel{!}{=} \mathbf{f}_{k}(\mathbf{X},\boldmath\theta)$
+        %
+        % where matrices $\mathbf{R}_{uk}$ and $\mathbf{r}_{uk}k$ are defined such that the expression $\mathbf{f}_k(\mathbf{X},\boldmath\theta)$ is expressed as a linear combination in the individual state $\mathbf{x}_u$.
+
+    elseif strcmp(state_enumeration{u},'n')        
+        [state.neuronal.R,state.neuronal.r] = rewrite_odes_as_linear_combination_in_ind_neuronal_states(ode,symbols,coupling_idx.states);
+    end
+end
+
+%% Posterior over Individual States
+%
+% Inserting (7) into (4) and solving for $\mathbf{n}_u$ yields:
+%
+% $\mathbf{x}_u = \mathbf{B}_{u}^+ \left( \boldmath\epsilon_0 -\mathbf{b}_{u} \right)$,
+%
+% where $\mathbf{B}_{u}^+$ denotes the pseudo-inverse of $\mathbf{B}_{u}$. We can therefore derive the posterior distribution over an individual state $\mathbf{n}_u$:
+%
+% $p(\mathbf{x}_u \mid \mathbf{X}_{-u}, \boldmath\phi, \gamma) = p\left(\mathbf{x}_u ; -\mathbf{B}_{u}^+ \mathbf{b}_u, ~\mathbf{B}_u^{+} ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_u^{+T} \right) \qquad (8)$,
+%
+% with $\mathbf{X}_{-u}$ denoting the set of all states except state $\mathbf{n}_u$.
+
+%% Mean-field Variational Inference
+%
+% To infer the parameters $\boldmath\theta$, we want to find the maximum a posteriori estimate (MAP): 
+%
+% $\theta^* := arg \max_{\theta} ~ \ln p(\theta \mid \mathbf{Y},\phi,\gamma, \sigma)$
+%
+% $= arg\max_{\boldmath\theta} ~ \ln \int  p(\boldmath\theta,\mathbf{X} \mid \mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma) d\mathbf{X}$
+%
+% $= arg\max_{\boldmath\theta} ~ \ln \int p(\boldmath\theta \mid \mathbf{X},\boldmath\phi,\boldmath\gamma) p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\boldmath\sigma) d\mathbf{X} \qquad (9)$.
+% 
+% However, the integral above is intractable due to the strong couplings induced by the nonlinear ODEs $\mathbf{f}$ which appear in the term $p(\boldmath\theta \mid \mathbf{X},\boldmath\phi,\boldmath\gamma)$. 
+% 
+% We use mean-field variational inference to establish variational lower bounds that are analytically tractable by decoupling state variables from the ODE parameters as well as decoupling the state variables from each other. Note that, since the ODEs described by equation (2) are *locally linear*, both conditional distributions $p(\boldmath\theta \mid \mathbf{X},\mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma)$ (equation (6)) and $p(\mathbf{n}_u \mid \boldmath\theta, \mathbf{X}_{-u},\mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma)$ (equation (8)) are analytically tractable and Gaussian distributed as mentioned previously. 
+% 
+% The decoupling is induced by designing a variational distribution $Q(\boldmath\theta,\mathbf{X})$ which is restricted to the family of factorial distributions:
+%
+% $\mathcal{Q} := \bigg{\{} Q : Q(\boldmath\theta,\mathbf{X}) = q(\boldmath\theta) \prod_u q(\mathbf{n}_u) \bigg{\}}$.
+% 
+% The particular form of $q(\boldmath\theta)$ and $q(\mathbf{n}_u)$ are designed to be Gaussian distributed which places them in the same family as the true full conditional distributions. To find the optimal factorial distribution we minimize the Kullback-Leibler divergence between the variational and the true posterior distribution:
+%
+% $\hat{Q} := arg \min_{Q(\boldmath\theta,\mathbf{X}) \in \mathcal{Q}} \mathrm{KL} \left[ Q(\theta,\mathbf{X}) \mid \mid p(\boldmath\theta,\mathbf{X} \mid \mathbf{Y},\boldmath\phi, \boldmath\gamma,\boldmath\sigma) \right] \qquad (10)$,
+%
+% where $\hat{Q}$ is the proxy distribution. The proxy distribution that minimizes the KL-divergence (10) depends on the true full conditionals and is given by:
+%
+% $\hat{q}({\boldmath\theta}) \propto \exp \left(~ E_{Q_{-\theta}} \ln p(\boldmath\theta \mid \mathbf{X},\mathbf{Y},\boldmath\phi,\boldmath\gamma,\boldmath\sigma) ~\right) \qquad (11)$
+% 
+% $\hat{q}(\mathbf{n}_u) \propto \exp\left( ~ E_{Q_{-u}} \ln p(\mathbf{n}_u \mid \theta, \mathbf{X}_{-u},\mathbf{Y},\phi,\gamma,\sigma) ~ \right) \qquad (12)$.
+
+%% Denoising BOLD Observations
+%
+% We denoise the BOLD observation by standard GP regression. 
+
+bold_response.denoised_obs = denoising_BOLD_observations(bold_response,inv_C,symbols,simulation.SNR);
+
+%% Fitting Observations of State Trajectories
+%
+% We fit the observations of state trajectories by standard GP regression. The data-informed distribution $p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\boldmath\sigma)$ in euqation (9) can be determined analytically using Gaussian process regression with the GP prior $p(\mathbf{X} \mid \boldmath\phi) = \prod_k \mathcal{X}(\mathbf{n}_k ; \mathbf{0},\mathbf{C}_{\boldmath\phi})$:
+%
+% $p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\gamma) = \prod_k \mathcal{X}(\mathbf{n}_k ; \boldmath\mu_k(\mathbf{y}_k),\boldmath\Sigma_k)$,
+%
+% where $\boldmath\mu_k(\mathbf{y}_k) := \sigma_k^{-2} \left(\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1} \right)^{-1} \mathbf{y}_k$ and $\boldmath\Sigma_k ^{-1}:=\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1}$.
+
+[mu,inv_sigma] = fitting_state_observations(state,inv_C,obs_to_state_relation,symbols,simulation.SNR);
+
+%% Coordinate Ascent Variational Gradient Matching
+% 
+% We *locally* minimize the KL-divergence in equation (10) by coordinate descent (where each step is analytically tractable) by iterating between determining the proxy for the distribution over ODE parameters $\hat{q}(\boldmath\theta)$ and the proxies for the distribution over individual states $\hat{q}(\mathbf{n}_u)$. 
+
+bold_response.obs_old = bold_response.denoised_obs;
+
+state_enumeration = {'q','v','f','s','n'};
+state_enumeration(find(ismember(state_enumeration,simulation.observed_states))) = [];
+
+ode_param.proxy.mean = zeros(length(symbols.param),1);
+state.proxy.mean = mu;
+
+for i=1:opt_settings.coord_ascent_numb_iter
+    
+    %% Intercept due to Confounding Effects
+    %
+    % The intercept is determined by a minimum least squares estimator:
+    %%
+    % $$\mathbf{X} \hat{\beta} := \mathbf{X} ( \mathbf{X}^T \mathbf{X} )^{-1} \mathbf{X}^T (\mathbf{y} - \mathbf{h}(\mathbf{q},\mathbf{v},\mathbf{u}))$$
+    %
+    
+    vol_idx = cellfun(@(n) strcmp(n(2),'v'),symbols.state);
+    deoxyhemo_idx = cellfun(@(n) strcmp(n(2),'q'),symbols.state);
+    
+    bold_response_signal_change = bold_signal_change_eqn(state.proxy.mean(:,vol_idx),state.proxy.mean(:,deoxyhemo_idx));
+    bold_response.confounding_effects.intercept = determine_intercept(bold_response.obs_old-bold_response_signal_change,...
+        bold_response.confounding_effects.X0,bold_response.confounding_effects.X0_penrose_inv);
+    
+    bold_response.confounding_effects.intercept = zeros(size(bold_response.obs,1),size(bold_response.obs,2));
+    bold_response.denoised_obs = bold_response.obs_old - bold_response.confounding_effects.intercept;   
+    
+    %%
+    for j = 1:length(state_enumeration)
+        
+    %% Proxies for Hemodynamic States
+    %
+    % Determine the proxies for the states, starting with deoxyhemoglobin followed by blood volume, blood flow and finally vasosignalling. 
+    %
+    % The information flow in the hemodynamic system is shown in its factor graph below:
+    %
+    % <<hemodynamic_factor_graph.png>>
+    %
+    % The model inversion in the hemodynmic factor graph above occurs locally w.r.t. individual states. Given the expression for the BOLD signal change equation, we invert the BOLD signal change equation analytically to determine the deoxyhemoglobin content $q$ (1). The newly inferred deoxyhemoglobin content $q$ influences the expression for the factor associated with the change in deoxyhemoglobin content $h_{\dot{q}}$, which we subsequently invert analytically to infer the blood volume $v$ (2). Thereafter, we infer the blood flow $f$ (3) by inverting the factors associated with the change in blood volume $h_{\dot{v}}$ as well as vasosignalling $h_{\dot{s}}$, followed by inferring vasosignalling $s$ (4) by inverting the factors associated with blood flow induction $h_{\dot{f}}$ and vasosignalling $h_{\dot{s}}$. Finally, the neuronal dynamics (5) are learned, in part, by inverting the factor associated with vasosignalling $h_{\dot{s}}$. The typical trajectories of each of the states are shown (red) together with their iterative approximation (grey lines) obtained by graphical DCM.
+    
+        if strcmp(state_enumeration{j},'q')
+            %%
+            % <html><h4> Proxy for deoxyhemolgobin content </h4></html>
+            state_idx = cellfun(@(n) strcmp(n(2),'q'),symbols.state);
+            state_tmp = proxy_for_deoxyhemoglobin_content(state.deoxyhemo,state.proxy.mean,...
+                bold_response.denoised_obs,symbols,A_plus_gamma_inv,opt_settings);
+            state.proxy.mean(:,state_idx) = (1-damping) * state.proxy.mean(:,state_idx) + damping * state_tmp;
+        elseif strcmp(state_enumeration{j},'v')
+            %%
+            % <html><h4> Proxy for blood volume </h4></html>
+            state_idx = cellfun(@(n) strcmp(n(2),'v'),symbols.state);
+            state_tmp = proxy_for_blood_volume(state.vol,dC_times_invC,state.proxy.mean,...
+                ode_param.proxy.mean,symbols,A_plus_gamma_inv,opt_settings);
+            state.proxy.mean(:,state_idx) = (1-damping) * state.proxy.mean(:,state_idx) + damping * state_tmp;
+        elseif strcmp(state_enumeration{j},'f')
+            %%
+            % <html><h4> Proxy for blood flow </h4></html>
+            state_idx = cellfun(@(n) strcmp(n(2),'f'),symbols.state);
+            state_tmp = proxy_for_blood_flow(state.flow,dC_times_invC,state.proxy.mean,...
+                ode_param.proxy.mean,symbols,A_plus_gamma_inv,opt_settings);
+            state.proxy.mean(:,state_idx) = (1-damping) * state.proxy.mean(:,state_idx) + damping * state_tmp;
+        elseif strcmp(state_enumeration{j},'s')
+            %%
+            % <html><h4> Proxy for vasosignalling </h4></html>
+            state_idx = cellfun(@(n) strcmp(n(2),'s'),symbols.state);
+            state.proxy.mean(:,state_idx) = proxy_for_vasosignalling(state.vaso,dC_times_invC,...
+                state.proxy.mean,ode_param.proxy.mean,symbols,A_plus_gamma_inv,opt_settings);
+        
+            %%   
+        elseif strcmp(state_enumeration{j},'n')
+            %% Proxies for Neuronal States
+            % Determine the proxies for the neuronal states. An example of the information flow in the neuronal part of the nonlinear forward modulating (nonlin_fwd_mod) is shown in its factor graph below:
+            %
+            % <<neuronal_factor_graph.png>>
+            %
+            % In the neuronal factor graph (for the nonlinear forwad modulation) above each individual state appears linear in every factor in the neuronal model. We can therefore analytically invert every factor to determine the neuronal state. The typical trajectories of each of the states are shown (red) together with their iterative approximation (grey lines) obtained by variational gradient matching.
+
+            state_idx = cellfun(@(n) strcmp(n(2),'n'),symbols.state);
+            state.proxy.mean(:,state_idx) = proxy_for_neuronal_populations(state.neuronal,...
+                state.proxy.mean,ode_param.proxy.mean',dC_times_invC,coupling_idx.states,symbols,...
+                A_plus_gamma_inv,opt_settings);
+        end
+        state.proxy.mean(:,1:15) = bsxfun(@minus,state.proxy.mean(:,1:15),state.proxy.mean(1,1:15));
+    end
+
+    if i==1 || ~mod(i,20); plot_results_for_states(h_states,h_param,state,time,simulation,ode_param.proxy.mean,symbols,candidate_odes,p); end
+    
+    %% Proxy for neuronal couplings (ODE parameters)
+    
+    if i>200 || i==opt_settings.coord_ascent_numb_iter
+        [ode_param.proxy.mean,ode_param.proxy.inv_cov] = proxy_for_ode_parameters(state.proxy.mean,...
+            dC_times_invC,ode_param.lin_comb,symbols,ode_param,A_plus_gamma_inv,opt_settings);
+    end
+    
+end
+
+%% Numerical integration with parameters estimated by variational gradient matching
+% See whether we actually fit the BOLD response well. Curves are shown in black.
+
+[state,bold_response] = simulate_trajectory_with_vgm_param_est(ode_param,state,state_orig,bold_response,simulation,time,ode,symbols);
+                
+%% Final result
+
+plot_results_for_bold_response(h_bold,bold_response,time);
+plot_results_for_states(h_states,h_param,state,time,simulation,ode_param.proxy.mean,symbols,candidate_odes,p);
+
+%% Time Taken
+
+disp(['time taken: ' num2str(toc) ' seconds'])
+
+%% References
+%
+% * *Gorbach, X.S.* , *Bauer, S.* and Buhmann, J.M., Scalable Variational Inference for Dynamical Systems. 2017a. Neural Information Processing Systems (NIPS). <https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf>, arxiv: <https://arxiv.org/abs/1705.07079>.
+% * *Bauer, S.* , *Gorbach, X.S.* and Buhmann, J.M., Efficient and Flexible Inference for Stochastic Differential Equations. 2017b. Neural Information Processing Systems (NIPS). <https://papers.nips.cc/paper/7274-efficient-and-flexible-inference-for-stochastic-systems.pdf>
+% * Wenk, P., Gotovos, A., Bauer, S., Gorbach, X.S., Krause, A. and Buhmann, J.M., Fast Gaussian Process Based Gradient Matching for Parameters Identification in Systems of Nonlinear ODEs. 2018. In submission to Conference on Uncertainty in Artificial Intelligence (UAI).
+% * Calderhead, B., Girolami, M. and Lawrence. X.D., 2002. Accelerating Bayesian inference over nonlinear differential equation models. _In Advances in Neural Information Processing Systems (NIPS)_ . 22.
+%
+% The authors in bold font have contributed equally to their respective
+% papers.
+
+%% Subroutines
+% <html><h4> Kernel function </h4></html>
+%
+% Gradient matching with Gaussian processes assumes a joint Gaussian process prior on states and their derivatives:
+%
+% $\left(\begin{array}{c}
+% \mathbf{X} \\ \dot{\mathbf{X}}
+% \end{array}\right)
+%  \sim p \left(
+% \begin{array}{c}
+% \mathbf{X} \\ \dot{\mathbf{X}}
+% \end{array}; 
+% \begin{array}{c}
+%  \mathbf{0} \\ 
+% \mathbf{0}
+%  \end{array},
+% \begin{array}{cc}
+%  \mathbf{C}_{\phi} & \mathbf{C}_{\phi}' \\
+%  '\mathbf{C}_{\phi} & \mathbf{C}_{\phi}'' 
+%  \end{array}
+%  \right)$,
+%
+% $\mathrm{cov}(x_k(t), x_k(t)) = C_{\phi_k}(t,t')$
+%
+% $\mathrm{cov}(\dot{n}_k(t), x_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t} =: C_{\phi_k}'(t,t')$
+%
+% $\mathrm{cov}(x_k(t), \dot{n}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t'} =: {'C_{\phi_k}(t,t')}$
+%
+% $\mathrm{cov}(\dot{n}_k(t), \dot{n}_k(t)) = \frac{\partial C_{\phi_k}(t,t') }{\partial t \partial t'} =: C_{\phi_k}''(t,t')$.
+
+function [dC_times_invC,inv_C,A_plus_gamma_inv] = kernel_function(kernel,state,time_est)
+
+kernel.param_sym = sym('rbf_param%d',[1,2]); assume(kernel.param_sym,'real');
+kernel.time1 = sym('time1'); assume(kernel.time1,'real'); kernel.time2 = sym('time2'); assume(kernel.time2,'real');
+kernel.func = kernel.param_sym(1).*exp(-(kernel.time1-kernel.time2).^2./(kernel.param_sym(2).^2));                      % RBF kernel
+kernel.name = 'rbf';   
+
+% kernel derivatives
+for i = 1:length(kernel)
+    kernel.func_d = diff(kernel.func,kernel.time1);
+    kernel.func_dd = diff(kernel.func_d,kernel.time2);
+    GP.fun = matlabFunction(kernel.func,'Vars',{kernel.time1,kernel.time2,kernel.param_sym});
+    GP.fun_d = matlabFunction(kernel.func_d,'Vars',{kernel.time1,kernel.time2,kernel.param_sym});
+    GP.fun_dd = matlabFunction(kernel.func_dd,'Vars',{kernel.time1,kernel.time2,kernel.param_sym});
+end
+
+% populate GP covariance matrix
+for t=1:length(time_est)
+    C(t,:)=GP.fun(time_est(t),time_est,kernel.param);
+    dC(t,:)=GP.fun_d(time_est(t),time_est,kernel.param);
+    Cd(t,:)=GP.fun_d(time_est,time_est(t),kernel.param);
+    ddC(t,:)=GP.fun_dd(time_est(t),time_est,kernel.param);
+end
+
+% GP covariance scaling
+[~,D] = eig(C); perturb = abs(max(diag(D))-min(diag(D))) / 10000;
+if any(diag(D)<1e-6); C(logical(eye(size(C,1)))) = C(logical(eye(size(C,1)))) + perturb.*rand(size(C,1),1); end
+[~,D] = eig(C);
+if any(diag(D)<0); error('C has negative eigenvalues!'); elseif any(diag(D)<1e-6); warning('C is badly scaled'); end
+inv_C = inv_chol(chol(C,'lower'));
+
+dC_times_invC = dC * inv_C;
+
+% plot GP prior samples
+figure(3); 
+hold on; plot(time_est,mvnrnd(zeros(1,length(time_est)),C(:,:,1),3),'LineWidth',2);
+h1 = gca; h1.FontSize = 20; h1.XLabel.String = 'time (s)'; h1.YLabel.String = 'state value';
+h1.Title.String = [kernel.name ' kernel'];
+
+% determine A_plus_gamma:
+A = ddC - dC_times_invC * Cd;
+A_plus_gamma = A + state.derivative_variance(1) .* eye(size(A));
+A_plus_gamma = 0.5.*(A_plus_gamma+A_plus_gamma');      % ensure that A plus gamma is symmetric
+A_plus_gamma_inv = inv_chol(chol(A_plus_gamma,'lower'));
+
+end
+
+%%
+% <html><h4> Denoising BOLD observations </h4></html>
+%
+% We denoise the BOLD observation by standard GP regression.
+%
+% $p(\mathbf{X} \mid \mathbf{Y}, \boldmath\phi,\gamma) = \prod_k \mathcal{X}(\mathbf{n}_k ; \boldmath\mu_k(\mathbf{y}_k),\boldmath\Sigma_k)$,
+%
+% where $\boldmath\mu_k(\mathbf{y}_k) := \sigma_k^{-2} \left(\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1} \right)^{-1} \mathbf{y}_k$ and $\boldmath\Sigma_k ^{-1}:=\sigma_k^{-2} \mathbf{I} + \mathbf{C}_{\boldmath\phi_k}^{-1}$.
+
+function [mu,inv_sigma] = denoising_BOLD_observations(bold_response,inv_Cxx,symbols,SNR)
+
+inv_Cxx_cell = num2cell(inv_Cxx(:,:,ones(1,sum(cellfun(@(n) strcmp(n(2),'n'),symbols.state)))),[1,2]);
+inv_Cxx_blkdiag = blkdiag(inv_Cxx_cell{:});
+
+b = repmat(var(bold_response.obs)./SNR,size(bold_response.obs,1),1);
+dim = size(inv_Cxx_blkdiag,1);
+D = spdiags(reshape(b.^(-1),[],1),0,dim,dim) * speye(dim); % covariance matrix of error term (big E)
+inv_sigma = D + inv_Cxx_blkdiag;
+
+mu = inv_sigma \ D * reshape(bold_response.obs,[],1);
+mu = reshape(mu,[],size(bold_response.obs,2));
+
+end
+
+%%
+% <html><h4> Fitting state observations </h4></html>
+%
+% We fit the observations of state trajectories by standard GP regression.
+
+function [mu_u,inv_sigma_u] = fitting_state_observations(state,inv_C,obs_to_state_relation,symbols,SNR)
+
+state_obs_variance = 1e0*repmat(var(state.obs) ./ SNR,size(state.obs,1),1);
+
+numb_states = size(state.sym.mean,2);
+numb_time_points = size(state.sym.mean,1);
+
+inv_Cxx_tmp = num2cell(inv_C(:,:,ones(1,numb_states)),[1,2]);
+inv_Cxx_blkdiag = sparse(blkdiag(inv_Cxx_tmp{:}));
+
+dim = size(state_obs_variance,1)*size(state_obs_variance,2);
+D = spdiags(reshape(state_obs_variance.^(-1),[],1),0,dim,dim) * speye(dim); % covariance matrix of error term (big E)
+A_times_D_times_A = obs_to_state_relation' * D * obs_to_state_relation;
+inv_sigma = A_times_D_times_A + inv_Cxx_blkdiag;
+
+mu = inv_sigma \ obs_to_state_relation' * D * reshape(state.obs,[],1);
+
+mu_u = zeros(numb_time_points,numb_states);
+for u = 1:numb_states
+    idx = (u-1)*numb_time_points+1:(u-1)*numb_time_points+numb_time_points;
+    mu_u(:,u) = mu(idx);
+end
+
+inv_sigma_u = zeros(numb_time_points,numb_time_points,numb_states);
+for i = 1:numb_states
+    idx = [(i-1)*numb_time_points+1:(i-1)*numb_time_points+numb_time_points];
+    inv_sigma_u(:,:,i) = inv_sigma(idx,idx);
+end
+
+% external_input
+ext_input_idx = cellfun(@(n) strcmp(n(2),'u'),symbols.state);
+mu_u(:,ext_input_idx) = state.ext_input(state.ext_input_to_bold_response_mapping_idx,2:end);
+
+end
+
+%%
+% <html><h4> State couplings in ODEs </h4></html>
+function coupling_idx = state_couplings_in_odes(ode,symbols)
+
+state_sym = sym('state%d',[1,length(ode.system)]); assume(state_sym,'real');
+for k = 1:length(ode.system)
+    tmp_idx = ismember(state_sym,symvar(ode.system_sym(k))); tmp_idx(:,k) = 1;
+    ode_couplings_states(k,tmp_idx) = 1;
+end
+
+for u = find(cellfun(@(x) ~strcmp(x(2),'u'),symbols.state))
+    coupling_idx.states{u} = find(ode_couplings_states(:,u));
+end
+
+end
+
+%%
+% <html><h4> Rewrite ODEs as linear combination in ODE parameters </h4></html>
+%
+% $\mathbf{B}_{\boldmath\theta} \boldmath\theta + \mathbf{b}_{\boldmath\theta} \stackrel{!}{=} \mathbf{f}(\mathbf{X},\boldmath\theta)$,
+%
+% where matrices $\mathbf{B}_{\boldmath\theta}$ and $\mathbf{b}_{\boldmath\theta}$ are defined such that the ODEs $\mathbf{f}(\mathbf{X},\boldmath\theta)$ are expressed as a linear combination in $\boldmath\theta$.
+
+function [B,b] = rewrite_odes_as_linear_combination_in_parameters(ode,symbols)
+
+param_sym = sym('param%d',[1,length(symbols.param)]); assume(param_sym,'real');
+state_sym = sym('state%d',[1,length(symbols.state)]); assume(state_sym,'real');
+state0_sym = sym('state0'); assume(state0_sym,'real');
+state_const_sym = sym('state_const'); assume(state_const_sym,'real');
+
+% Rewrite ODEs as linear combinations in parameters
+[B_sym,b_sym] = equationsToMatrix(ode.system_sym,param_sym);
+b_sym = -b_sym; % See the documentation of the function "equationsToMatrix"
+
+% Product of ODE factors (product of Gaussians)
+for k = 1:length(ode.system)
+    B_sym(k,B_sym(k,:)=='0') = state0_sym;
+    for i = 1:length(B_sym(k,:))
+        sym_var = symvar(B_sym(k,i));
+        if isempty(sym_var)
+            B_sym(k,i) = B_sym(k,i) + state0_sym;
+        end
+    end
+    B{k} = matlabFunction(B_sym(k,:),'Vars',{state_sym,state0_sym,state_const_sym});
+    b{k} = matlabFunction(b_sym(k,:),'Vars',{state_sym,state0_sym,state_const_sym});
+end
+
+end
+
+%%
+% <html><h4> Rewrite ODEs as linear combination in monotonic function of deoxyhemoglobin content e^q </h4></html>
+%
+% $\mathbf{R}_{q\lambda} e^{\mathbf{q}} + \mathbf{r}_{v\lambda} \stackrel{!}{=} \lambda(q,v)$.
+
+function [R,r] = rewrite_bold_signal_eqn_as_linear_combination_in_deoxyhemo(symbols)
+
+% define symbolic variables
+param_sym = sym('param%d',[1,length(symbols.param)]); assume(param_sym,'real');
+state_sym = sym('state%d',[1,length(symbols.state)]); assume(state_sym,'real');
+v = sym('v'); assume(v,'real');
+q = sym('q'); assume(q,'real');
+exp_q = sym('exp_q'); assume(exp_q,'real');
+
+% bold signal change equation
+bold_signal_change = bold_signal_change_eqn(v,q);
+[R_sym,r_sym] = equationsToMatrix(subs(bold_signal_change,exp(q),exp_q),exp_q);
+r_sym = -r_sym; % See the documentation of the function "equationsToMatrix"
+
+R = matlabFunction(R_sym,'Vars',{v,q});
+r = matlabFunction(r_sym,'Vars',{v,q});
+
+end
+
+%%
+% <html><h4> Rewrite ODEs as linear combination in monotonic function of blood volume e^v </h4></html>
+%
+% $\mathbf{R}_{v\dot{q}} e^{\mathbf{v}} + \mathbf{r}_{v\dot{q}} \stackrel{!}{=} \mathbf{f}_{\dot{q}}(\mathbf{X},\boldmath\theta)$.
+
+function [R,r] = rewrite_deoxyhemo_ODE_as_linear_combination_in_vol(ode,symbols)
+
+% define symbolic variables
+param_sym = sym('param%d',[1,length(symbols.param)]); assume(param_sym,'real');
+state_sym = sym('state%d',[1,length(symbols.state)]); assume(state_sym,'real');
+exp_v = sym('exp_v'); assume(exp_v,'real');
+
+state_idx = find(cellfun(@(n) strcmp(n(2),'v'),symbols.state));
+
+% deoxyhemoglobin ODE
+ode_idx = find(cellfun(@(n) strcmp(n(2),'q'),symbols.state));
+j = 0;
+for u = state_idx
+    j = j+1;
+    [R_sym,r_sym] = equationsToMatrix(subs(ode.system{ode_idx(j)}(state_sym,param_sym),exp((17*state_sym(u)/8)),exp_v),exp_v);
+    r_sym = -r_sym; % See the documentation of the function "equationsToMatrix"
+    
+    R{u} = matlabFunction(R_sym,'Vars',{state_sym,param_sym});
+    r{u} = matlabFunction(r_sym,'Vars',{state_sym,param_sym});
+end
+
+end
+%%
+% <html><h4> Rewrite ODEs as linear combination in monotonic function of blood flow e^f </h4></html>
+%
+% $\mathbf{R}_{f\dot{v}} e^{\mathbf{f}} + \mathbf{r}_{f\dot{v}} \stackrel{!}{=} \mathbf{f}_{\dot{v}}(\mathbf{X},\boldmath\theta)$
+
+function [R,r] = rewrite_vol_ODE_as_linear_combination_in_flow(ode,symbols)
+
+% define symbolic variables
+param_sym = sym('param%d',[1,length(symbols.param)]); assume(param_sym,'real');
+state_sym = sym('state%d',[1,length(symbols.state)]); assume(state_sym,'real');
+exp_f = sym('exp_f'); assume(exp_f,'real');
+
+state_idx = find(cellfun(@(n) strcmp(n(2),'f'),symbols.state));
+
+% blood volume ODE
+ode_idx = find(cellfun(@(n) strcmp(n(2),'v'),symbols.state));
+
+j = 0;
+for u = state_idx
+    j = j+1;
+    [R_sym,r_sym] = equationsToMatrix(subs(ode.system{ode_idx(j)}(state_sym,param_sym),exp(state_sym(u)),exp_f),exp_f);
+    r_sym = -r_sym; % See the documentation of the function "equationsToMatrix"
+    
+    R{u} = matlabFunction(R_sym,'Vars',{state_sym,param_sym});
+    r{u} = matlabFunction(r_sym,'Vars',{state_sym,param_sym});
+end
+
+end
+%%
+% <html><h4> Rewrite ODEs as linear combination in vasosignalling s </h4></html>
+%
+% $\mathbf{R}_{s\dot{s}} \mathbf{s} + \mathbf{r}_{s\dot{s}} \stackrel{!}{=} \mathbf{f}_{\dot{s}}(\mathbf{X},\boldmath\theta)$
+%
+% $\mathbf{R}_{s\dot{f}} \mathbf{s} + \mathbf{r}_{s\dot{f}} \stackrel{!}{=} \mathbf{f}_{\dot{f}}(\mathbf{X},\boldmath\theta)$
+
+function [R,r] = rewrite_vaso_and_flow_odes_as_linear_combination_in_vaso(ode,symbols)
+
+% define symbolic variables
+param_sym = sym('param%d',[1,length(symbols.param)]); assume(param_sym,'real');
+state_sym = sym('state%d',[1,length(symbols.state)]); assume(state_sym,'real');
+
+state_idx = find(cellfun(@(n) strcmp(n(2),'s'),symbols.state));
+
+% vasosignaling ODE
+ode_idx = find(cellfun(@(n) strcmp(n(2),'s'),symbols.state));
+j = 0;
+for u = state_idx
+    j = j+1;
+    [R_sym,r_sym] = equationsToMatrix(ode.system{ode_idx(j)}(state_sym,param_sym),state_sym(u));
+    r_sym = -r_sym; % See the documentation of the function "equationsToMatrix"
+    
+    R{u}.vaso = matlabFunction(R_sym,'Vars',{state_sym,param_sym});
+    r{u}.vaso = matlabFunction(r_sym,'Vars',{state_sym,param_sym});
+end
+
+% blood flow ODE
+ode_idx = find(cellfun(@(n) strcmp(n(2),'f'),symbols.state));
+j = 0;
+for u = state_idx
+    j = j+1;
+    [R_sym,r_sym] = equationsToMatrix(ode.system{ode_idx(j)}(state_sym,param_sym),state_sym(u));
+    r_sym = -r_sym; % See the documentation of the function "equationsToMatrix"
+    
+    R{u}.flow = matlabFunction(R_sym,'Vars',{state_sym,param_sym});
+    r{u}.flow = matlabFunction(r_sym,'Vars',{state_sym,param_sym});
+end
+
+end
+
+%%
+% <html><h4> Rewrite ODEs as linear combination in neuronal states n </h4></html>
+%
+% $\mathbf{R}_{uk} \mathbf{x} + \mathbf{r}_{uk} \stackrel{!}{=} \mathbf{f}_{k}(\mathbf{X},\boldmath\theta)$
+
+function [R,r]= rewrite_odes_as_linear_combination_in_ind_neuronal_states(ode,symbols,coupling_idx)
+
+state_sym = sym('state%d',[1,length(symbols.state)]); assume(state_sym,'real');
+param_sym = sym('param%d',[1,length(symbols.param)]); assume(param_sym,'real');
+
+state_idx = find(cellfun(@(n) strcmp(n(2),'n'),symbols.state));
+
+for u = state_idx
+    for k = coupling_idx{u}'
+        [R_sym,r_sym] = equationsToMatrix(ode.system{k}(state_sym,param_sym'),state_sym(:,u));
+        r_sym = -r_sym; % See the documentation of the function "equationsToMatrix"
+        
+        R{u,k} = matlabFunction(R_sym,'Vars',{state_sym,param_sym});
+        r{u,k} = matlabFunction(r_sym,'Vars',{state_sym,param_sym});
+    end
+end
+
+end
+
+%%
+% <html><h4> Proxy for ODE parameters </h4></html>
+%
+% $\hat{q}(\theta) {\propto} \exp \left( ~E_{Q_{-\theta}}  \ln \mathcal{X} \left( \theta; \mathbf{B}_{\theta}^+ ~ \left( '\mathbf{C}_{\phi} \mathbf{C}_{\phi}^{-1} \mathbf{X} - \mathbf{b}_{\theta} \right), ~ \mathbf{B}_{\theta}^+ ~ (\mathbf{A} + \mathbf{I}\gamma) ~ \mathbf{B}_{\theta}^{+T} \right) ~\right)$,
+
+function [param_proxy_mean,param_proxy_inv_cov] = proxy_for_ode_parameters(state_proxy_mean,...
+    dC_times_invC,lin_comb,symbols,ode_param,A_plus_gamma_inv,opt_settings)
+
+% Initialize
+state0 = zeros(size(dC_times_invC,1),1);
+param_proxy_inv_cov = zeros(length(symbols.param));
+global_scaling = zeros(length(symbols.param));
+global_mean = zeros(length(symbols.param),1);
+
+% Iteratate through ODEs
+for k = 1: 1:sum(cellfun(@(n) ~strcmp(n(2),'u'),symbols.state))
+    B = lin_comb.B{k}(state_proxy_mean,state0,ones(size(state_proxy_mean,1),1));
+    b = lin_comb.b{k}(state_proxy_mean,state0,ones(size(state_proxy_mean,1),1));
+    
+    % local
+    if strcmp(opt_settings.pseudo_inv_type,'Moore-Penrose')
+        local_mean = B' * (dC_times_invC * state_proxy_mean(:,k) - b); 
+        local_scaling = B' * B;
+        local_inv_cov = B' * A_plus_gamma_inv * B;
+    elseif strcmp(opt_settings.pseudo_inv_type,'modified Moore-Penrose')
+        local_mean = B' * A_plus_gamma_inv * (dC_times_invC * state_proxy_mean(:,k) - b);   
+        local_scaling = B' * A_plus_gamma_inv * B;
+        local_inv_cov = local_scaling;
+    end   
+    
+    % global
+    global_mean = global_mean + local_mean;
+    global_scaling = global_scaling + local_scaling;
+    
+    % Inverse covariance for ODE param proxy distribution
+    param_proxy_inv_cov = param_proxy_inv_cov + local_inv_cov;
+end
+
+if isfield(ode_param,'prior')
+    global_mean = global_mean + ode_param.prior.inv_cov*ode_param.prior.mean;
+    global_scaling = global_scaling + ode_param.prior.inv_cov;
+    param_proxy_inv_cov = param_proxy_inv_cov + ode_param.prior.inv_cov;
+end
+
+% Check consistency of covariance matrix
+[~,D] = eig(param_proxy_inv_cov);
+if any(diag(D)<0)
+    warning('ode_param.proxy.inv_cov has negative eigenvalues!');
+elseif any(diag(D)<1e-3)
+    warning('ode_param.proxy.inv_cov is badly scaled')
+    disp('perturbing diagonal of ode_param.proxy.inv_cov')
+    perturb = abs(max(diag(D))-min(diag(D))) / 10000;
+    param_proxy_inv_cov(logical(eye(size(param_proxy_inv_cov,1)))) = param_proxy_inv_cov(logical(eye(size(param_proxy_inv_cov,1)))) ...
+        + perturb.*rand(size(param_proxy_inv_cov,1),1);
+end
+
+% Mean of parameter proxy distribution
+param_proxy_mean = global_scaling \ global_mean;
+
+end
+
+%%
+% <html><h4> Proxy for deoxyhemoglobin content </h4></html>
+function deoxyhemo_proxy_mean = proxy_for_deoxyhemoglobin_content(deoxyhemo,state,...
+    bold_response_obs,symbols,A_plus_gamma_inv,opt_settings)
+
+state_idx = find(cellfun(@(x) strcmp(x(2),'q'),symbols.state));
+state_partner_idx = find(cellfun(@(x) strcmp(x(2),'v'),symbols.state));
+
+j = 0;
+% Iterate through states
+for u = state_idx
+
+    % unpack matrices B and b
+    j = j+1;
+    R = diag(deoxyhemo.R(state(:,state_partner_idx(j))));
+    r = deoxyhemo.r(state(:,state_partner_idx(j)));
+     
+    B = R;
+    b = r - bold_response_obs(:,u);
+        
+    if strcmp(opt_settings.pseudo_inv_type,'Moore-Penrose')
+        local_mean =  -B' * b;
+        local_scaling = B' * B;
+        local_inv_cov = B' * A_plus_gamma_inv * B;
+    elseif strcmp(opt_settings.pseudo_inv_type,'modified Moore-Penrose')
+        local_mean =  -B' * A_plus_gamma_inv * b;
+        local_scaling = B' * A_plus_gamma_inv * B;
+        local_inv_cov = local_scaling;
+    end
+        
+    deoxyhemo_proxy_mean(:,u) = log(local_scaling \ local_mean);
+    % Check if deoxyhemoglobin content is positive
+    if any(~isreal(deoxyhemo_proxy_mean(:,u)))
+        disp('warning: deoxyhemoglobin content is not positive')
+        deoxyhemo_proxy_mean(:,u) = real(deoxyhemo_proxy_mean(:,u));
+    end
+    
+end
+
+end
+
+%%
+% <html><h4> Proxy for blood volume </h4></html>
+function vol_proxy_mean = proxy_for_blood_volume(vol,dC_times_invC,state_proxy_mean,ode_param,symbols,...
+    A_plus_gamma_inv,opt_settings)
+
+state_idx = find(cellfun(@(x) strcmp(x(2),'v'),symbols.state));
+state_partner_idx = find(cellfun(@(x) strcmp(x(2),'q'),symbols.state));
+
+j = 0;
+% Iteratate through states
+for u = state_idx
+
+    % unpack matrices B and b
+    j = j+1;
+    R = diag(vol.R{u}(state_proxy_mean,ode_param'));
+    r = vol.r{u}(state_proxy_mean,ode_param);
+    if size(R,1) == 1; R = R.*eye(size(dC_times_invC,1)); end
+    
+    %%
+    % Define matrices B and b such that $\mathbf{B}_{uk} \mathbf{x}_u + \mathbf{b}_{uk} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\phi_{k}} \mathbf{C}_{\phi_{k}}^{-1} \mathbf{X}$
+    B = R;
+    b = r - dC_times_invC * state_proxy_mean(:,state_partner_idx(j));
+    
+    if strcmp(opt_settings.pseudo_inv_type,'Moore-Penrose')
+        local_mean = -B' * b;
+        local_scaling = B' * B;
+        local_inv_cov = B' * A_plus_gamma_inv * B;
+    elseif strcmp(opt_settings.pseudo_inv_type,'modified Moore-Penrose')
+        local_mean = -B' * A_plus_gamma_inv * b;
+        local_scaling = B' * A_plus_gamma_inv * B;
+        local_inv_cov = local_scaling;
+    end
+        
+    vol_proxy_mean(:,j) = (8/17) * log(local_scaling \ local_mean);
+    % Check if blood volume is positive
+    if any(~isreal(vol_proxy_mean(:,j)))
+        disp('warning: blood volume is not positive')
+        vol_proxy_mean(:,j) = real(vol_proxy_mean(:,j));
+    end
+    
+end
+
+end
+
+%%
+% <html><h4> Proxy for blood flow </h4></html>
+function flow_proxy_mean = proxy_for_blood_flow(flow,dC_times_invC,...
+    state_proxy_mean,ode_param,symbols,A_plus_gamma_inv,opt_settings)
+
+state_idx = find(cellfun(@(x) strcmp(x(2),'f'),symbols.state));
+state_partner_idx = find(cellfun(@(x) strcmp(x(2),'s'),symbols.state));
+
+j = 0;
+for u = state_idx
+    
+    % unpack matrices B and b
+    j = j+1;
+    R = diag(flow.R{u}(state_proxy_mean,ode_param'));
+    r = flow.r{u}(state_proxy_mean,ode_param);
+    if size(R,1) == 1; R = R.*eye(size(dC_times_invC,1)); end
+    
+    %%
+    % Define matrices B and b such that $\mathbf{B}_{uk} \mathbf{x}_u + \mathbf{b}_{uk} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\phi_{k}} \mathbf{C}_{\phi_{k}}^{-1} \mathbf{X}$
+    B = R;
+    b = r - dC_times_invC * state_proxy_mean(:,state_partner_idx(j));
+
+    if strcmp(opt_settings.pseudo_inv_type,'Moore-Penrose')
+        local_mean = -B' * b;
+        local_scaling = B' * B;
+        local_inv_cov = B' * A_plus_gamma_inv * B;
+    elseif strcmp(opt_settings.pseudo_inv_type,'modified Moore-Penrose')
+        local_mean = -B' * A_plus_gamma_inv * b;
+        local_scaling = B' * A_plus_gamma_inv * B;
+        local_inv_cov = local_scaling;
+    end
+    
+    flow_proxy_mean(:,j) = log(local_scaling \ local_mean);
+    % Check if the blood flow is positive
+    if any(~isreal(flow_proxy_mean))
+        disp('warning: blood flow is not positive')
+        flow_proxy_mean(:,j) = real(flow_proxy_mean(:,j));
+    end
+end
+
+end
+
+%%
+% <html><h4> Proxy for vasosignalling </h4></html>
+function [vaso_proxy_mean,vaso_proxy_inv_cov] = proxy_for_vasosignalling(vaso,dC_times_invC,...
+    state_proxy_mean,ode_param,symbols,A_plus_gamma_inv,opt_settings)
+
+state_idx = find(cellfun(@(x) strcmp(x(2),'s'),symbols.state));
+state_partner_idx = find(cellfun(@(x) strcmp(x(2),'f'),symbols.state));
+
+j = 0;
+for u = state_idx
+    
+    j = j+1;
+    
+    % Initialize
+    global_scaling = zeros(size(dC_times_invC,1),1);
+    global_mean = zeros(size(dC_times_invC,1),1);
+    
+    % local
+    % unpack matrices B and b for vasosignalling ODE
+    R = diag(vaso.R{u}.vaso(state_proxy_mean,ode_param'));
+    r = vaso.r{u}.vaso(state_proxy_mean,ode_param);
+    if size(R,1) == 1; R = R.*eye(size(dC_times_invC,1)); end
+    if size(r,1) == 1; r = r.*zeros(size(dC_times_invC,1),1); end
+    
+    %%
+    % Define matrices B and b such that $\mathbf{B}_{uk} \mathbf{x}_u + \mathbf{b}_{uk} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\phi_{k}} \mathbf{C}_{\phi_{k}}^{-1} \mathbf{X}$
+    B = R - dC_times_invC;
+    b = r;
+    %%
+    if strcmp(opt_settings.pseudo_inv_type,'Moore-Penrose')
+        local_mean.vaso = -B' * b;
+        local_scaling.vaso = B' * B;
+        local_inv_cov.vaso = B' * A_plus_gamma_inv * B;
+    elseif strcmp(opt_settings.pseudo_inv_type,'modified Moore-Penrose')
+        local_mean.vaso = -B' * b;
+        local_scaling.vaso = B' * A_plus_gamma_inv * B;
+        local_inv_cov.vaso = local_scaling.vaso;
+    end
+    
+    % local
+    % unpack matrices B and b for blood flow ODE
+    R = diag(vaso.R{u}.flow(state_proxy_mean,ode_param'));
+    r = vaso.r{u}.flow(state_proxy_mean,ode_param);
+    if size(R,1) == 1; R = R.*eye(size(dC_times_invC,1)); end
+    if size(r,1) == 1; r = r.*zeros(size(dC_times_invC,1),1); end
+    
+    %%
+    % Define matrices B and b such that $\mathbf{B}_{uk} \mathbf{x}_u + \mathbf{b}_{uk} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\boldmath\theta) - {'\mathbf{C}}_{\phi_{k}} \mathbf{C}_{\phi_{k}}^{-1} \mathbf{X}$
+    B = R;
+    b = r - dC_times_invC * state_proxy_mean(:,state_partner_idx(j));
+    %%
+    if strcmp(opt_settings.pseudo_inv_type,'Moore-Penrose')
+        local_mean.flow = -B' * b;
+        local_scaling.flow = B' * B;
+        local_inv_cov.flow = B' * A_plus_gamma_inv * B;
+    elseif strcmp(opt_settings.pseudo_inv_type,'modified Moore-Penrose')
+        local_mean.flow = -B' * A_plus_gamma_inv * b;
+        local_scaling.flow = B' * A_plus_gamma_inv * B;
+        local_inv_cov.flow = local_scaling.flow;
+    end
+    
+    % global
+    global_mean = local_mean.vaso + local_mean.flow;
+    global_scaling = local_scaling.vaso + local_scaling.flow;
+      
+    % Mean of state proxy distribution
+    vaso_proxy_mean(:,j) = global_scaling \ global_mean;
+    
+    % Inverse covariance for state proxy distribution
+    vaso_proxy_inv_cov(:,:,u) = local_inv_cov.vaso + local_inv_cov.flow;
+
+end
+
+end
+
+%%
+% <html><h4> Proxy for neuronal populations </h4></html>
+function [neuronal_proxy_mean,neuronal_proxy_inv_cov] = proxy_for_neuronal_populations(neuronal,...
+state_proxy_mean,ode_param,dC_times_invC,coupling_idx,symbols,A_plus_gamma_inv,opt_settings)
+
+state_idx = find(cellfun(@(x) strcmp(x(2),'n'),symbols.state));
+j = 0;
+for u = state_idx
+    
+    j = j+1;
+    
+    % Initialize
+    neuronal_proxy_inv_cov(:,:,u) = zeros(size(dC_times_invC));
+    global_scaling = zeros(size(dC_times_invC,1),1);
+    global_mean = zeros(size(dC_times_invC,1),1);
+    
+    for k = coupling_idx{u}'
+        
+        % unpack matrices B and b
+        R = diag(neuronal.R{u,k}(state_proxy_mean,ode_param));
+        r = neuronal.r{u,k}(state_proxy_mean,ode_param);
+        if size(R,1) == 1; R = R.*eye(size(dC_times_invC,1)); end
+        
+        %%
+        % Define matrices B and b such that $\mathbf{B}_{uk} \mathbf{x}_u + \mathbf{b}_{uk} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\boldmath\theta)  - {'\mathbf{C}}_{\phi_{k}} \mathbf{C}_{\phi_{k}}^{-1} \mathbf{X}$
+        if k~=u
+            B = R;
+            b = r - dC_times_invC * state_proxy_mean(:,k);
+        else
+            B = R - dC_times_invC;
+            b = r;
+        end
+        
+        % local
+        if strcmp(opt_settings.pseudo_inv_type,'Moore-Penrose')
+            local_mean = -B' * b;
+            local_scaling = B' * B;
+            local_inv_cov = B' * A_plus_gamma_inv * B;
+        elseif strcmp(opt_settings.pseudo_inv_type,'modified Moore-Penrose')
+            local_mean = -B' * A_plus_gamma_inv * b;
+            local_scaling = B' * A_plus_gamma_inv * B;
+            local_inv_cov = local_scaling;
+        end
+        
+        % global
+        global_mean = global_mean + local_mean;
+        global_scaling = global_scaling + local_scaling;
+        
+        % Inverse covariance for state proxy distribution
+        neuronal_proxy_inv_cov(:,:,u) = neuronal_proxy_inv_cov(:,:,u) + local_inv_cov;
+    end
+    
+    % Mean of state proxy distribution
+    neuronal_proxy_mean(:,j) = global_scaling \ global_mean;
+end
+
+end
+
+%%
+% <html><h4> Prior on neuronal couplings </h4></html>
+%
+% The prior variance on all non-selfinhibitory neuronal couplings is infinity.
+function ode_param = prior_on_ODE_param(ode_param,param_prior,param_symbols)
+
+numb_states = 3;
+ode_param.prior.mean = zeros(length(param_symbols),1);
+ode_param.prior.mean(end-numb_states+1:end) = -1;                          
+tmp = param_prior*ones(1,length(param_symbols));
+tmp(end-numb_states+1:end) = 1e-9;
+ode_param.prior.inv_cov = diag(tmp.^(-1)); 
+
+end
+
+%%
+% <html><h4> Confounding effects </h4></html>
+function bold_response = confounding_effects(bold_response)
+
+bold_response.confounding_effects.X0 = importdata('dcm/confounding_effects_X0.txt');
+bold_response.confounding_effects.beta = importdata('dcm/confounding_effects_beta.txt');
+
+bold_response.confounding_effects.X0_penrose_inv = (bold_response.confounding_effects.X0' * ...
+    bold_response.confounding_effects.X0)^(-1) * bold_response.confounding_effects.X0';
+
+bold_response.confounding_effects.intercept = ones(size(bold_response.obs));
+
+end
+
+%%
+% <html><h4> Import ODEs </h4></html>
+function ode = import_odes(symbols,candidate_odes)
+
+path_ode = ['./dcm/ODEs/' candidate_odes '.txt'];                          % path to candidtae system of ODEs
+
+ode.raw = importdata(path_ode);
+ode.refined = ode.raw;
+
+for k = 1:length(ode.refined)
+for u = 1:length(symbols.state); ode.refined{k} = strrep(ode.refined{k},[symbols.state{u}],['state(:,' num2str(u) ')']); end 
+for j = 1:length(symbols.param); ode.refined{k} = strrep(ode.refined{k},symbols.param{j},['param(' num2str(j) ')']); end
+end
+for k = 1:length(ode.refined); ode.system{k} = str2func(['@(state,param)(' ode.refined{k} ')']); end
+
+end
+
+%%
+% <html><h4> Simulate state trajectories by numerical integration </h4></html>
+function [state,time,ode,bold_response] = simulate_dynamics_by_numerical_integration(state,time,ode,simulation,symbols)
+
+param_sym = sym('param%d',[1,length(symbols.param)]); assume(param_sym,'real');
+state_sym = sym('state%d',[1,length(symbols.state)]); assume(state_sym,'real');
+for i = 1:length(ode.system)
+    ode.system_sym(i) = ode.system{i}(state_sym,param_sym);
+end
+
+idx0 = cellfun(@(n) ~strcmp(n(2),'u'),symbols.state);
+learn_method.state(idx0) = {'Laplace mean-field'};
+learn_method.state(~idx0) = {'external input'};
+
+state.obs_idx = zeros(1,sum(idx0));
+state.init_val = zeros(1,sum(idx0));
+%
+init_val = 0.01*ones(1,sum(idx0));
+
+%
+dt = state.ext_input(end,1) - state.ext_input(end-1,1);
+ode_system_mat = matlabFunction(ode.system_sym','Vars',{state_sym(~strcmp(learn_method.state,'external input'))',...
+        param_sym',state_sym(strcmp(learn_method.state,'external input'))'});
+  
+ode_param_true = simulation.ode_param';
+
+% warning ('off','all');    
+[ToutX,OutX_solver] = ode113(@(t,n) ode_function(t,n,ode_system_mat,ode_param_true,state.ext_input(:,2:end),state.ext_input(:,1)),...
+    state.ext_input(:,1), init_val);
+% warning ('on','all');
+
+[~,idx] = min(pdist2(ToutX,state.ext_input(:,1)),[],1);
+ToutX = ToutX(idx); OutX_solver = OutX_solver(idx,:);
+
+% pack
+[~,state.ext_input_to_bold_response_mapping_idx] = min(pdist2(state.ext_input(:,1),time.est'),[],1);
+state.true = OutX_solver(state.ext_input_to_bold_response_mapping_idx,:);
+state.true(1:5,:) = 0;
+
+time.true = ToutX';
+time.samp = time.true(state.ext_input_to_bold_response_mapping_idx);
+
+% true bold responses
+bold_response.true = bold_signal_change_eqn(state.true(:,cellfun(@(n) strcmp(n(2),'v'),symbols.state)),state.true(:,cellfun(@(n) strcmp(n(2),'q'),symbols.state)));
+% mean correction
+% bold_response.confounding_effects.intercept = mean(bold_response.true,1);
+% bold_response.true = bsxfun(@minus,bold_response.true,mean(bold_response.true,1));
+% % bold_response.confounding_effects.X0 = ones(size(bold_response.true));
+
+% observed bold responses
+bold_response.obs = bold_response.true + bsxfun(@times,sqrt(var(bold_response.true) ./ simulation.SNR),randn(size(bold_response.true)));
+bold_response.confounding_effects.intercept = mean(bold_response.obs,1);
+bold_response.variance = (repmat(max(bold_response.obs,[],1),size(bold_response.obs,1),1)./simulation.SNR).^2;
+
+% pack
+state.obs = state.true(:,find(state.obs_idx));
+
+% align externel input with observations
+shift_num = 1;
+e = state.ext_input;
+e(shift_num+1:end,2:end) = state.ext_input(1:end-shift_num,2:end);
+e(1:shift_num,2:end) = zeros(shift_num,size(state.ext_input,2)-1);
+state.ext_input = e;
+
+end
+
+%%
+% <html><h4> Simulate state trajectories by numerical integration with parameters estimated by variational gradient matching </h4></html>
+function [state,bold_response] = simulate_trajectory_with_vgm_param_est(ode_param,state,state_orig,bold_response,simulation,time,ode,symbols)
+
+bold_response.prediction.num_int_with_gm_param_est = [];
+
+state_orig.init_val = state.proxy.mean(1,cellfun(@(x) ~strcmp(x(2),'u'),symbols.state));
+
+simulation.ode_param = ode_param.proxy.mean';
+
+state_sim = simulate_dynamics_by_numerical_integration(state_orig,time,ode,simulation,symbols);
+
+state.num_int_with_gm_param_est = state_sim.true;
+
+%
+bold_response_signal_change = bold_signal_change_eqn(state.num_int_with_gm_param_est(:,cellfun(@(n) strcmp(n(2),'v'),symbols.state)),...
+    state.num_int_with_gm_param_est(:,cellfun(@(n) strcmp(n(2),'q'),symbols.state)));
+bold_response.confounding_effects.intercept = determine_intercept(bold_response.obs_old-bold_response_signal_change,...
+    bold_response.confounding_effects.X0,bold_response.confounding_effects.X0_penrose_inv);
+bold_response.prediction.num_int_with_gm_param_est = bold_response_signal_change + bold_response.confounding_effects.intercept;
+
+%
+state.num_int_with_gm_param_est(1,:) = [];
+state.num_int_with_gm_param_est(end+1,:) = zeros(1,size(state.num_int_with_gm_param_est,2));
+bold_response.prediction.num_int_with_gm_param_est(1,:) = [];
+bold_response.prediction.num_int_with_gm_param_est(end+1,:) = zeros(1,size(bold_response.prediction.num_int_with_gm_param_est,2));
+
+end
+
+%%
+% <html><h4> Generate observations of states </h4></html>
+function [state,time,obs_to_state_relation] = generate_state_observations(state,time,simulation,symbols)
+
+% State observations
+tmp = cellfun(@(x) {strcmp(x(2),simulation.observed_states)},symbols.state);
+state.obs_idx = cellfun(@(x) any(x),tmp);
+state.obs_idx(cellfun(@(x) strcmp(x(2),'u'),symbols.state)) = [];
+state.obs = state.true(:,state.obs_idx) +  sqrt(var(state.true(:,state.obs_idx)) ./ simulation.SNR) .* randn(size(state.true(:,state.obs_idx)));
+
+% Relationship between states and observations
+if length(simulation.time_samp) < length(time.est)
+    time.idx = munkres(pdist2(time.samp',time.est'));
+    time.ind = sub2ind([length(time.samp),length(time.est)],1:length(time.samp),time.idx);
+else
+    time.idx = munkres(pdist2(time.est',time.samp'));
+    time.ind = sub2ind([length(time.est),length(time.samp)],1:length(time.est),time.idx);
+end
+
+time.obs_time_to_state_time_relation = zeros(length(time.samp),length(time.est)); time.obs_time_to_state_time_relation(time.ind) = 1;
+state_mat = eye(size(state.true,2)); state_mat(~logical(state.obs_idx),:) = [];
+obs_to_state_relation = sparse(kron(state_mat,time.obs_time_to_state_time_relation));
+         
+end
+
+%%
+% <html><h4> ODE function </h4></html>
+function state_derivatives = ode_function(time,states,ode_system_mat,ode_param,ext_input,time_lst)
+
+[~,idx] = min(pdist2(time,time_lst));
+u = ext_input(idx,:);
+
+state_derivatives = ode_system_mat(states,ode_param,u');
+
+end
+
+%%
+% <html><h4> Determine intercept </h4></html>
+function intercept = determine_intercept(bold_response_diff,X0,X0_penrose_inv)
+
+intercept = X0 * X0_penrose_inv * bold_response_diff;
+
+end
+
+%%
+% <html><h4> Write ODEs as a symbolic expression </h4></html>
+function [ode,state_sym,param_sym] = write_ODEs_as_symbolic_expression(symbols,ode)
+
+param_sym = sym('param%d',[1,length(symbols.param)]); assume(param_sym,'real');
+state_sym = sym('state%d',[1,length(symbols.state)]); assume(state_sym,'real');
+for k = 1:length(ode.system)
+    ode.system_sym(k) = ode.system{k}(state_sym,param_sym);
+end
+
+end
+
+%%
+% <html><h4> Setup plots for states </h4></html>
+function [h_states,h_param,p] = setup_plots_for_states(state,time,symbols)
+
+for i = 1:length(symbols.param); symbols.param{i} = symbols.param{i}(2:end-1); end
+
+figure(1); set(1, 'Position', [0, 200, 1600, 800]);
+
+h_param = subplot(3,2,1); h_param.FontSize = 20; h_param.Title.String = 'ODE parameters';
+set(gca,'XTick',[1:length(symbols.param)]); set(gca,'XTickLabel',symbols.param);
+hold on;
+
+i = 0;
+for u = [3,6,9,12,15]
+    i = i+1;
+    h_states{u} = subplot(3,2,i+1); cla; p.true = plot(time.samp,state.true(:,u),'LineWidth',2,'Color',[217,95,2]./255);
+    try; hold on; p.obs = plot(time.samp,state.obs(:,u),'*','Color',[217,95,2]./255,'MarkerSize',1);end
+    h_states{u}.FontSize = 20; h_states{u}.Title.String = symbols.state{u}(2:end-1); h_states{u}.XLim = [min(time.est),max(time.est)];
+    h_states{u}.XLabel.String = 'time (s)'; hold on;
+end
+drawnow
+
+end
+
+%%
+% <html><h4> Setup plots for BOLD response </h4></html>
+function [h_bold,h_ext_input] = setup_plots_for_bold_response_and_ext_input(state,bold_response,time,symbols)
+
+for i = 1:length(symbols.param); symbols.param{i} = symbols.param{i}(2:end-1); end
+
+figure(2); set(2, 'Position', [0, 200, 1600, 800]);
+
+plot_titles_idx = find(cellfun(@(x) strcmp(x(2),'n'),symbols.state));
+plot_idx = [1:2:3*2];
+for u = 1:3
+    h_bold{u} = subplot(3,2,plot_idx(u)); cla; 
+    plot(h_bold{u},time.samp,bold_response.obs(:,u),'LineWidth',2,'Color',[217,95,2]./255);
+    h_bold{u}.FontSize = 20; h_bold{u}.Title.String = [symbols.state{plot_titles_idx(u)}(2:end-1) ' BOLD response']; 
+    h_bold{u}.XLim = [min(time.est),max(time.est)];
+    h_bold{u}.XLabel.String = 'time (s)'; hold on;
+end
+
+plot_titles_idx = flipdim(find(cellfun(@(x) strcmp(x(2),'u'),symbols.state)),2);
+plot_idx = [2:2:3*2];
+for i = 1:sum(cellfun(@(x) strcmp(x(2),'u'),symbols.state))
+    h_ext_input{i} = subplot(3,2,plot_idx(i));
+    plot(h_ext_input{i},time.true,state.ext_input(:,i+1),'LineWidth',2,'Color',[217,95,2]./255); hold on;
+    h_ext_input{i}.FontSize = 20; h_ext_input{i}.Title.String = symbols.state{plot_titles_idx(i)}(2:end-1);; 
+    h_ext_input{i}.XLim = [min(time.est),max(time.est)];
+    h_ext_input{i}.XLabel.String = 'time (s)'; hold on;
+end
+drawnow
+
+end
+
+%%
+% <html><h4> Plot results for states </h4></html>
+function plot_results_for_states(h_states,h_param,state,time,simulation,param_proxy_mean,symbols,candidate_odes,p)
+
+for u = [3,6,9,12,15]   
+    hold on; p.vgm = plot(h_states{u},time.samp,state.proxy.mean(:,u),'LineWidth',0.1,'Color',[0.4,0.4,0.4]);
+    try; p.num_int = plot(h_states{u},time.samp(1,:),state.num_int_with_gm_param_est(:,u),'Color',[0,0,0],'LineWidth',1); end
+    
+    if any(cellfun(@(x) ~strcmp(x,symbols.state{u}(2)),simulation.observed_states))
+        legend(h_states{u},{'true','observed','estimate'},'Location','northwest','FontSize',10); 
+    else
+        try 
+            legend(h_states{u},[p.true,p.vgm,p.num_int],{'true','estimate','numerical int. with est. param.'},'Location','southwest','FontSize',10);
+        catch
+            legend(h_states{u},[p.true,p.vgm],{'true','estimate'},'Location','southwest','FontSize',10); 
+        end
+    end
+end
+
+cla(h_param); 
+if strcmp(simulation.odes,candidate_odes)
+    b = bar(h_param,1:length(param_proxy_mean),[simulation.ode_param',param_proxy_mean]);
+    b(1).FaceColor = [217,95,2]./255; b(2).FaceColor = [117,112,179]./255;
+    legend(h_param,{'true','estimate'},'Location','northeast','FontSize',12);
+else
+    b = bar(h_param,1:length(param_proxy_mean),param_proxy_mean);
+    b.FaceColor = [117,112,179]./255;
+    legend(h_param,{'estimated'},'Location','northeast','FontSize',12);
+end
+h_param.XLim = [0.5,length(param_proxy_mean)+0.5]; h_param.YLimMode = 'auto';
+drawnow
+
+end
+
+%%
+% <html><h4> Plot results for BOLD response </h4></html>
+function plot_results_for_bold_response(h_bold,bold_response,time)
+
+for u = 1:3   
+    plot(h_bold{u},time.est,bold_response.prediction.num_int_with_gm_param_est(:,u),'LineWidth',1,'Color',[0,0,0]); hold on;
+    legend(h_bold{u},{'observed BOLD response','numerical int. with est. param.'},'Location','southwest','FontSize',10); 
+end
+drawnow
+
+end
+##### SOURCE END #####
+--></body></html>

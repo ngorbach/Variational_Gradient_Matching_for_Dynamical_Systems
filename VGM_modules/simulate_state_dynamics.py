@@ -9,13 +9,57 @@
 
 
 import numpy as np
-import scipy.integrate as integrate
+from scipy.integrate import odeint
 from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
 from scipy.optimize import linear_sum_assignment
 from mpl_toolkits.mplot3d import Axes3D
 import pandas as pd
 from plotting import *
+from sklearn import preprocessing
+#from odes_func import *
+
+
+
+#def odes_func(state,ode_param):
+#    
+#    x_dot1 = ode_param[0] * (-state[:,0] + state[:,1])
+#    x_dot2 = ode_param[1] * state[:,0] - state[:,0] * state[:,2] - state[:,1]
+#    x_dot3 = -ode_param[2] * state[:,2] + state[:,0] * state[:,1]
+#    x_dot = np.vstack([x_dot1.reshape(-1,1),x_dot2.reshape(-1,1),x_dot3.reshape(-1,1)])
+#        
+#    return np.squeeze(x_dot)
+
+
+## In[1]:
+#
+## these are our constants
+#N = 36  # number of variables
+#F = 8  # forcing
+#
+#def Lorenz96(x,t):
+#
+#  # compute state derivatives
+#  d = np.zeros(N)
+#  # first the 3 edge cases: i=1,2,N
+#  d[0] = (x[1] - x[N-2]) * x[N-1] - x[0]
+#  d[1] = (x[2] - x[N-1]) * x[0]- x[1]
+#  d[N-1] = (x[0] - x[N-3]) * x[N-2] - x[N-1]
+#  # then the general case
+#  for i in range(2, N-1):
+#      d[i] = (x[i+1] - x[i-2]) * x[i-1] - x[i]
+#  # add the forcing term
+#  d = d + F
+#
+#  # return the state derivatives
+#  return d
+#
+#x0 = F*np.ones(N) # initial state (equilibrium)
+#x0[19] += 0.01 # add small perturbation to 20th variable
+#t = np.arange(0.0, 30.0, 0.01)
+#
+#x = odeint(Lorenz96, x0, t)
+
 
 # In[2]:
 
@@ -24,7 +68,7 @@ def integrand(states,t,odes,ode_param):
     
     '''Evaluates state derivatives'''
     
-    return odes(states,ode_param)
+    return odes(*states,*ode_param)
 
 
 # In[3]:
@@ -36,10 +80,14 @@ def numerical_integration(odes,time_points,states,param,state_symbols):
     
     '''Integrates the ODEs using numerical integration'''
     
-    state = integrate.odeint(integrand, states, time_points, args=(odes,param))
+    state = odeint(integrand, states, time_points, args=(odes,param))
+    
+    # standardize data
+    #state = preprocessing.scale(state)
     
     # pack states into pandas DataFrames
     state = pd.DataFrame(state,columns=map(str,state_symbols),index=time_points).rename_axis('time')
+    
     
     return state
 
@@ -47,7 +95,7 @@ def numerical_integration(odes,time_points,states,param,state_symbols):
 # In[5]:
 
 
-def setup_simulation(simulation,time_points,symbols,odes,color_idx1=1,*args):
+def setup_simulation(simulation,time_points,symbols,odes,fig_shape=(10,8),color_idx1=1,extra_track=None,*args):
 
     '''Simulates the State Dynamics with given ODE Parameters'''
     
@@ -58,8 +106,8 @@ def setup_simulation(simulation,time_points,symbols,odes,color_idx1=1,*args):
         # simulate state trajectories by numerical integration
         state = numerical_integration(odes,time_points.true,simulation.initial_states,simulation.ode_param,symbols.state)
     
-        observations = simulate_state_observations(state,simulation.interval_between_observations,\
-                simulation.observed_states,time_points.final_observed,simulation.obs_variance).rename_axis('time')
+        observations = simulate_state_observations(state,simulation.observed_time_points,\
+                simulation.observed_states,time_points.final_observed,simulation.SNR).rename_axis('time')
         
 
         # write state- and observed trajectories to file in directoy './data'
@@ -72,59 +120,63 @@ def setup_simulation(simulation,time_points,symbols,odes,color_idx1=1,*args):
             
         ## plotting ODE parameters and states
         plot_ode_parameters(simulation.ode_param)
-        plot_states(state,observations)
+        plot_states(state,observations,fig_shape,plot_name='true_states')
         
-        # mapping between observation- and state trajectories
-        obs_to_state_relations = \
-        mapping_between_observation_and_state_trajectories(time_points.for_estimation,\
-                                                           np.array(observations.index),symbols.state,\
-                                                           simulation.observed_states)
+#        # mapping between observation- and state trajectories
+#        obs_to_state_relations = \
+#        mapping_between_observation_and_state_trajectories(time_points.for_estimation,\
+#                                                           np.array(observations.index),symbols.state,\
+#                                                           simulation.observed_states)
         
     else:
         
         # unpack ode_param into list
-        ode_param = simulation.ode_param.values
+        ode_param = np.squeeze(simulation.ode_param.values).tolist()
         
         # simulate state trajectories by numerical integration
         state = numerical_integration(odes,time_points.true,simulation.initial_states,ode_param,symbols.state)
-        
+
         # unpack arbitrary length arguments
         observations = args[0]
         state_proxy = args[1]
         
         ## plotting ODE parameters and states
-        plot_ode_parameters(simulation.ode_param,[2,0,1])
-        plot_states(state,observations,['num. int. with estimated param','VGM estimate','observed'],[2,0,1],1,state_proxy)
+        plot_ode_parameters(simulation.ode_param,(7,4),[2,0,1])
+        plot_states(state,observations,fig_shape,label=['num. int. with estimated param','VGM estimate','observed'],color_idx=[2,0,1],traj_idx=1,sigma=None,traj_arg=state_proxy,plot_name='num_int_with_param_estimates',extra_track=extra_track)
         obs_to_state_relations = []
         
 
-    return state, observations, obs_to_state_relations
+    return state, observations
 
 
 
 # In[4]:
 
 
-def simulate_state_observations(state,interval_between_observations,observed_states,\
-                                final_observed_time_point,obs_variance=0.1):
+def simulate_state_observations(state,observed_time_points,observed_states,final_observed_time_point,SNR=1):
     
     '''Simulates observations of state trajectories by adding normally distributed noise to the true state trajectories'''
     
+    
     #integration_time_points = np.arange(0,final_time_point,integration_interval)
     integration_time_points = np.array(state.index)
-    observed_time_points = np.arange(0,final_observed_time_point,interval_between_observations)
-
+    
     # indices of observed time points
     integration_interval = state.index[2] - state.index[1]
-    observed_time_idx = np.round(observed_time_points / integration_interval + 1)
+    observed_time_idx = np.round(observed_time_points / integration_interval + 1)-1
+    if observed_time_idx[-1] >= state.shape[0]:
+        observed_time_idx[-1] = state.shape[0]-1
+        
     
     # unpack subset of state
-    state_subset = state[map(str,observed_states)]
+    state_subset = state[list(map(str,observed_states))]
     state_subset = state_subset.iloc[observed_time_idx.astype(int),:]
     
+    # determine variance of observations from SNR
+    obs_variance = (np.mean(state_subset.values,axis=0) / SNR)**2
+    
     # add normally distributed noise with variance $\sigma$ to the true state trajectories
-    observations = state_subset + np.sqrt(obs_variance) * \
-    np.random.randn(observed_time_idx.shape[0],state_subset.shape[1])
+    observations = state_subset + np.sqrt(obs_variance) * np.random.randn(observed_time_idx.shape[0],state_subset.shape[1])
     
     observed_time_points = integration_time_points[observed_time_idx.astype(int)]
     

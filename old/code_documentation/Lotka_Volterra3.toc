@@ -1,0 +1,21 @@
+\contentsline {chapter}{\numberline {1}Introduction}{5}{chapter.1}
+\contentsline {section}{\numberline {1.1}Advantages of Variational Gradient Matching}{5}{section.1.1}
+\contentsline {chapter}{\numberline {2}VGM for Lotka-Volterra}{7}{chapter.2}
+\contentsline {section}{\numberline {2.1}Simulation Settings}{7}{section.2.1}
+\contentsline {section}{\numberline {2.2}User Input}{7}{section.2.2}
+\contentsline {section}{\numberline {2.3}Import ODEs}{8}{section.2.3}
+\contentsline {section}{\numberline {2.4}Mass Action Dynamical Systems}{8}{section.2.4}
+\contentsline {section}{\numberline {2.5}Simulate Trajectory Observations}{9}{section.2.5}
+\contentsline {section}{\numberline {2.6}Prior on States and State Derivatives}{9}{section.2.6}
+\contentsline {section}{\numberline {2.7}Matching Gradients}{9}{section.2.7}
+\contentsline {section}{\numberline {2.8}State Couplings in ODEs}{10}{section.2.8}
+\contentsline {section}{\numberline {2.9}Rewrite ODEs as Linear Combination in Parameters}{10}{section.2.9}
+\contentsline {section}{\numberline {2.10}Posterior over ODE Parameters}{10}{section.2.10}
+\contentsline {section}{\numberline {2.11}Rewrite ODEs as Linear Combination in Individual States}{11}{section.2.11}
+\contentsline {section}{\numberline {2.12}Posterior over Individual States}{11}{section.2.12}
+\contentsline {section}{\numberline {2.13}Mean-field Variational Inference}{11}{section.2.13}
+\contentsline {section}{\numberline {2.14}Fitting observations of state trajectories}{12}{section.2.14}
+\contentsline {section}{\numberline {2.15}Coordinate Ascent Variational Gradient Matching}{12}{section.2.15}
+\contentsline {section}{\numberline {2.16}Time Taken}{16}{section.2.16}
+\contentsline {section}{\numberline {2.17}References}{16}{section.2.17}
+\contentsline {section}{\numberline {2.18}Subroutines}{17}{section.2.18}

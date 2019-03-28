@@ -1,0 +1,363 @@
+Example dynamical system used in this code: Lotka-Volterra system with \textbf{half} of the time points \textbf{unobserved}. The ODE parameters are also unobserved.
+
+\section{Simulation Settings}
+
+\color{RoyalPurple}\begin{verbatim}
+simulation.state_obs_variance = @(mean)(bsxfun(@times,[0.5^2,0.5^2],...
+    ones(size(mean))));             % observation noise
+simulation.ode_param = [2,1,4,1];   % true ODE parameters;
+simulation.final_time = 2;          % end time for integration
+simulation.int_interval = 0.01;     % integration interval
+simulation.time_samp = 0:0.1:simulation.final_time; % sample times for observations
+simulation.init_val = [5 3];        % initial state values
+
+%symbols of observed states that appear in the 'ODEs.txt' file.
+simulation.observed_states = {'[prey]','[predator]'};
+\end{verbatim}
+\color{black}
+
+
+\section{User Input}
+
+\begin{par}
+\subsection{ Path to ODEs }
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+odes_path = 'Lotka_Volterra_ODEs.txt';
+\end{verbatim}
+\color{black}
+\begin{par}
+\subsection{ Symbols } symbols of states and parameters in the '\_ODEs.txt' file
+\end{par} \vspace{1em}
+\begin{par}
+States $\mathbf{x}$:
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+symbols.state = {'[prey]','[predator]'};    % symbols of states in 'ODEs.txt' file
+\end{verbatim}
+\color{black}
+\begin{par}
+ODE parameters $\theta$ (symbols of parameters in 'ODEs.txt' file):
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+symbols.param = {'[\theta_1]','[\theta_2]','[\theta_3]','[\theta_4]'};
+\end{verbatim}
+\color{black}
+\begin{par}
+\subsection{ Kernel }
+\end{par} \vspace{1em}
+\begin{par}
+Kernel parameters $\phi$:
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+kernel.param = [10,0.2];             % set values of rbf kernel parameters
+\end{verbatim}
+\color{black}
+\begin{par}
+Error variance on state derivatives (i.e. $\gamma$):
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+state.derivative_variance = 6*ones(1,length(symbols.state)); % gamma for gradient matching model
+\end{verbatim}
+\color{black}
+\begin{par}
+\subsection{ Estimation times }
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+time.est = 0:0.1:4;                 % estimation times
+\end{verbatim}
+\color{black}
+\begin{par}
+\subsection{ Type of pseudo-inverse } Type of pseudo inverse; options: 'Moore-Penrose' or 'modified Moore-Penrose'
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+opt_settings.pseudo_inv_type = 'Moore-Penrose';
+\end{verbatim}
+\color{black}
+\begin{par}
+\subsection{ Optimization settings }
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+opt_settings.coord_ascent_numb_iter = 40;  % number of coordinate ascent iterations
+
+% The observed state trajectories are clamped to the trajectories
+% determined by standard GP regression (Boolean)
+opt_settings.clamp_obs_state_to_GP_fit = false;
+\end{verbatim}
+\color{black}
+\begin{par}
+Plot settings: layout and size
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+plot_settings.size = [1200, 500]; plot_settings.layout = [1,3];
+\end{verbatim}
+\color{black}
+
+
+\section{Import ODEs}
+
+\color{RoyalPurple}\begin{verbatim}
+ode = import_odes(symbols,odes_path);
+\end{verbatim}
+\color{black}
+\color{RoyalPurple}\begin{verbatim}
+disp('ODEs:'); disp(ode.raw)
+\end{verbatim}
+\color{black}
+
+        \begin{verbatim}ODEs:
+    '[\theta_1].*[prey] - [\theta_2].*[prey].*[predator]'
+    '-[\theta_3].*[predator] + [\theta_4].*[prey].*[predator]'
+
+\end{verbatim}
+\color{black}
+
+\section{Simulate Trajectory Observations}
+
+\begin{par}
+\subsection{ Generate ground truth by numerical integration }
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+[state,time,ode] = generate_ground_truth(time,state,ode,symbols,simulation,...
+    odes_path);
+\end{verbatim}
+\color{black}
+\begin{par}
+\subsection{ Generate state observations }
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+if ~iscell(simulation.observed_states)
+    ratio_observed = simulation.observed_states;
+    state_obs_idx = zeros(1,simulation.numb_odes,'logical');
+    idx = randperm(simulation.numb_odes);
+    idx = idx(1:floor(simulation.numb_odes * ratio_observed));
+    state_obs_idx(idx) = 1;
+    simulation.observed_states = symbols.state(state_obs_idx);
+end
+
+[state,time,obs_to_state_relation] = generate_state_obs(state,time,simulation,...
+    symbols);
+\end{verbatim}
+\color{black}
+\begin{par}
+\subsection{ Symbols }
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+state.sym.mean = sym('x%d%d',[length(time.est),length(ode.system)]);
+state.sym.variance = sym('sigma%d%d',[length(time.est),length(ode.system)]);
+ode_param.sym.mean = sym('param%d',[length(symbols.param),1]);
+assume(ode_param.sym.mean,'real');
+\end{verbatim}
+\color{black}
+\begin{par}
+\subsection{ Setup plots }
+\end{par} \vspace{1em}
+\begin{par}
+Only the state dynamics are (partially) observed.
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+[h_states,h_param,p] = setup_plots(state,time,simulation,symbols,plot_settings);
+
+tic; %start timer
+\end{verbatim}
+\color{black}
+
+\section{Prior over States and State Derivatives}
+\color{RoyalPurple}\begin{verbatim}
+[dC_times_invC,inv_C,A_plus_gamma_inv] = kernel_function(kernel,state,time.est);
+\end{verbatim}
+\color{black}
+
+
+\section{State Couplings in ODEs}
+
+\color{RoyalPurple}\begin{verbatim}
+coupling_idx = find_state_couplings_in_odes(ode,symbols);
+\end{verbatim}
+\color{black}
+
+
+\section{Rewrite ODEs as Linear Combination in Parameters}
+
+\begin{par}
+We rewrite the ODEs in equation (2) as a linear combination in the parameters:
+\end{par} \vspace{1em}
+\begin{par}
+$\mathbf{B}_{\theta k} \theta + \mathbf{b}_{\theta k} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\theta) \qquad (5)$,
+\end{par} \vspace{1em}
+\begin{par}
+where matrices $\mathbf{B}_{\theta k}$ and $\mathbf{b}_{\theta k}$ are defined such that the ODEs $\mathbf{f}_k(\mathbf{X},\theta)$ are expressed as a linear combination in $\theta$.
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+[ode_param.lin_comb.B,ode_param.lin_comb.b] = ...
+    rewrite_odes_as_linear_combination_in_parameters(ode,symbols);
+\end{verbatim}
+\color{black}
+
+\section{Rewrite ODEs as Linear Combination in Individual States}
+
+\begin{par}
+We rewrite the expression $\mathbf{f}(\mathbf{X},\theta) - {'\mathbf{C}}_{\phi} \mathbf{C}_{\phi}^{-1} \mathbf{X}$ in equation (4) as a linear combination in the individual state $\mathbf{x}_u$:
+\end{par} \vspace{1em}
+\begin{par}
+$\mathbf{R}_{uk} \mathbf{x}_u + \mathbf{r}_{uk} \stackrel{!}{=} \mathbf{f}_k(\mathbf{X},\theta)$.
+\end{par} \vspace{1em}
+\begin{par}
+where matrices $\mathbf{R}_{uk}$ and $\mathbf{r}_{uk}$ are defined such that the ODE $\mathbf{f}_k(\mathbf{X},\theta)$ is expressed as a linear combination in the individual state $\mathbf{x}_u$.
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+[state.lin_comb.R,state.lin_comb.r] = ...
+    rewrite_odes_as_linear_combination_in_ind_states(ode,symbols,coupling_idx.states);
+\end{verbatim}
+\color{black}
+
+
+\section{Fitting observations of state trajectories}
+\color{RoyalPurple}\begin{verbatim}
+[mu,inv_sigma] = fitting_state_observations(state,inv_C,obs_to_state_relation,simulation);
+\end{verbatim}
+\color{black}
+
+
+\section{Coordinate Ascent Variational Gradient Matching}
+
+\begin{par}
+We minimize the KL-divergence in equation (10) by coordinate descent (where each step is analytically tractable) by iterating between determining the proxy for the distribution over ODE parameters $\hat{q}(\theta)$ and the proxies for the distribution over individual states $\hat{q}(\mathbf{x}_u)$.
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+state.proxy.mean = mu;  % Initialize the state estimation by the GP regression posterior
+for i = 1:opt_settings.coord_ascent_numb_iter
+\end{verbatim}
+\color{black}
+\begin{par}
+\subsection{ Proxy for ODE parameters }
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+    [param_proxy_mean,param_proxy_inv_cov] = proxy_for_ode_parameters(state.proxy.mean,...
+        dC_times_invC,ode_param.lin_comb,symbols,A_plus_gamma_inv,opt_settings);
+
+    if i==1 || ~mod(i,1)
+        plot_results(h_states,h_param,state,time,simulation,param_proxy_mean,...
+            p,symbols,'not_final');
+    end
+\end{verbatim}
+\color{black}
+
+{\centering
+\includegraphics [width=5in]{Lotka_Volterra_3_05.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_06.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_07.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_08.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_09.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_10.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_11.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_12.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_13.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_14.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_15.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_16.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_17.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_18.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_19.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_20.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_21.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_22.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_23.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_24.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_25.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_26.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_27.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_28.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_29.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_30.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_31.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_32.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_33.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_34.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_35.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_36.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_37.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_38.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_39.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_40.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_41.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_42.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_43.eps}
+
+\includegraphics [width=5in]{Lotka_Volterra_3_44.eps}
+
+}
+
+\subsection{ Proxy for individual states }
+
+\color{RoyalPurple}\begin{verbatim}
+    [state.proxy.mean,state.proxy.inv_cov] = proxy_for_ind_states(state.lin_comb,...
+        state.proxy.mean,param_proxy_mean',dC_times_invC,coupling_idx.states,symbols,...
+        mu,inv_sigma,simulation.observed_states,A_plus_gamma_inv,opt_settings);
+\end{verbatim}
+\color{black}
+\color{RoyalPurple}\begin{verbatim}
+end
+\end{verbatim}
+\color{black}
+\begin{par}
+\subsection{ Final result }
+\end{par} \vspace{1em}
+\color{RoyalPurple}\begin{verbatim}
+plot_results(h_states,h_param,state,time,simulation,param_proxy_mean,p,symbols,'final');
+\end{verbatim}
+\color{black}
+
+\begin{figure}[H]
+\centering
+\includegraphics [width=5in]{Lotka_Volterra_3_45.eps}
+\end{figure}
+
+\section{Time Taken}
+
+\color{RoyalPurple}\begin{verbatim}
+disp(['time taken: ' num2str(toc) ' seconds'])
+\end{verbatim}
+\color{black}
+
+        \begin{verbatim}time taken: 51.19 seconds
+\end{verbatim}
+\color{black} 

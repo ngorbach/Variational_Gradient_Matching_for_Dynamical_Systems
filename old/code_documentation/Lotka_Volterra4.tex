@@ -1,0 +1,91 @@
+
+% This LaTeX was auto-generated from MATLAB code.
+% To make changes, upda\textit{•}te the MATLAB code and republish this document.
+
+\documentclass[a4paper, 11pt, twoside]{book}
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage[a4paper,left=2cm,right=2cm,top=2.5cm,bottom=2.5cm]{geometry}
+%\sloppy
+\definecolor{lightgray}{gray}{0.5}
+\setlength{\parindent}{0pt}
+
+\usepackage{amsmath}
+ \usepackage{amssymb}
+\usepackage{amsthm}
+
+\usepackage[utf8]{inputenc}
+\usepackage{verbatim}
+
+\usepackage{fontspec}
+\usepackage{fontenc}
+\setmainfont[BoldFont={Minion Pro Semibold}, ItalicFont={Minion Pro Italic}]{Minion Pro}
+\usepackage{titlesec}
+   \newfontfamily\headingfont[]{Minion Pro Semibold}
+  \titleformat{\chapter}[display]
+  {\huge\headingfont}{\chaptertitlename\ \thechapter}{20pt}{\huge}
+  
+\usepackage{fancyvrb}
+ 
+ \usepackage[pagebackref=true,breaklinks=true,letterpaper=true,colorlinks,bookmarks=false]{hyperref}
+
+\usepackage[dvipsnames]{xcolor}
+\hypersetup{
+colorlinks,
+linkcolor=black,
+citecolor=black,
+urlcolor=blue
+}
+
+\usepackage{float}
+
+ \usepackage{fancyhdr}
+ \pagestyle{fancy}
+\fancyhead{}
+\fancyhead[EL]{\leftmark}
+\fancyhead[OR]{\rightmark}
+%\lhead{Variational Gradient Matching for Dynamical Systems}
+%\fancyfoot[L]{Version of \today}
+\fancyfoot[C]{\thepage}
+ 
+
+  
+%\title{Variational Gradient Matching for Dynamical Systems}
+ 
+\begin{document}
+
+ %\maketitle   
+ \input{titlepage}
+
+\setcounter{tocdepth}{1}
+\tableofcontents    
+
+    \chapter{Introduction}
+    Instructional code for the NIPS (2018) paper " \textbf{Scalable Variational Inference for Dynamical Systems} " by Nico S. Gorbach, Stefan Bauer and Joachim M. Buhmann. The paper is available at https://papers.nips.cc/paper/7066-scalable-variational-inference-for-dynamical-systems.pdf. Please cite our paper if you use our program for a further publication. Part of the derivation below is described in Wenk et al. (2018).
+    
+\section{Advantages of Variational Gradient Matching}
+The essential idea of gradient matching (Calderhead et al., 2002) is to match the gradient governed by the ODEs with that inferred from the observations. In contrast to previous approaches gradient matching introduces a prior over states instead of a prior over ODE parameters. The advantages of gradients matching is two-fold:
+\begin{enumerate}
+   \item A prior over the functional form of state dynamics as opposed to ODE parameters facilitates a more expert-aware estimation of ODE parameters since experts can provide a better \textit{a priori} description of state dynamics than ODE parameters.
+   \item Gradient matching yields a global gradient as opposed to a local one which offers significant computational advantages and provides access to a rich source of sophisticated optimization tools.
+\end{enumerate}
+
+\chapter{Theory}
+\input{theory}
+
+\chapter{VGM for Lotka-Volterra}
+\input{lotka_volterra_sub}
+ 
+\chapter{VGM for Lorenz 96 with arbitrarily many ODEs}
+\input{lorenz96}
+
+\chapter{Lorenz Attractor}
+\input{lorenz_attractor}
+
+\chapter{Subroutines for Lotka-Volterra, Lorenz 96 and Lorenz Attractor}
+\input{subroutines_for_lotka_and_lorenz}
+
+\chapter{References}
+\input{references}
+
+\end{document}
