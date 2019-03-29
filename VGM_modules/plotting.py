@@ -9,10 +9,10 @@ import numpy as np
 # In[1]:
 
 
-def plot_ode_parameters(ode_param1,fig_shape=(7, 4),color_idx=[1,0],plot_name=None,ode_param_estimates=None):
+def plot_ode_parameters(ode_param,fig_shape=(7, 4),color_idx=[1,0],plot_name=None,ode_param_estimates=None):
     
     # number of ode parameters
-    numb_ode_param = len(ode_param1.index)
+    numb_ode_param = len(ode_param.index)
     
     # generate RGB colors
     cmap = plt.get_cmap("tab10")
@@ -22,15 +22,15 @@ def plot_ode_parameters(ode_param1,fig_shape=(7, 4),color_idx=[1,0],plot_name=No
     
     ax = plt.subplot(111)
     if ode_param_estimates is None:
-        ax.bar(np.array(range(numb_ode_param)),ode_param1.values.flatten(),color=cmap(color_idx[0]),width=0.2,label='true')
+        ax.bar(np.array(range(numb_ode_param)),ode_param.values.flatten(),color=cmap(color_idx[0]),width=0.2,label='true')
     else:
-        ax.bar(np.array(range(numb_ode_param))+0.12,ode_param1.values.flatten(),color=cmap(color_idx[0]),width=0.2,label='true')
+        ax.bar(np.array(range(numb_ode_param))+0.12,ode_param.values.flatten(),color=cmap(color_idx[0]),width=0.2,label='true')
         ax.bar(np.array(range(numb_ode_param))-0.12,ode_param_estimates.values.flatten(),color=cmap(color_idx[1]),width=0.2,label='estimate')
     
     # customize plot
     plt.title('ODE Parameters',fontsize=24)
-    if len(ode_param1.index) < 20:
-        plt.xticks(range(numb_ode_param),['$%s$' % symbol[1:] for symbol in ode_param1.index])
+    if len(ode_param.index) < 20:
+        plt.xticks(range(numb_ode_param),['$%s$' % symbol[1:] for symbol in ode_param.index])
     plt.xticks(fontsize=18)
     plt.yticks(fontsize=18)
     ax.legend(fontsize=18)

@@ -123,9 +123,10 @@ def proxy_for_ode_parameters(state_proxy,ext_input,locally_linear_odes,dC_times_
     # pack global_mean into pandas DataFrame
     ode_param_proxy = pd.DataFrame(global_mean,columns=['value'],index=map(str,ode_param_symbols)).rename_axis('ODE_parameter_symbols')
     
+
     # plotting ODE parameters
     plot_ode_parameters(ode_param_true,fig_shape=(10,4),color_idx=[1,0],plot_name='ODE_parameter_estimation',ode_param_estimates=ode_param_proxy)
-    
+
     return ode_param_proxy
     
 
